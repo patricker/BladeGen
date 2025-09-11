@@ -98,10 +98,26 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Blade, 'Base Width', 0.05, 1.0, 0.005, state.blade.baseWidth, (v) => (state.blade.baseWidth = v), rerender);
   slider(sections.Blade, 'Tip Width', 0, 0.5, 0.005, state.blade.tipWidth, (v) => (state.blade.tipWidth = v), rerender);
   slider(sections.Blade, 'Blade Thickness', 0.02, 0.2, 0.001, state.blade.thickness, (v) => (state.blade.thickness = v), rerender);
+  slider(sections.Blade, 'Left Thickness', 0.003, 0.2, 0.001, state.blade.thicknessLeft ?? state.blade.thickness, (v) => (state.blade.thicknessLeft = v), rerender, 'Z thickness at left edge (−X).');
+  slider(sections.Blade, 'Right Thickness', 0.003, 0.2, 0.001, state.blade.thicknessRight ?? state.blade.thickness, (v) => (state.blade.thicknessRight = v), rerender, 'Z thickness at right edge (+X).');
   slider(sections.Blade, 'Curvature', -1, 1, 0.01, state.blade.curvature, (v) => (state.blade.curvature = v), rerender, 'Bends the blade along its length (negative curves opposite).');
+  slider(sections.Blade, 'Base Angle', -10, 10, 0.1, (state.blade.baseAngle ?? 0) * 180/Math.PI, (v) => (state.blade.baseAngle = v * Math.PI/180), rerender, 'Angle (deg) that the blade departs from the handle.');
+  slider(sections.Blade, 'Twist Angle', -720, 720, 1, (state.blade.twistAngle ?? 0) * 180/Math.PI, (v) => (state.blade.twistAngle = v * Math.PI/180), rerender, 'Total twist along blade (deg).');
+  select(sections.Blade, 'Sori Profile', ['torii', 'koshi', 'saki'], state.blade.soriProfile ?? 'torii', (v) => (state.blade.soriProfile = v as any), rerender, 'Curvature distribution: centered (torii), base (koshi), tip (saki).');
+  slider(sections.Blade, 'Sori Bias', 0.3, 3.0, 0.01, state.blade.soriBias ?? 0.8, (v) => (state.blade.soriBias = v), rerender, 'Bias exponent for sori profile.');
+  slider(sections.Blade, 'Kissaki Length', 0, 0.35, 0.005, state.blade.kissakiLength ?? 0, (v) => (state.blade.kissakiLength = v), rerender, 'Tip segment fraction (yokote position).');
+  slider(sections.Blade, 'Kissaki Round', 0, 1, 0.01, state.blade.kissakiRoundness ?? 0.5, (v) => (state.blade.kissakiRoundness = v), rerender, 'Tip rounding (0 sharp, 1 round).');
+  select(sections.Blade, 'Edge Type', ['double', 'single'], (state.blade.edgeType ?? 'double') as string, (v) => (state.blade.edgeType = v as any), rerender, 'Single uses thin cutting edge and thick spine.');
+  // Hamon (visual)
+  checkbox(sections.Blade, 'Hamon Enabled', state.blade.hamonEnabled ?? false, (v) => (state.blade.hamonEnabled = v), rerender, 'Toggle hamon visual band along the edge.');
+  slider(sections.Blade, 'Hamon Width', 0.001, 0.06, 0.001, state.blade.hamonWidth ?? 0.02, (v) => (state.blade.hamonWidth = v), rerender, 'Hamon band width (meters).');
+  slider(sections.Blade, 'Hamon Amp', 0, 0.03, 0.001, state.blade.hamonAmplitude ?? 0.008, (v) => (state.blade.hamonAmplitude = v), rerender, 'Hamon waviness amplitude.');
+  slider(sections.Blade, 'Hamon Freq', 0, 20, 1, state.blade.hamonFrequency ?? 6, (v) => (state.blade.hamonFrequency = v), rerender, 'Hamon waves along the blade.');
+  select(sections.Blade, 'Hamon Side', ['auto', 'left', 'right', 'both'], (state.blade.hamonSide ?? 'auto') as string, (v) => (state.blade.hamonSide = v as any), rerender, 'Auto picks cutting edge for single-edge blades.');
   slider(sections.Blade, 'Asymmetry', -1, 1, 0.01, state.blade.asymmetry ?? 0, (v) => (state.blade.asymmetry = v), rerender, 'Positive widens right edge, negative widens left.');
   slider(sections.Blade, 'Chaos', 0, 1, 0.01, state.blade.chaos ?? 0, (v) => (state.blade.chaos = v), rerender, 'Adds small edge roughness for fantasy blades.');
   checkbox(sections.Blade, 'Enable Fullers', state.blade.fullerEnabled ?? false, (v) => (state.blade.fullerEnabled = v), rerender, 'Toggle decorative grooves along the blade faces.');
+  slider(sections.Blade, 'Fuller Count', 0, 3, 1, state.blade.fullerCount ?? 1, (v) => (state.blade.fullerCount = Math.round(v)), rerender, 'Number of grooves (0–3).');
   slider(sections.Blade, 'Fuller Depth', 0, 0.1, 0.001, state.blade.fullerDepth ?? 0, (v) => (state.blade.fullerDepth = v), rerender, 'Visual depth/shading of the groove; not actual subtraction.');
   slider(sections.Blade, 'Fuller Length', 0, 1, 0.01, state.blade.fullerLength ?? 0, (v) => (state.blade.fullerLength = v), rerender, 'Portion of blade occupied by the groove (0..1).');
   slider(sections.Blade, 'Serration Left', 0, 0.2, 0.001, state.blade.serrationAmplitudeLeft ?? (state.blade.serrationAmplitude ?? 0), (v) => (state.blade.serrationAmplitudeLeft = v), rerender, 'Left edge serration amplitude.');
@@ -115,6 +131,10 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Guard, 'Tilt', -1.57, 1.57, 0.01, state.guard.tilt, (v) => (state.guard.tilt = v), rerender, 'Rotates the guard around the blade axis.');
   select(sections.Guard, 'Style', ['bar', 'winged', 'claw', 'disk'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
   slider(sections.Guard, 'Guard Detail', 3, 64, 1, state.guard.curveSegments ?? 12, (v) => (state.guard.curveSegments = Math.round(v)), rerender, 'Detail for guard curves.');
+  checkbox(sections.Guard, 'Habaki', state.guard.habakiEnabled ?? false, (v) => (state.guard.habakiEnabled = v), rerender, 'Blade collar above the guard.');
+  slider(sections.Guard, 'Habaki Height', 0.02, 0.2, 0.001, state.guard.habakiHeight ?? 0.06, (v) => (state.guard.habakiHeight = v), rerender, 'Height of the habaki collar.');
+  slider(sections.Guard, 'Habaki Margin', 0.002, 0.08, 0.001, state.guard.habakiMargin ?? 0.01, (v) => (state.guard.habakiMargin = v), rerender, 'Clearance added to blade width/thickness.');
+  slider(sections.Guard, 'Guard Height', -0.15, 0.15, 0.001, state.guard.heightOffset ?? 0, (v) => (state.guard.heightOffset = v), rerender, 'Vertical offset: top of guard vs blade base.');
 
   // Handle controls
   slider(sections.Handle, 'Length', 0.2, 2.0, 0.01, state.handle.length, (v) => (state.handle.length = v), rerender);
@@ -128,6 +148,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   checkbox(sections.Handle, 'Wrap Texture', state.handle.wrapTexture ?? false, (v) => (state.handle.wrapTexture = v), rerender, 'Procedural diagonal stripe texture on grip.');
   slider(sections.Handle, 'Wrap Tex Scale', 1, 32, 1, state.handle.wrapTexScale ?? 10, (v) => (state.handle.wrapTexScale = Math.round(v)), rerender, 'Texture repeat scale.');
   slider(sections.Handle, 'Wrap Tex Angle', -90, 90, 1, (state.handle.wrapTexAngle ?? (Math.PI/4)) * 180/Math.PI, (v) => (state.handle.wrapTexAngle = (v*Math.PI/180)), rerender, 'Stripe angle (degrees).');
+  slider(sections.Handle, 'Oval Ratio', 1, 1.8, 0.01, state.handle.ovalRatio ?? 1, (v) => (state.handle.ovalRatio = v), rerender, 'Wider X vs Z for an oval tsuka.');
 
   // Pommel controls
   select(sections.Pommel, 'Style', ['orb', 'disk', 'spike'], state.pommel.style, (v) => (state.pommel.style = v as any), rerender);
@@ -136,6 +157,16 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Pommel, 'Morph', 0, 1, 0.01, state.pommel.shapeMorph, (v) => (state.pommel.shapeMorph = v), rerender);
 
   // Other controls
+  // Taper ratio helper: 0 => tip equals base; 1 => tip tapers to 0
+  slider(
+    sections.Other,
+    'Taper Ratio',
+    0, 1, 0.01,
+    state.blade.baseWidth > 0 ? (1 - (state.blade.tipWidth / state.blade.baseWidth)) : 0,
+    (v) => { state.blade.tipWidth = Math.max(0, state.blade.baseWidth * (1 - v)); },
+    rerender,
+    '0 = no taper, 1 = tip at 0 width'
+  );
   slider(sections.Other, 'Stylization', 0, 1, 0.01, (state as any).styleFactor ?? 0, (v) => ((state as any).styleFactor = v), rerender, 'Exaggerates proportions (guard width, curvature, pommel size).');
   slider(sections.Other, 'Blade Detail', 16, 512, 1, state.blade.sweepSegments ?? 128, (v) => (state.blade.sweepSegments = Math.round(v)), rerender, 'Controls blade tessellation along its length.');
 
@@ -402,16 +433,31 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Base Width': params.blade.baseWidth,
     'Tip Width': params.blade.tipWidth,
     'Blade Thickness': params.blade.thickness,
+    'Left Thickness': params.blade.thicknessLeft ?? params.blade.thickness,
+    'Right Thickness': params.blade.thicknessRight ?? params.blade.thickness,
     'Curvature': params.blade.curvature,
+    'Base Angle': (params.blade.baseAngle ?? 0) * 180/Math.PI,
+    'Sori Profile': params.blade.soriProfile ?? 'torii',
+    'Sori Bias': params.blade.soriBias ?? 0.8,
+    'Kissaki Length': params.blade.kissakiLength ?? 0,
+    'Kissaki Round': params.blade.kissakiRoundness ?? 0.5,
+    'Edge Type': params.blade.edgeType ?? 'double',
+    'Hamon Enabled': params.blade.hamonEnabled ?? false,
+    'Hamon Width': params.blade.hamonWidth ?? 0.02,
+    'Hamon Amp': params.blade.hamonAmplitude ?? 0.008,
+    'Hamon Freq': params.blade.hamonFrequency ?? 6,
+    'Hamon Side': params.blade.hamonSide ?? 'auto',
     'Asymmetry': params.blade.asymmetry ?? 0,
     'Chaos': params.blade.chaos ?? 0,
     'Enable Fullers': params.blade.fullerEnabled ?? false,
     'Fuller Depth': params.blade.fullerDepth ?? 0,
     'Fuller Length': params.blade.fullerLength ?? 0,
+    'Fuller Count': params.blade.fullerCount ?? 1,
     'Serration Left': params.blade.serrationAmplitudeLeft ?? (params.blade.serrationAmplitude ?? 0),
     'Serration Right': params.blade.serrationAmplitudeRight ?? (params.blade.serrationAmplitude ?? 0),
     'Serration Freq': params.blade.serrationFrequency ?? 0,
     'Stylization': (params as any).styleFactor ?? 0,
+    'Taper Ratio': params.blade.baseWidth > 0 ? (1 - (params.blade.tipWidth / params.blade.baseWidth)) : 0,
     'Blade Detail': params.blade.sweepSegments ?? 128,
     'Width': params.guard.width,
     'Guard Thickness': params.guard.thickness,
@@ -419,6 +465,10 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Tilt': params.guard.tilt,
     'Style_g': params.guard.style,
     'Guard Detail': params.guard.curveSegments ?? 12,
+    'Habaki': params.guard.habakiEnabled ?? false,
+    'Habaki Height': params.guard.habakiHeight ?? 0.06,
+    'Habaki Margin': params.guard.habakiMargin ?? 0.01,
+    'Guard Height': params.guard.heightOffset ?? 0,
     'Length_h': params.handle.length,
     'Radius Top': params.handle.radiusTop,
     'Radius Bottom': params.handle.radiusBottom,
@@ -427,6 +477,7 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Wrap Turns': params.handle.wrapTurns ?? 6,
     'Wrap Depth': params.handle.wrapDepth ?? 0.015,
     'Handle Sides': params.handle.phiSegments ?? 64,
+    'Oval Ratio': params.handle.ovalRatio ?? 1,
     'Wrap Texture': params.handle.wrapTexture ?? false,
     'Wrap Tex Scale': params.handle.wrapTexScale ?? 10,
     'Wrap Tex Angle': ((params.handle.wrapTexAngle ?? (Math.PI/4)) * 180/Math.PI),
@@ -476,6 +527,15 @@ function randomizeBlade(p: SwordParams, safe: boolean) {
   p.blade.baseWidth = safe ? r(0.15, 0.35) : r(0.05, 0.8);
   p.blade.tipWidth = clamp(r(0, p.blade.baseWidth * (safe ? 0.6 : 1)), 0, 1);
   p.blade.thickness = safe ? r(0.05, 0.12) : r(0.02, 0.18);
+  if (Math.random() > 0.5) {
+    // slight asymmetry in edge thickness
+    const baseT = p.blade.thickness;
+    p.blade.thicknessLeft = clamp(baseT * r(0.6, 1.4), 0.003, 0.2);
+    p.blade.thicknessRight = clamp(baseT * r(0.6, 1.4), 0.003, 0.2);
+  } else {
+    p.blade.thicknessLeft = p.blade.thickness;
+    p.blade.thicknessRight = p.blade.thickness;
+  }
   p.blade.curvature = safe ? r(-0.2, 0.4) : r(-0.8, 0.8);
   p.blade.chaos = safe ? r(0, 0.2) : r(0, 0.6);
   const amp = safe ? 0 : r(0, 0.15);
@@ -530,8 +590,9 @@ function presetKatana(): SwordParams {
   // Katana: curved, single-edged look, slender blade, tsuba disk guard, long wrapped handle
   p.blade.length = 3.3; p.blade.baseWidth = 0.22; p.blade.tipWidth = 0.06; p.blade.curvature = 0.25; p.blade.thickness = 0.08;
   p.blade.fullerEnabled = false; p.blade.fullerDepth = 0; p.blade.fullerLength = 0; (p.blade as any).asymmetry = 0.2; p.blade.chaos = 0.05;
-  p.guard.style = 'disk'; p.guard.width = 0.36; p.guard.thickness = 0.1; p.guard.curve = 0; p.guard.tilt = 0;
-  p.handle.length = 1.1; p.handle.radiusTop = 0.11; p.handle.radiusBottom = 0.11; p.handle.segmentation = false; p.handle.wrapEnabled = true; (p.handle as any).wrapTexture = true; p.handle.wrapTurns = 10; p.handle.wrapDepth = 0.012;
+  (p.blade as any).edgeType = 'single'; p.blade.thicknessLeft = 0.10; p.blade.thicknessRight = 0.02; (p.blade as any).hamonEnabled = true; (p.blade as any).hamonWidth = 0.018; (p.blade as any).hamonAmplitude = 0.007; (p.blade as any).hamonFrequency = 6; (p.blade as any).hamonSide = 'right';
+  p.guard.style = 'disk'; p.guard.width = 0.36; p.guard.thickness = 0.1; p.guard.curve = 0; p.guard.tilt = 0; (p.blade as any).baseAngle = 0.05; (p.blade as any).soriProfile = 'koshi'; (p.blade as any).soriBias = 0.7; (p.blade as any).kissakiLength = 0.12; (p.blade as any).kissakiRoundness = 0.6; (p.guard as any).habakiEnabled = true; (p.guard as any).habakiHeight = 0.06; (p.guard as any).habakiMargin = 0.012;
+  p.handle.length = 1.1; p.handle.radiusTop = 0.11; p.handle.radiusBottom = 0.11; p.handle.segmentation = false; p.handle.wrapEnabled = true; (p.handle as any).wrapTexture = true; p.handle.wrapTurns = 10; p.handle.wrapDepth = 0.012; (p.handle as any).ovalRatio = 1.2;
   p.pommel.style = 'disk'; p.pommel.size = 0.12; p.pommel.elongation = 1.0; p.pommel.shapeMorph = 0.1;
   return p;
 }

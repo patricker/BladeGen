@@ -13,9 +13,24 @@ export type BladeParams = {
   fullerDepth?: number; // visual groove depth hint
   fullerLength?: number; // 0..1 portion of blade length
   fullerEnabled?: boolean; // render fuller overlays
+  fullerCount?: number; // 0..3 number of grooves per face
   sweepSegments?: number; // longitudinal detail for blade sweep
   chaos?: number; // 0..1 small edge roughness
   asymmetry?: number; // -1..1 widen right(+) or left(-)
+  edgeType?: 'single' | 'double';
+  thicknessLeft?: number; // per-edge thickness (z) on left edge
+  thicknessRight?: number; // per-edge thickness (z) on right edge
+  baseAngle?: number; // radians: initial tangent angle at blade base
+  soriProfile?: 'torii' | 'koshi' | 'saki';
+  soriBias?: number; // 0.3..3 exponent weight for profile
+  kissakiLength?: number; // 0..0.35 fraction of length at tip
+  kissakiRoundness?: number; // 0..1 easing of tip taper (0 sharp, 1 round)
+  hamonEnabled?: boolean;
+  hamonWidth?: number; // band width across X (inside from edge)
+  hamonAmplitude?: number; // waviness amplitude across X
+  hamonFrequency?: number; // waves along blade
+  hamonSide?: 'auto' | 'left' | 'right' | 'both';
+  twistAngle?: number; // radians of total twist from base to tip
 };
 
 export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk';
@@ -26,6 +41,10 @@ export type GuardParams = {
   tilt: number; // radians tilt around Z
   style: GuardStyle;
   curveSegments?: number; // tessellation for 2D shape
+  habakiEnabled?: boolean;
+  habakiHeight?: number;
+  habakiMargin?: number;
+  heightOffset?: number; // vertical offset from blade base for guard placement
 };
 
 export type HandleParams = {
@@ -40,6 +59,13 @@ export type HandleParams = {
   wrapTexture?: boolean; // enable procedural wrap texture
   wrapTexScale?: number; // texture repeat scale
   wrapTexAngle?: number; // stripe angle in radians
+  ovalRatio?: number; // >1 flattens Z and widens X
+  segmentationCount?: number; // number of ridge cycles
+  flare?: number; // additional radius near pommel
+  curvature?: number; // -1..1 slight bend along x
+  tangVisible?: boolean;
+  tangWidth?: number;
+  tangThickness?: number;
 };
 
 export type PommelStyle = 'orb' | 'disk' | 'spike';
@@ -48,6 +74,10 @@ export type PommelParams = {
   elongation: number; // 0.5..2 scale on Y
   style: PommelStyle;
   shapeMorph: number; // 0..1: stylistic morph per style
+  offsetX?: number;
+  offsetY?: number;
+  facetCount?: number;
+  spikeLength?: number;
 };
 
 export type SwordParams = {
@@ -65,6 +95,7 @@ export class SwordGenerator {
   public pommelMesh: THREE.Mesh | null = null;
   private guardGroup: THREE.Group | null = null;
   private fullerGroup: THREE.Group | null = null;
+  private hamonGroup: THREE.Group | null = null;
   private highlighted: 'blade' | 'guard' | 'handle' | 'pommel' | null = null;
 
   private lastParams?: SwordParams;
@@ -141,6 +172,18 @@ export class SwordGenerator {
       this.fullerGroup.position.copy(this.bladeMesh.position);
       this.group.add(this.fullerGroup);
     }
+
+    // Hamon visual overlay along edge
+    if (this.hamonGroup) {
+      this.group.remove(this.hamonGroup);
+      this.disposeGroup(this.hamonGroup);
+      this.hamonGroup = null;
+    }
+    if (b.hamonEnabled && (b.hamonWidth ?? 0) > 0) {
+      this.hamonGroup = buildHamonOverlays(b);
+      this.hamonGroup.position.copy(this.bladeMesh.position);
+      this.group.add(this.hamonGroup);
+    }
   }
 
   private rebuildGuard(g: GuardParams) {
@@ -163,7 +206,7 @@ export class SwordGenerator {
       const bb = new THREE.Box3().setFromObject(this.bladeMesh);
       if (isFinite(bb.min.y)) bladeBaseY = bb.min.y;
     }
-    const targetTopY = bladeBaseY ?? 0.0;
+    const targetTopY = (bladeBaseY ?? 0.0) + (g.heightOffset ?? 0);
 
     const color = 0x8892b0;
     if (g.style === 'bar') {
@@ -203,6 +246,20 @@ export class SwordGenerator {
       this.guardGroup = group;
       this.group.add(group);
     }
+
+    // Habaki (blade collar) above guard
+    const useHabaki = !!g.habakiEnabled;
+    if (useHabaki) {
+      const hbHeight = Math.max(0.02, g.habakiHeight ?? 0.06);
+      const margin = Math.max(0.005, g.habakiMargin ?? 0.01);
+      const bladeW = this.lastParams?.blade.baseWidth ?? 0.25;
+      const bladeT = Math.max(this.lastParams?.blade.thicknessLeft ?? 0.08, this.lastParams?.blade.thicknessRight ?? 0.08);
+      const geo = new THREE.BoxGeometry(bladeW + 2 * margin, hbHeight, bladeT + 2 * margin);
+      const mat = new THREE.MeshStandardMaterial({ color: 0xb1976b, metalness: 0.6, roughness: 0.4 });
+      const habaki = new THREE.Mesh(geo, mat);
+      habaki.position.set(0, (bladeBaseY ?? 0) + hbHeight * 0.5, 0);
+      this.group.add(habaki);
+    }
   }
 
   private rebuildHandle(h: HandleParams) {
@@ -212,14 +269,16 @@ export class SwordGenerator {
       this.handleMesh = null;
     }
     const profile: THREE.Vector2[] = [];
-    const ridges = h.segmentation ? 8 : 0;
+    const ridges = h.segmentation ? (h.segmentationCount ?? 8) : 0;
     const segments = 32;
     for (let i = 0; i <= segments; i++) {
       const t = i / segments;
       const y = -h.length / 2 + t * h.length;
       const baseR = h.radiusBottom + (h.radiusTop - h.radiusBottom) * t;
       const bump = ridges > 0 ? (Math.sin(t * Math.PI * ridges) * 0.03) : 0;
-      const r = Math.max(0.02, baseR + bump);
+      const flare = Math.max(0, h.flare ?? 0);
+      const flareTerm = flare * Math.pow(1 - t, 2);
+      const r = Math.max(0.02, baseR + bump + flareTerm);
       profile.push(new THREE.Vector2(r, y));
     }
     const phiSegments = Math.max(8, Math.min(128, Math.round(h.phiSegments ?? 64)));
@@ -263,8 +322,43 @@ export class SwordGenerator {
       mat.needsUpdate = true;
     }
     this.handleMesh = new THREE.Mesh(geo, mat);
+    // Slight curvature bend along x
+    if (Math.abs(h.curvature ?? 0) > 1e-4) {
+      const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+      const arr = pos.array as unknown as number[];
+      // find y min/max
+      let yMin = Infinity, yMax = -Infinity;
+      for (let i = 0; i < pos.count; i++) { const y = arr[i*3+1]; if (y<yMin) yMin=y; if (y>yMax) yMax=y; }
+      const H = Math.max(1e-6, yMax - yMin);
+      for (let i = 0; i < pos.count; i++) {
+        const ix = i*3, iy=ix+1;
+        const x = arr[ix]; const y = arr[iy]; const z = arr[ix+2];
+        const t = (y - yMin) / H;
+        const bend = (h.curvature ?? 0) * (t*t - t) * (yMax - yMin);
+        arr[ix] = x + bend; arr[ix+2] = z;
+      }
+      pos.needsUpdate = true; geo.computeVertexNormals();
+    }
+    // Apply oval cross-section scaling
+    const oval = Math.max(1, h.ovalRatio ?? 1);
+    if (oval !== 1) {
+      this.handleMesh.scale.x *= oval;
+      this.handleMesh.scale.z /= oval;
+    }
     this.handleMesh.position.y = -h.length * 0.5;
     this.group.add(this.handleMesh);
+
+    // Optional visible tang (inside/through handle)
+    if (h.tangVisible) {
+      const tw = Math.max(0.01, h.tangWidth ?? 0.05);
+      const tt = Math.max(0.005, h.tangThickness ?? 0.02);
+      const ty = h.length * 0.9;
+      const geoTang = new THREE.BoxGeometry(tw, ty, tt);
+      const matTang = new THREE.MeshStandardMaterial({ color: 0x9aa4b2, metalness: 0.7, roughness: 0.4 });
+      const tang = new THREE.Mesh(geoTang, matTang);
+      tang.position.y = -h.length * 0.5 + ty * 0.5;
+      this.group.add(tang);
+    }
   }
 
   private rebuildPommel(p: PommelParams) {
@@ -275,15 +369,17 @@ export class SwordGenerator {
     }
     const mat = new THREE.MeshStandardMaterial({ color: 0x9aa4b2, metalness: 0.6, roughness: 0.4 });
     let mesh: THREE.Mesh;
+    const facets = Math.max(6, Math.round(p.facetCount ?? 32));
     if (p.style === 'disk') {
-      const geo = new THREE.CylinderGeometry(p.size * (1.0 + p.shapeMorph), p.size * (1.0 + p.shapeMorph), p.size * 0.5, 32);
+      const geo = new THREE.CylinderGeometry(p.size * (1.0 + p.shapeMorph), p.size * (1.0 + p.shapeMorph), p.size * 0.5, facets);
       mesh = new THREE.Mesh(geo, mat);
     } else if (p.style === 'spike') {
-      const geo = new THREE.ConeGeometry(p.size * (0.8 + 0.4 * p.shapeMorph), p.size * (1.2 + p.shapeMorph), 32);
+      const height = p.size * (1.2 + p.shapeMorph) * (p.spikeLength ?? 1);
+      const geo = new THREE.ConeGeometry(p.size * (0.8 + 0.4 * p.shapeMorph), height, facets);
       mesh = new THREE.Mesh(geo, mat);
       mesh.rotation.z = Math.PI; // point down
     } else {
-      const geo = new THREE.SphereGeometry(p.size, 24, 16);
+      const geo = new THREE.SphereGeometry(p.size, facets, Math.max(8, Math.round(facets/2)));
       mesh = new THREE.Mesh(geo, mat);
       // morph: squash/stretch horizontally
       const s = 1.0 + (p.shapeMorph - 0.5) * 0.6;
@@ -298,7 +394,8 @@ export class SwordGenerator {
       const box = new THREE.Box3().setFromObject(this.handleMesh);
       if (isFinite(box.min.y)) y = box.min.y;
     }
-    this.pommelMesh.position.y = y - p.size * 0.3 * p.elongation;
+    this.pommelMesh.position.y = y - p.size * 0.3 * p.elongation + (p.offsetY ?? 0);
+    this.pommelMesh.position.x = (p.offsetX ?? 0);
     this.group.add(this.pommelMesh);
   }
 
@@ -319,9 +416,24 @@ export class SwordGenerator {
       fullerDepth: clamp(b.fullerDepth ?? 0, 0, 0.2),
       fullerLength: clamp(b.fullerLength ?? 0, 0, 1),
       fullerEnabled: !!b.fullerEnabled,
+      fullerCount: Math.round(clamp(b.fullerCount ?? 1, 0, 3)),
       sweepSegments: Math.round(clamp(b.sweepSegments ?? 128, 16, 512)),
       chaos: clamp(b.chaos ?? 0, 0, 1),
-      asymmetry: clamp(b.asymmetry ?? 0, -1, 1)
+      asymmetry: clamp(b.asymmetry ?? 0, -1, 1),
+      edgeType: (b.edgeType ?? 'double') as any,
+      thicknessLeft: clamp(b.thicknessLeft ?? b.thickness ?? 0.08, 0.003, 2),
+      thicknessRight: clamp(b.thicknessRight ?? b.thickness ?? 0.08, 0.003, 2),
+      baseAngle: clamp(b.baseAngle ?? 0, -0.35, 0.35),
+      soriProfile: (b.soriProfile ?? 'torii') as any,
+      soriBias: clamp(b.soriBias ?? 0.8, 0.3, 3),
+      kissakiLength: clamp(b.kissakiLength ?? 0, 0, 0.35),
+      kissakiRoundness: clamp(b.kissakiRoundness ?? 0.5, 0, 1),
+      hamonEnabled: !!b.hamonEnabled,
+      hamonWidth: clamp(b.hamonWidth ?? 0, 0, Math.max(0.02, (b.baseWidth || 0.25) * 0.5)),
+      hamonAmplitude: clamp(b.hamonAmplitude ?? 0, 0, Math.max(0.005, (b.baseWidth || 0.25) * 0.2)),
+      hamonFrequency: clamp(b.hamonFrequency ?? 0, 0, 30),
+      hamonSide: (b.hamonSide ?? 'auto') as any,
+      twistAngle: clamp(b.twistAngle ?? 0, -Math.PI * 2, Math.PI * 2)
     };
 
     const g = params.guard;
@@ -331,7 +443,10 @@ export class SwordGenerator {
       curve: clamp(g.curve, -1, 1),
       tilt: clamp(g.tilt, -Math.PI / 2, Math.PI / 2),
       style: (g.style ?? 'bar') as GuardStyle,
-      curveSegments: Math.round(clamp(g.curveSegments ?? 12, 3, 64))
+      curveSegments: Math.round(clamp(g.curveSegments ?? 12, 3, 64)),
+      habakiEnabled: !!g.habakiEnabled,
+      habakiHeight: clamp(g.habakiHeight ?? 0.06, 0.02, 0.2),
+      habakiMargin: clamp(g.habakiMargin ?? 0.01, 0.002, 0.08)
     };
 
     const h = params.handle;
@@ -346,7 +461,14 @@ export class SwordGenerator {
       phiSegments: Math.round(clamp(h.phiSegments ?? 64, 8, 128)),
       wrapTexture: !!h.wrapTexture,
       wrapTexScale: clamp(h.wrapTexScale ?? 10, 1, 64),
-      wrapTexAngle: clamp(h.wrapTexAngle ?? (Math.PI / 4), -Math.PI, Math.PI)
+      wrapTexAngle: clamp(h.wrapTexAngle ?? (Math.PI / 4), -Math.PI, Math.PI),
+      ovalRatio: clamp(h.ovalRatio ?? 1, 1, 1.8),
+      segmentationCount: Math.round(clamp(h.segmentationCount ?? 8, 0, 64)),
+      flare: clamp(h.flare ?? 0, 0, 0.2),
+      curvature: clamp(h.curvature ?? 0, -0.2, 0.2),
+      tangVisible: !!h.tangVisible,
+      tangWidth: clamp(h.tangWidth ?? 0.05, 0.005, 0.2),
+      tangThickness: clamp(h.tangThickness ?? 0.02, 0.003, 0.1)
     };
 
     const pm = params.pommel;
@@ -435,23 +557,23 @@ export function buildBladeOutlinePoints(b: BladeParams): THREE.Vector2[] {
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     const y = t * length;
-    const w = baseW + (tipW - baseW) * t;
+    const w = tipWidthWithKissaki(b, t, baseW, tipW);
     const serrR = serrAmpR > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpR * (1 - t) : 0;
     const half = Math.max(0.001, w * 0.5);
     const asym = (b.asymmetry ?? 0);
     const rightHalf = Math.max(0.0005, (half + serrR) * (1 + 0.5 * asym));
-    const bend = (b.curvature || 0) * (t * t - t) * length;
+    const bend = bendOffsetX(b, y, length);
     pts.push(new THREE.Vector2(+rightHalf + bend, y));
   }
   for (let i = steps; i >= 0; i--) {
     const t = i / steps;
     const y = t * length;
-    const w = baseW + (tipW - baseW) * t;
+    const w = tipWidthWithKissaki(b, t, baseW, tipW);
     const serrL = serrAmpL > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpL * (1 - t) : 0;
     const half = Math.max(0.001, w * 0.5);
     const asym = (b.asymmetry ?? 0);
     const leftHalf = Math.max(0.0005, (half + serrL) * (1 - 0.5 * asym));
-    const bend = (b.curvature || 0) * (t * t - t) * length;
+    const bend = bendOffsetX(b, y, length);
     pts.push(new THREE.Vector2(-leftHalf + bend, y));
   }
   return pts;
@@ -505,10 +627,44 @@ function makeWrapTexture(scale: number, angleRad: number): THREE.CanvasTexture {
   return tex;
 }
 
+function bendOffsetX(b: BladeParams, y: number, L: number): number {
+  const t = THREE.MathUtils.clamp(L > 0 ? y / L : 0, 0, 1);
+  const prof = b.soriProfile ?? 'torii';
+  const bias = b.soriBias ?? 0.8;
+  let a = 1, c = 1;
+  if (prof === 'koshi') { a = bias; c = 1; }
+  else if (prof === 'saki') { a = 1; c = bias; }
+  else { a = 1; c = 1; }
+  const shape = Math.pow(t, a) * Math.pow(1 - t, c);
+  const peak = Math.pow(a / (a + c), a) * Math.pow(c / (a + c), c);
+  const norm = peak > 1e-6 ? shape / peak : shape;
+  const curved = -(b.curvature || 0) * 0.25 * norm * L;
+  const linear = Math.tan(b.baseAngle ?? 0) * y;
+  return curved + linear;
+}
+
+function tipWidthWithKissaki(b: BladeParams, t: number, baseW: number, tipW: number): number {
+  const kf = THREE.MathUtils.clamp(b.kissakiLength ?? 0, 0, 0.35);
+  if (kf <= 1e-6) return baseW + (tipW - baseW) * t;
+  const split = 1 - kf;
+  const midW = baseW + (tipW - baseW) * split;
+  if (t <= split) {
+    return baseW + (midW - baseW) * (t / Math.max(1e-6, split));
+  } else {
+    const u = (t - split) / Math.max(1e-6, kf);
+    const r = THREE.MathUtils.clamp(b.kissakiRoundness ?? 0.5, 0, 1);
+    const expo = THREE.MathUtils.lerp(0.5, 3.0, 1 - r);
+    const eased = Math.pow(u, expo);
+    return midW + (tipW - midW) * eased;
+  }
+}
+
 function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   const L = Math.max(0.01, b.length);
-  const T = Math.max(0.001, b.thickness);
-  const halfT = T * 0.5;
+  const TL = Math.max(0.001, b.thicknessLeft ?? b.thickness ?? 0.08);
+  const TR = Math.max(0.001, b.thicknessRight ?? b.thickness ?? 0.08);
+  const halfTL = TL * 0.5;
+  const halfTR = TR * 0.5;
   const baseW = Math.max(0.002, b.baseWidth);
   const tipW = Math.max(0, b.tipWidth);
   const segs = Math.max(16, Math.min(512, Math.round(b.sweepSegments ?? 128))); // longitudinal resolution
@@ -533,7 +689,7 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   for (let i = 0; i <= segs; i++) {
     const t = i / segs;
     const y = t * L;
-    const w = baseW + (tipW - baseW) * t;
+    const w = tipWidthWithKissaki(b, t, baseW, tipW);
     const serrL = serrAmpL > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpL * (1 - t) : 0;
     const serrR = serrAmpR > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpR * (1 - t) : 0;
     // Chaos profile: bounded, smooth pseudo-noise (two sines)
@@ -544,15 +700,22 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     const asym = (b.asymmetry ?? 0);
     const leftHalf = Math.max(0.0005, (baseHalf + serrL) * (1 - 0.5 * asym));
     const rightHalf = Math.max(0.0005, (baseHalf + serrR) * (1 + 0.5 * asym));
-    const bend = (b.curvature || 0) * (t * t - t) * L;
+    const bend = bendOffsetX(b, y, L);
     const xl = -leftHalf + bend;
     const xr = +rightHalf + bend;
 
-    // FL, FR at front face (z = -halfT); BL, BR at back face (z = +halfT)
-    setV(i, 0, xl, y, -halfT);
-    setV(i, 1, xr, y, -halfT);
-    setV(i, 2, xl, y, +halfT);
-    setV(i, 3, xr, y, +halfT);
+    // FL/BL use left thickness; FR/BR use right thickness, then twist around Y
+    const twist = (b.twistAngle ?? 0) * t;
+    const cosT = Math.cos(twist), sinT = Math.sin(twist);
+    const rot = (x: number, z: number) => ({ x: x * cosT - z * sinT, z: x * sinT + z * cosT });
+    const p0 = rot(xl, -halfTL);
+    const p1 = rot(xr, -halfTR);
+    const p2 = rot(xl, +halfTL);
+    const p3 = rot(xr, +halfTR);
+    setV(i, 0, p0.x, y, p0.z);
+    setV(i, 1, p1.x, y, p1.z);
+    setV(i, 2, p2.x, y, p2.z);
+    setV(i, 3, p3.x, y, p3.z);
   }
 
   // Faces along length for front and back
@@ -608,14 +771,21 @@ export function defaultSwordParams(): SwordParams {
       fullerEnabled: false,
       sweepSegments: 128,
       chaos: 0.0,
-      asymmetry: 0.0
+      asymmetry: 0.0,
+      edgeType: 'double',
+      thicknessLeft: 0.08,
+      thicknessRight: 0.08,
+      baseAngle: 0.0
     },
     guard: {
       width: 1.2,
       thickness: 0.2,
       curve: 0.3,
       tilt: 0.0,
-      style: 'winged'
+      style: 'winged',
+      habakiEnabled: false,
+      habakiHeight: 0.06,
+      habakiMargin: 0.01
     },
     handle: {
       length: 0.9,
@@ -628,7 +798,8 @@ export function defaultSwordParams(): SwordParams {
       phiSegments: 64,
       wrapTexture: false,
       wrapTexScale: 10,
-      wrapTexAngle: 0.7853981633974483
+      wrapTexAngle: 0.7853981633974483,
+      ovalRatio: 1.0
     },
     pommel: {
       size: 0.16,
@@ -671,8 +842,8 @@ function buildFullerOverlays(b: BladeParams): THREE.Group {
     polygonOffsetUnits: -2 - 2 * depthNorm
   });
 
-  // Build a ribbon that follows curvature and taper
-  const buildRibbon = (z: number) => {
+  // Build a narrow ribbon centered at cxOffset that follows curvature
+  const buildRibbon = (cxOffset: number, z: number) => {
     const positions: number[] = [];
     const index: number[] = [];
     const pushVertex = (x: number, y: number) => {
@@ -682,15 +853,11 @@ function buildFullerOverlays(b: BladeParams): THREE.Group {
       const tLocal = i / segments; // 0..1 along ribbon
       const y = y0 + tLocal * usableLen;
       const tBlade = THREE.MathUtils.clamp(y / totalLen, 0, 1);
-      // Local half width of blade at this Y, including serrations
-      const baseW = b.baseWidth * 0.5;
-      const tipW = b.tipWidth * 0.5;
-      const wHalf = baseW + (tipW - baseW) * tBlade + (serrAmp > 0 && serrFreq > 0 ? Math.sin(tBlade * Math.PI * serrFreq) * 0.5 * serrAmp * (1 - tBlade) : 0);
-      const fHalf = Math.max(0.004, wHalf - margin);
-      // Curvature centerline offset (match blade bend profile)
-      const bend = (b.curvature || 0) * (tBlade * tBlade - tBlade) * totalLen;
-      const xL = -fHalf + bend;
-      const xR = +fHalf + bend;
+      const bend = bendOffsetX(b, y, totalLen);
+      const cx = bend + cxOffset;
+      const half = Math.max(0.003, (b.baseWidth * 0.22) * 0.5);
+      const xL = cx - half;
+      const xR = cx + half;
       pushVertex(xL, y);
       pushVertex(xR, y);
     }
@@ -709,13 +876,97 @@ function buildFullerOverlays(b: BladeParams): THREE.Group {
     return new THREE.Mesh(geo, mat);
   };
 
-  const halfT = b.thickness * 0.5;
+  const halfT = Math.max((b.thicknessLeft ?? b.thickness ?? 0.08) * 0.5, (b.thicknessRight ?? b.thickness ?? 0.08) * 0.5);
   const eps = 0.0006;
   const inset = depthNorm * (halfT - eps * 8) * 0.8; // deeper depth -> more inset
   const frontZ = halfT - eps - inset;
   const backZ = -frontZ;
-  group.add(buildRibbon(frontZ));
-  group.add(buildRibbon(backZ));
+  const count = Math.max(0, Math.min(3, Math.round(b.fullerCount ?? 1)));
+  if (count === 1) {
+    group.add(buildRibbon(0, frontZ), buildRibbon(0, backZ));
+  } else if (count === 2) {
+    const off = (b.baseWidth || 0.3) * 0.12;
+    group.add(buildRibbon(-off, frontZ), buildRibbon(-off, backZ));
+    group.add(buildRibbon(+off, frontZ), buildRibbon(+off, backZ));
+  } else if (count >= 3) {
+    const off = (b.baseWidth || 0.3) * 0.14;
+    group.add(buildRibbon(0, frontZ), buildRibbon(0, backZ));
+    group.add(buildRibbon(-off, frontZ), buildRibbon(-off, backZ));
+    group.add(buildRibbon(+off, frontZ), buildRibbon(+off, backZ));
+  }
+  return group;
+}
+
+function buildHamonOverlays(b: BladeParams): THREE.Group {
+  const group = new THREE.Group();
+  const totalLen = b.length;
+  const segments = 96;
+  const width = Math.max(0.002, b.hamonWidth ?? 0.015);
+  const amp = Math.max(0, b.hamonAmplitude ?? 0.006);
+  const freq = Math.max(0, b.hamonFrequency ?? 6);
+  const color = 0xe3e7f3;
+  const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.2, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide });
+
+  const halfTL = Math.max(0.001, (b.thicknessLeft ?? b.thickness ?? 0.08) * 0.5);
+  const halfTR = Math.max(0.001, (b.thicknessRight ?? b.thickness ?? 0.08) * 0.5);
+  const eps = 0.0006;
+  const zFrontL = halfTL - eps;
+  const zFrontR = halfTR - eps;
+
+  const serrAmp = b.serrationAmplitude ?? 0;
+  const serrAmpL = b.serrationAmplitudeLeft ?? serrAmp;
+  const serrAmpR = b.serrationAmplitudeRight ?? serrAmp;
+  const serrFreq = b.serrationFrequency ?? 0;
+
+  const buildEdgeRibbon = (side: 'left' | 'right', z: number) => {
+    const positions: number[] = [];
+    const index: number[] = [];
+    const pushV = (x: number, y: number) => { positions.push(x, y, z); };
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const y = t * totalLen;
+      const w = tipWidthWithKissaki(b, t, b.baseWidth, b.tipWidth);
+      const serr = (side === 'right' ? serrAmpR : serrAmpL);
+      const serrX = serr > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serr * (1 - t) : 0;
+      const halfBase = Math.max(0.001, w * 0.5 + serrX);
+      const bend = bendOffsetX(b, y, totalLen);
+      const edgeX = side === 'right' ? (bend + halfBase) : (bend - halfBase);
+      const dir = side === 'right' ? -1 : +1; // toward center from edge
+      const wav = amp > 0 && freq > 0 ? Math.sin(t * Math.PI * freq) * amp : 0;
+      const outer = edgeX + dir * 0.002;
+      const inner = edgeX + dir * (width + wav);
+      // Outer then inner so band faces inward
+      pushV(outer, y);
+      pushV(inner, y);
+    }
+    for (let i = 0; i < segments; i++) {
+      const a = i * 2;
+      const bIdx = a + 1;
+      const c = a + 2;
+      const d = a + 3;
+      index.push(a, bIdx, d, a, d, c);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setIndex(index);
+    geo.computeVertexNormals();
+    return new THREE.Mesh(geo, mat);
+  };
+
+  const sidePref = (b.hamonSide ?? 'auto');
+  const single = b.edgeType === 'single';
+  const thinnerRight = (b.thicknessRight ?? b.thickness ?? 0.08) < (b.thicknessLeft ?? b.thickness ?? 0.08);
+  const autoSide: 'left' | 'right' = thinnerRight ? 'right' : 'left';
+
+  const wantLeft = sidePref === 'left' || sidePref === 'both' || (sidePref === 'auto' && (!single || autoSide === 'left'));
+  const wantRight = sidePref === 'right' || sidePref === 'both' || (sidePref === 'auto' && (!single || autoSide === 'right'));
+
+  if (wantLeft) {
+    group.add(buildEdgeRibbon('left', zFrontL), buildEdgeRibbon('left', -zFrontL));
+  }
+  if (wantRight) {
+    group.add(buildEdgeRibbon('right', zFrontR), buildEdgeRibbon('right', -zFrontR));
+  }
   return group;
 }
 

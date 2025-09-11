@@ -128,26 +128,30 @@
   - [ ] Edge bevel angle (sharp vs thick edge)
   - [ ] Double‑edge toggle (single/double edged rendering)
   - [ ] Number of fullers (1–3) and layout
-  - [ ] Dedicated taper ratio knob (alt to base/tip widths)
-  - [ ] Serration per side (independent L/R; one‑sided)
-  - [ ] Thickness per side (edge thickness per edge)
-  - [ ] Edge type: single vs double‑edged (with dull‑side thickness control)
+  - [x] Dedicated taper ratio knob (alt to base/tip widths)
+  - [x] Serration per side (independent L/R; one‑sided)
+  - [x] Thickness per side (edge thickness per edge)
+  - [x] Edge type: single vs double‑edged (with dull‑side thickness control)
+  - [x] Sori profile type (koshi/torii/saki) — curvature distribution along length
+  - [x] Kissaki parameters (length, shape) + Yokote line
+  - [x] Hamon visual (material/shader pattern)
+  - [x] Base angle (blade departure angle at handle)
 
 - Guard / Crosspiece
-  - [ ] Guard height (vertical offset/clearance)
+  - [x] Guard height (vertical offset/clearance)
   - [ ] Quillons: count and length
   - [ ] Ornamentation complexity (flat ↔ ornate)
   - [ ] Guard tip style as continuous control
   - [ ] Asymmetry toggle for guard arms
   - [ ] Tsuba/disk guard details (slot, optional cutouts)
-  - [ ] Habaki collar (blade collar at guard)
+  - [x] Habaki collar (blade collar at guard)
 
 - Handle / Grip
   - [ ] Segmentation count (rings/bands)
   - [ ] Grip flare at pommel
   - [ ] Handle curvature (straight ↔ slightly bent)
   - [ ] Tang visibility (hidden ↔ full tang)
-  - [ ] Oval handle cross-section (katana tsuka shape)
+  - [x] Oval handle cross-section (katana tsuka shape)
 
 - Pommel
   - [ ] Offset (centered ↔ angled)

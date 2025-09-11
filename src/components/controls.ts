@@ -412,6 +412,50 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Blade, 'Serration Left', 0, 0.2, 0.001, state.blade.serrationAmplitudeLeft ?? (state.blade.serrationAmplitude ?? 0), (v) => (state.blade.serrationAmplitudeLeft = v), rerender, 'Left edge serration amplitude.');
   slider(sections.Blade, 'Serration Right', 0, 0.2, 0.001, state.blade.serrationAmplitudeRight ?? (state.blade.serrationAmplitude ?? 0), (v) => (state.blade.serrationAmplitudeRight = v), rerender, 'Right edge serration amplitude.');
   slider(sections.Blade, 'Serration Freq', 0, 30, 1, state.blade.serrationFrequency ?? 0, (v) => (state.blade.serrationFrequency = v), rerender, 'Number of serration cycles along the blade.');
+  // Text Engraving (simple)
+  checkbox(sections.Blade, 'Text Engraving', false, (v) => {
+    const list = (((state.blade as any).engravings) || []) as any[];
+    const rest = list.filter((e:any) => e.type !== 'text');
+    if (v) rest.push({ type:'text', content:'ᚠᚢᚦ', fontUrl:'https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_regular.typeface.json', width:0.18, height:0.03, depth:0.002, offsetY: state.blade.length*0.5, offsetX:0, rotation:0, side:'right' });
+    (state.blade as any).engravings = rest;
+  }, rerender, 'Adds a text engraving (provide font URL and content).');
+  textRow(sections.Blade, 'Engrave Text', 'ᚠᚢᚦ', (v) => {
+    const list = (((state.blade as any).engravings) || []) as any[];
+    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, content: v } : e);
+  }, 'Unicode supported by the chosen font.');
+  textRow(sections.Blade, 'Font URL', 'https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_regular.typeface.json', (v) => {
+    const list = (((state.blade as any).engravings) || []) as any[];
+    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, fontUrl: v } : e);
+  }, 'Typeface JSON URL (typeface.js format). For full Unicode, supply a suitable font.');
+  slider(sections.Blade, 'Engrave Width', 0.02, 0.6, 0.001, 0.18, (val) => {
+    const list = (((state.blade as any).engravings) || []) as any[];
+    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, width: val } : e);
+  }, rerender, 'Max width of text region.');
+  slider(sections.Blade, 'Engrave Height', 0.005, 0.1, 0.001, 0.03, (val) => {
+    const list = (((state.blade as any).engravings) || []) as any[];
+    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, height: val } : e);
+  }, rerender, 'Text letter height.');
+  slider(sections.Blade, 'Engrave Depth', 0.0005, 0.02, 0.0005, 0.002, (val) => {
+    const list = (((state.blade as any).engravings) || []) as any[];
+    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, depth: val } : e);
+  }, rerender, 'Extrusion depth of the engraving.');
+  slider(sections.Blade, 'Engrave OffsetY', 0, 1, 0.001, 0.5, (val) => {
+    const list = (((state.blade as any).engravings) || []) as any[];
+    const off = state.blade.length * val;
+    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, offsetY: off } : e);
+  }, rerender, 'Position along blade length (0..1).');
+  slider(sections.Blade, 'Engrave OffsetX', -0.4, 0.4, 0.001, 0, (val) => {
+    const list = (((state.blade as any).engravings) || []) as any[];
+    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, offsetX: val } : e);
+  }, rerender, 'Lateral offset across blade width.');
+  slider(sections.Blade, 'Engrave RotY', -180, 180, 1, 0, (deg) => {
+    const list = (((state.blade as any).engravings) || []) as any[];
+    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, rotation: (deg*Math.PI/180) } : e);
+  }, rerender, 'Rotation around Y axis (deg).');
+  select(sections.Blade, 'Engrave Side', ['left','right','both'], 'right', (v) => {
+    const list = (((state.blade as any).engravings) || []) as any[];
+    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, side: v } : e);
+  }, rerender, 'Which blade face.');
 
   // Guard controls
   slider(sections.Guard, 'Width', 0.2, 3.0, 0.01, state.guard.width, (v) => (state.guard.width = v), rerender);
@@ -510,6 +554,22 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   checkbox(sections.Handle, 'Menuki', false, (v) => {
     (state.handle as any).menuki = v ? [{ positionFrac: 0.55, side:'left', size:0.02 }] : [];
   }, rerender, 'Add a menuki ornament on the grip.');
+  // Rivets
+  checkbox(sections.Handle, 'Rivets', false, (v) => {
+    (state.handle as any).rivets = v ? [{ count: 8, ringFrac: 0.3, radius: 0.01 }] : [];
+  }, rerender, 'Add a ring of rivets.');
+  slider(sections.Handle, 'Rivets Count', 1, 32, 1, 8, (val) => {
+    const arr = (((state.handle as any).rivets) || []) as any[];
+    (state.handle as any).rivets = arr.map((r:any) => ({ ...r, count: Math.round(val) }));
+  }, rerender, 'Number of rivets around the ring.');
+  slider(sections.Handle, 'Rivets Y %', 0, 100, 1, 30, (val) => {
+    const arr = (((state.handle as any).rivets) || []) as any[];
+    (state.handle as any).rivets = arr.map((r:any) => ({ ...r, ringFrac: (val/100) }));
+  }, rerender, 'Vertical position of rivets ring.');
+  slider(sections.Handle, 'Rivet Size', 0.002, 0.05, 0.001, 0.01, (val) => {
+    const arr = (((state.handle as any).rivets) || []) as any[];
+    (state.handle as any).rivets = arr.map((r:any) => ({ ...r, radius: val }));
+  }, rerender, 'Rivet sphere radius.');
 
   // Pommel controls
   select(sections.Pommel, 'Style', ['orb', 'disk', 'spike'], state.pommel.style, (v) => (state.pommel.style = v as any), rerender);

@@ -302,6 +302,21 @@ describe('Guard knobs', () => {
     // tipSharpness=1 => cone height = qLen*0.25*1.0 = 0.125
     expect(coneHeight).toBeGreaterThan(0.1)
   })
+
+  it('swept style creates multiple guard bars', () => {
+    const s = make(p => { (p.guard as any).style = 'swept'; p.guard.width = 1.2; p.guard.thickness = 0.2; (p.guard as any).ornamentation = 0.8; });
+    const grp = (s as any).guardGroup as THREE.Group;
+    expect(grp).toBeTruthy();
+    // should have several children (bars)
+    expect(grp.children.length).toBeGreaterThan(2);
+  })
+
+  it('basket style creates a radial cage', () => {
+    const s = make(p => { (p.guard as any).style = 'basket'; p.guard.width = 1.2; p.guard.thickness = 0.2; (p.guard as any).ornamentation = 0.5; });
+    const grp = (s as any).guardGroup as THREE.Group;
+    expect(grp).toBeTruthy();
+    expect(grp.children.length).toBeGreaterThan(4);
+  })
 })
 
 describe('Handle knobs', () => {
@@ -371,6 +386,46 @@ describe('Handle knobs', () => {
     } finally {
       (globalThis as any).document = prevDoc
     }
+  })
+
+  it('crisscross wrap adds layer meshes', () => {
+    const s = make(p => {
+      (p.handle as any).handleLayers = [{ kind:'wrap', wrapPattern:'crisscross', y0Frac:0, lengthFrac:1, turns:5, depth:0.01 }];
+    });
+    const grp = (s as any).handleGroup as THREE.Group;
+    expect(grp).toBeTruthy();
+    // extra meshes added besides base handle
+    expect(grp.children.length).toBeGreaterThan(1);
+  })
+
+  it('ring layer adds a torus', () => {
+    const s = make(p => {
+      (p.handle as any).handleLayers = [{ kind:'ring', y0Frac:0.5, radiusAdd:0.02 }];
+    });
+    const grp = (s as any).handleGroup as THREE.Group;
+    expect(grp).toBeTruthy();
+    expect(grp.children.length).toBeGreaterThan(1);
+  })
+
+  it('rivets ring adds multiple meshes', () => {
+    const s = make(p => {
+      (p.handle as any).rivets = [{ count: 10, ringFrac: 0.3, radius: 0.01 }];
+    });
+    const grp = (s as any).handleGroup as THREE.Group;
+    expect(grp).toBeTruthy();
+    expect(grp.children.length).toBeGreaterThan(1);
+  })
+})
+
+describe('Engravings', () => {
+  it('box fallback engraving appears without font', () => {
+    const s = make(p => {
+      (p.blade as any).engravings = [{ type:'text', content:'TEST', width:0.2, height:0.03, depth:0.002, offsetY: p.blade.length*0.4, offsetX:0, rotation:0, side:'both' }];
+    });
+    const g = (s as any).engravingGroup as THREE.Group;
+    expect(g).toBeTruthy();
+    // both sides should create at least two meshes
+    expect(g.children.length).toBeGreaterThanOrEqual(2);
   })
 })
 

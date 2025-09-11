@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
 export type BladeParams = {
   length: number; // total blade length
@@ -43,6 +45,7 @@ export type BladeParams = {
   bevel?: number; // 0..1 bevel intensity for profiles
   tipShape?: 'pointed' | 'rounded' | 'leaf';
   tipBulge?: number; // 0..1 extra mid-blade bulge for 'leaf'
+  engravings?: Array<{ type:'text'|'shape'|'decal', content?: string, fontUrl?: string, width:number, height:number, depth?: number, offsetY:number, offsetX:number, rotation?: number, side?: 'left'|'right'|'both' }>;
 };
 
 export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk';
@@ -88,6 +91,9 @@ export type HandleParams = {
   tangVisible?: boolean;
   tangWidth?: number;
   tangThickness?: number;
+  handleLayers?: Array<{ kind:'core'|'wrap'|'ring'|'inlay', radiusAdd?: number, lengthFrac?: number, y0Frac?: number, wrapPattern?: 'helical'|'crisscross', turns?: number, depth?: number, spacing?: number }>;
+  menuki?: Array<{ positionFrac:number, side:'left'|'right', size:number }>;
+  rivets?: Array<{ count:number, ringFrac:number, radius:number }>;
 };
 
 export type PommelStyle = 'orb' | 'disk' | 'spike';
@@ -121,6 +127,7 @@ export class SwordGenerator {
   private fullerGroup: THREE.Group | null = null;
   private hamonGroup: THREE.Group | null = null;
   private engravingGroup: THREE.Group | null = null;
+  private _fontCache?: Map<string, any>;
   private highlighted: 'blade' | 'guard' | 'handle' | 'pommel' | null = null;
 
   private lastParams?: SwordParams;
@@ -277,6 +284,8 @@ export class SwordGenerator {
       const eps = 0.0006;
       const ggrp = new THREE.Group();
       const mat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.6, metalness: 0.2, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+      this._fontCache = this._fontCache || new Map();
+      const loader = new FontLoader();
       engr.forEach((e) => {
         const width = Math.max(0.005, e.width || 0.1);
         const height = Math.max(0.005, e.height || 0.02);
@@ -285,14 +294,35 @@ export class SwordGenerator {
         const xPos = e.offsetX || 0;
         const rotY = e.rotation || 0;
         const sides: ('left'|'right')[] = e.side === 'both' ? ['left','right'] : [e.side || 'right'];
-        sides.forEach((side) => {
-          const z = (side === 'right' ? (halfTR - eps) : -(halfTL - eps));
-          const geo = new THREE.BoxGeometry(width, height, depth);
-          const m = new THREE.Mesh(geo, mat);
-          m.position.set(xPos, yPos, z);
-          m.rotation.y = rotY;
-          ggrp.add(m);
-        });
+        if (e.type === 'text' && e.content && e.fontUrl) {
+          const url: string = e.fontUrl;
+          const buildText = (font: any) => {
+            const tg = new TextGeometry(e.content, { font, size: height, height: depth * 0.8, curveSegments: 6 } as any);
+            tg.computeBoundingBox();
+            const bbx = tg.boundingBox!; const textW = bbx.max.x - bbx.min.x;
+            const sx = textW > 1e-6 ? Math.min(10, width / textW) : 1;
+            sides.forEach((side) => {
+              const z = (side === 'right' ? (halfTR - eps) : -(halfTL - eps));
+              const mesh = new THREE.Mesh(tg.clone(), mat);
+              mesh.scale.set(sx, 1, 1);
+              mesh.position.set(xPos - (textW * sx) / 2, yPos, z);
+              mesh.rotation.y = rotY;
+              ggrp.add(mesh);
+            });
+          };
+          const cached = this._fontCache!.get(url);
+          if (cached) buildText(cached);
+          else loader.load(url, (font: any) => { this._fontCache!.set(url, font); buildText(font); });
+        } else {
+          sides.forEach((side) => {
+            const z = (side === 'right' ? (halfTR - eps) : -(halfTL - eps));
+            const geo = new THREE.BoxGeometry(width, height, depth);
+            const m = new THREE.Mesh(geo, mat);
+            m.position.set(xPos, yPos, z);
+            m.rotation.y = rotY;
+            ggrp.add(m);
+          });
+        }
       });
       this.engravingGroup = ggrp;
       this.group.add(this.engravingGroup);
@@ -760,6 +790,30 @@ export class SwordGenerator {
         this.handleGroup!.add(mesh);
       });
     }
+
+    // Rivets: place N small spheres around a ring at given fraction
+    const rivets = (h as any).rivets as any[] | undefined;
+    if (rivets && rivets.length) {
+      const matR = this.makeMaterial('handle');
+      const hb3 = new THREE.Box3().setFromObject(this.handleMesh);
+      const yMin3 = hb3.min.y, yMax3 = hb3.max.y; const H3 = Math.max(1e-6, yMax3 - yMin3);
+      rivets.forEach((rv) => {
+        const n = Math.max(1, Math.round(rv.count ?? 1));
+        const y = yMin3 + Math.max(0, Math.min(1, rv.ringFrac ?? 0.5)) * H3;
+        const t = (y - yMin3) / H3;
+        const baseR = Math.max(0.02, h.radiusBottom + (h.radiusTop - h.radiusBottom) * t);
+        const rr = Math.max(0.002, rv.radius ?? 0.01);
+        const geo = new THREE.SphereGeometry(rr, 10, 8);
+        for (let i=0;i<n;i++) {
+          const phi = (i / n) * Math.PI * 2;
+          const x = Math.cos(phi) * baseR;
+          const z = Math.sin(phi) * baseR;
+          const m = new THREE.Mesh(geo, matR);
+          m.position.set(x, y, z);
+          this.handleGroup!.add(m);
+        }
+      });
+    }
   }
 
   private rebuildPommel(p: PommelParams) {
@@ -859,7 +913,8 @@ export class SwordGenerator {
       crossSection: (b.crossSection ?? 'flat') as any,
       bevel: clamp(b.bevel ?? 0.5, 0, 1),
       tipShape: (b.tipShape ?? 'pointed') as any,
-      tipBulge: clamp(b.tipBulge ?? 0.2, 0, 1)
+      tipBulge: clamp(b.tipBulge ?? 0.2, 0, 1),
+      engravings: Array.isArray((b as any).engravings) ? (b as any).engravings : undefined
     };
 
     const g = params.guard;
@@ -910,7 +965,10 @@ export class SwordGenerator {
       curvature: clamp(h.curvature ?? 0, -0.2, 0.2),
       tangVisible: !!h.tangVisible,
       tangWidth: clamp(h.tangWidth ?? 0.05, 0.005, 0.2),
-      tangThickness: clamp(h.tangThickness ?? 0.02, 0.003, 0.1)
+      tangThickness: clamp(h.tangThickness ?? 0.02, 0.003, 0.1),
+      handleLayers: Array.isArray((h as any).handleLayers) ? (h as any).handleLayers : undefined,
+      menuki: Array.isArray((h as any).menuki) ? (h as any).menuki : undefined,
+      rivets: Array.isArray((h as any).rivets) ? (h as any).rivets : undefined
     };
 
     const pm = params.pommel;

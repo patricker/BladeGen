@@ -13,13 +13,21 @@ import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 export function setupScene(canvas: HTMLCanvasElement) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   const bgBase = new THREE.Color(0x0f1115);
+  let bgTarget = new THREE.Color(0x3a3f4a);
   let bgBrightness = 0.0; // 0 extra -> dark; increase to lighten
+  let groundMat: THREE.MeshStandardMaterial | null = null;
   const applyBackground = () => {
     const c = bgBase.clone();
-    // lighten toward #3a3f4a by bgBrightness
-    const target = new THREE.Color(0x3a3f4a);
+    // lighten toward target by bgBrightness
+    const target = bgTarget;
     c.lerp(target, THREE.MathUtils.clamp(bgBrightness, 0, 1));
     renderer.setClearColor(c);
+    if (groundMat) {
+      const floor = c.clone();
+      floor.lerp(new THREE.Color(0x000000), 0.4);
+      groundMat.color.copy(floor);
+      groundMat.needsUpdate = true;
+    }
   };
   applyBackground();
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -77,12 +85,14 @@ export function setupScene(canvas: HTMLCanvasElement) {
 
   // Ground plane (soft)
   const groundGeo = new THREE.CircleGeometry(20, 64);
-  const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1d24, metalness: 0.0, roughness: 1.0 });
+  groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1d24, metalness: 0.0, roughness: 1.0 });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.05;
   ground.receiveShadow = true;
   scene.add(ground);
+  // Sync ground tint to current background
+  applyBackground();
 
   // Sword generator demo
   const sword = new SwordGenerator(defaultSwordParams());
@@ -272,6 +282,8 @@ export function setupScene(canvas: HTMLCanvasElement) {
     },
     setBackgroundColor: (hex: number) => { bgBase.setHex(hex); applyBackground(); },
     setBackgroundBrightness: (v: number) => { bgBrightness = v; applyBackground(); },
+    setBackgroundTargetColor: (hex: number) => { bgTarget.setHex(hex); applyBackground(); },
+    setBaseColor: (hex: number) => { groundMat.color.setHex(hex); groundMat.needsUpdate = true; },
     setAAMode: (mode: 'none'|'fxaa'|'smaa') => {
       fxaa.enabled = (mode === 'fxaa');
       smaa.enabled = (mode === 'smaa');

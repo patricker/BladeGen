@@ -7,6 +7,7 @@
   - `src/ui/` controls, panels, and state wiring.
   - `public/` static assets (e.g., `index.html`, `assets/textures/`).
   - `tests/` unit/e2e tests; keep fixtures small.
+- `schema/sword.schema.json` defines the canonical JSON document schema for exports/imports. Treat this as a single source of truth and keep it in sync with any changes to model parameters, render state, or material state.
 - Keep rendering code (Three.js) isolated from UI logic. Export pure helpers for geometry math where possible to ease testing.
 
 ## Build, Test, and Development Commands
@@ -34,6 +35,7 @@
 - Place unit tests in `src/**/__tests__/*.spec.ts` and e2e in `tests/e2e/*.spec.ts`.
 - Target ≥80% coverage for core geometry and parameter mapping. Prefer deterministic numeric assertions over snapshots for geometry.
 - Run: `npm test` (add `--coverage` when checking thresholds).
+- When modifying `SwordParams`, render/material state, or JSON export/import paths, update `schema/sword.schema.json` accordingly. Ideally add/adjust a unit test to validate exports against the schema to prevent drift.
 
 ## Commit & Pull Request Guidelines
 

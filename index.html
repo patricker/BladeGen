@@ -41,8 +41,10 @@
       /* Help icon next to labels */
       .help-icon { display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; font-size:10px; line-height:14px; border-radius:50%; background:#475569; color:#e2e8f0; margin-left:6px; cursor:help; border:1px solid #64748b; }
       .help-icon:hover { background:#516079; }
-      /* FPS overlay */
-      #fps { position: fixed; right: 8px; top: 8px; z-index: 1000; background: rgba(0,0,0,0.55); color:#c8facc; font: 12px/1.2 system-ui, sans-serif; padding: 4px 6px; border-radius:4px; border:1px solid rgba(255,255,255,0.08); pointer-events:none; }
+      /* HUD overlay (theme + fps) */
+      #hud { position: fixed; right: 8px; top: 8px; z-index: 1000; display: flex; gap: 6px; align-items: center; }
+      #hud select { background: rgba(0,0,0,0.55); color:#e2e8f0; border:1px solid rgba(255,255,255,0.12); border-radius:4px; font:12px system-ui, sans-serif; padding: 3px 6px; }
+      #fps { background: rgba(0,0,0,0.55); color:#c8facc; font: 12px/1.2 system-ui, sans-serif; padding: 4px 6px; border-radius:4px; border:1px solid rgba(255,255,255,0.08); }
    </style>
   </head>
   <body>
@@ -53,7 +55,19 @@
       <div id="sidebar"></div>
       <canvas id="scene"></canvas>
     </div>
-    <div id="fps" aria-hidden="true">FPS: --</div>
+    <div id="hud">
+      <select id="theme" title="Background Theme">
+        <option value="midnight">Midnight</option>
+        <option value="slate">Slate</option>
+        <option value="steel">Steel</option>
+        <option value="warm">Warm Sunset</option>
+        <option value="ocean">Deep Ocean</option>
+        <option value="forest">Forest</option>
+        <option value="sepia">Sepia</option>
+        <option value="graphite">Graphite</option>
+      </select>
+      <div id="fps" aria-live="polite">FPS: --</div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
   </html>

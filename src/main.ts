@@ -11,6 +11,7 @@ const { renderer, camera, controls, scene, composer, dispose, updateFXAA, render
 
 // Simple FPS overlay
 const fpsEl = document.getElementById('fps');
+const themeSel = document.getElementById('theme') as HTMLSelectElement | null;
 let _fpsAccum = 0; let _fpsFrames = 0; let _fpsLast = performance.now();
 
 let disposed = false;
@@ -82,4 +83,32 @@ if (import.meta && (import.meta as any).hot) {
     window.removeEventListener('resize', onResize);
     dispose();
   });
+}
+
+// Theme presets (UI-only; not exported in JSON)
+type Theme = { base: number; target: number; brightness: number };
+const themes: Record<string, Theme> = {
+  midnight: { base: 0x0f1115, target: 0x3a3f4a, brightness: 0.0 },
+  slate:    { base: 0x12151b, target: 0x3a3f4a, brightness: 0.45 },
+  steel:    { base: 0x111214, target: 0x8b949e, brightness: 0.35 },
+  warm:     { base: 0x1b1210, target: 0x7a3f2c, brightness: 0.45 },
+  ocean:    { base: 0x0a0f1a, target: 0x254566, brightness: 0.55 },
+  forest:   { base: 0x0d120e, target: 0x355a3a, brightness: 0.5 },
+  sepia:    { base: 0x14110d, target: 0x6b5438, brightness: 0.5 },
+  graphite: { base: 0x0f0f11, target: 0x2e2f36, brightness: 0.3 }
+};
+
+function applyTheme(key: string) {
+  const t = themes[key] || themes.midnight;
+  const hooks = (scene as any).__renderHooks || renderHooks;
+  hooks.setBackgroundColor(t.base);
+  (hooks as any).setBackgroundTargetColor?.(t.target);
+  hooks.setBackgroundBrightness(t.brightness);
+  // Ground tint will auto-sync to background via setupScene
+}
+
+if (themeSel) {
+  themeSel.addEventListener('change', () => applyTheme(themeSel.value));
+  // Initialize
+  applyTheme(themeSel.value || 'midnight');
 }

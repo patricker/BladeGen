@@ -517,6 +517,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   // JSON export: model + render + materials
   btnExportJSON.addEventListener('click', () => {
     const payload = {
+      $schema: 'schema/sword.schema.json',
       version: 1,
       model: state,
       render: { ...rstate },

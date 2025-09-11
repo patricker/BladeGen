@@ -87,7 +87,7 @@
 * [x] Implement sidebar with categories (Blade, Guard, Handle, Pommel, Other).
 * [x] Collapsible/sectioned layout for clarity.
 * [x] Add sliders with labels + numeric inputs.
-* [ ] Add tooltips for advanced params.
+* [x] Add tooltips for advanced params.
 
 ### 9. Parameter Mapping
 
@@ -106,7 +106,7 @@
 
 * [x] Button: randomize params within ranges.
 * [x] Modes: full-range vs constrained realistic.
-* [ ] Optional “shuffle only this category”.
+* [x] Optional “shuffle only this category”.
 
 ---
 
@@ -114,7 +114,7 @@
 
 ### 12. Fantasy Enhancements
 
-* [ ] Add “chaos” param: jagged/noisy blade edges.
+* [x] Add “chaos” param: jagged/noisy blade edges.
 * [ ] Add “symmetry toggle”: asymmetrical designs.
 * [ ] Add “stylization slider”: realistic ↔ exaggerated scaling.
 * [ ] Add decorative noise/displacement.
@@ -138,8 +138,8 @@
 
 ### 15. Additional Exports (optional)
 
-* [ ] Add `.OBJ` or `.STL` export for flexibility.
-* [ ] Add 2D blueprint export (SVG outline).
+* [x] Add `.OBJ` or `.STL` export for flexibility.
+* [x] Add 2D blueprint export (SVG outline).
 
 ---
 
@@ -147,15 +147,15 @@
 
 ### 16. UX Enhancements
 
-* [ ] Add highlight (e.g. outline effect) when user selects a category (Blade panel highlights blade mesh).
+* [x] Add highlight (e.g. outline effect) when user selects a category (Blade panel highlights blade mesh).
 * [ ] Smooth transitions when updating geometry (optional).
 * [ ] Style UI (dark theme, fantasy aesthetic).
 
 ### 17. Performance Optimization
 
-* [ ] Profile geometry rebuilds – debounce expensive ones.
-* [ ] Limit vertex counts (low-poly vs high-poly toggle).
-* [ ] Dispose unused geometries/materials to free memory.
+* [x] Profile geometry rebuilds – debounce expensive ones. (UI updates rAF-debounced)
+* [x] Limit vertex counts (low-poly vs high-poly toggle). (Blade Detail)
+* [x] Dispose unused geometries/materials to free memory.
 
 ### 18. Documentation
 

@@ -1,4 +1,4 @@
-import { SwordGenerator, SwordParams, defaultSwordParams } from '../three/SwordGenerator';
+import { SwordGenerator, SwordParams, defaultSwordParams, buildBladeOutlinePoints, bladeOutlineToSVG } from '../three/SwordGenerator';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
@@ -55,6 +55,10 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   btnExportSTL.textContent = 'Export STL';
   toolbar.appendChild(btnExportSTL);
 
+  const btnExportSVG = document.createElement('button');
+  btnExportSVG.textContent = 'Export SVG';
+  toolbar.appendChild(btnExportSVG);
+
   // Sections
   const sections: Record<Category, HTMLElement> = {
     Blade: addSection(el, 'Blade'),
@@ -108,6 +112,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Guard, 'Curve', -1, 1, 0.01, state.guard.curve, (v) => (state.guard.curve = v), rerender, 'Bends ornate guards upward/downward.');
   slider(sections.Guard, 'Tilt', -1.57, 1.57, 0.01, state.guard.tilt, (v) => (state.guard.tilt = v), rerender, 'Rotates the guard around the blade axis.');
   select(sections.Guard, 'Style', ['bar', 'winged', 'claw'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
+  slider(sections.Guard, 'Guard Detail', 3, 64, 1, state.guard.curveSegments ?? 12, (v) => (state.guard.curveSegments = Math.round(v)), rerender, 'Detail for guard curves.');
 
   // Handle controls
   slider(sections.Handle, 'Length', 0.2, 2.0, 0.01, state.handle.length, (v) => (state.handle.length = v), rerender);
@@ -117,6 +122,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   checkbox(sections.Handle, 'Wrap Enabled', state.handle.wrapEnabled ?? false, (v) => (state.handle.wrapEnabled = v), rerender, 'Enable helical wrap deformation for the grip.');
   slider(sections.Handle, 'Wrap Turns', 0, 20, 1, state.handle.wrapTurns ?? 6, (v) => (state.handle.wrapTurns = v), rerender, 'Number of helical cycles along the grip.');
   slider(sections.Handle, 'Wrap Depth', 0, 0.05, 0.001, state.handle.wrapDepth ?? 0.015, (v) => (state.handle.wrapDepth = v), rerender, 'Radial amplitude of the wrap pattern.');
+  slider(sections.Handle, 'Handle Sides', 8, 128, 1, state.handle.phiSegments ?? 64, (v) => (state.handle.phiSegments = Math.round(v)), rerender, 'Radial tessellation (higher is smoother).');
 
   // Pommel controls
   select(sections.Pommel, 'Style', ['orb', 'disk', 'spike'], state.pommel.style, (v) => (state.pommel.style = v as any), rerender);
@@ -195,6 +201,18 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const a = document.createElement('a');
     a.href = url;
     a.download = 'sword.stl';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  btnExportSVG.addEventListener('click', () => {
+    const pts = buildBladeOutlinePoints(state.blade);
+    const svg = bladeOutlineToSVG(pts);
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'blade_outline.svg';
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -370,6 +388,7 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Curve': params.guard.curve,
     'Tilt': params.guard.tilt,
     'Style_g': params.guard.style,
+    'Guard Detail': params.guard.curveSegments ?? 12,
     'Length_h': params.handle.length,
     'Radius Top': params.handle.radiusTop,
     'Radius Bottom': params.handle.radiusBottom,
@@ -377,6 +396,7 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Wrap Enabled': params.handle.wrapEnabled ?? false,
     'Wrap Turns': params.handle.wrapTurns ?? 6,
     'Wrap Depth': params.handle.wrapDepth ?? 0.015,
+    'Handle Sides': params.handle.phiSegments ?? 64,
     'Style_p': params.pommel.style,
     'Size': params.pommel.size,
     'Elongation': params.pommel.elongation,

@@ -22,6 +22,7 @@ export type GuardParams = {
   curve: number; // -1..1 upward/downward curvature for winged/claw
   tilt: number; // radians tilt around Z
   style: GuardStyle;
+  curveSegments?: number; // tessellation for 2D shape
 };
 
 export type HandleParams = {
@@ -32,6 +33,7 @@ export type HandleParams = {
   wrapEnabled?: boolean; // helical wrap pattern
   wrapTurns?: number; // number of helical turns along length
   wrapDepth?: number; // radial amplitude of wrap
+  phiSegments?: number; // radial tessellation
 };
 
 export type PommelStyle = 'orb' | 'disk' | 'spike';
@@ -116,7 +118,7 @@ export class SwordGenerator {
 
     const geo = buildBladeGeometry(b);
 
-    const mat = new THREE.MeshStandardMaterial({ color: 0xb9c6ff, metalness: 0.7, roughness: 0.3 });
+    const mat = new THREE.MeshStandardMaterial({ color: 0xb9c6ff, metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide });
     this.bladeMesh = new THREE.Mesh(geo, mat);
     // Align blade base exactly at y=0 (no extra offset)
     this.bladeMesh.position.y = 0.0;
@@ -169,7 +171,7 @@ export class SwordGenerator {
       const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.45, side: THREE.DoubleSide });
       const half = buildGuardHalfShape(g);
       const depth = g.thickness;
-      const geoR = new THREE.ExtrudeGeometry(half, { depth, bevelEnabled: false, steps: 1 });
+      const geoR = new THREE.ExtrudeGeometry(half, { depth, bevelEnabled: false, steps: 1, curveSegments: Math.max(3, Math.min(64, Math.round(g.curveSegments ?? 12))) });
       // Do not center: keep inner edge at x=0 for correct alignment
       const meshR = new THREE.Mesh(geoR, mat);
       // Right half attached at inner edge x=0
@@ -206,7 +208,7 @@ export class SwordGenerator {
       const r = Math.max(0.02, baseR + bump);
       profile.push(new THREE.Vector2(r, y));
     }
-    const phiSegments = 64;
+    const phiSegments = Math.max(8, Math.min(128, Math.round(h.phiSegments ?? 64)));
     const geo = new THREE.LatheGeometry(profile, phiSegments);
     // Optional helical wrap deformation
     if (h.wrapEnabled && (h.wrapDepth ?? 0) > 0 && (h.wrapTurns ?? 0) > 0) {
@@ -306,7 +308,8 @@ export class SwordGenerator {
       thickness: clamp(g.thickness, 0.05, 2),
       curve: clamp(g.curve, -1, 1),
       tilt: clamp(g.tilt, -Math.PI / 2, Math.PI / 2),
-      style: (g.style ?? 'bar') as GuardStyle
+      style: (g.style ?? 'bar') as GuardStyle,
+      curveSegments: Math.round(clamp(g.curveSegments ?? 12, 3, 64))
     };
 
     const h = params.handle;
@@ -317,7 +320,8 @@ export class SwordGenerator {
       segmentation: !!h.segmentation,
       wrapEnabled: !!h.wrapEnabled,
       wrapTurns: clamp(h.wrapTurns ?? 6, 0, 40),
-      wrapDepth: clamp(h.wrapDepth ?? 0.015, 0, 0.08)
+      wrapDepth: clamp(h.wrapDepth ?? 0.015, 0, 0.08),
+      phiSegments: Math.round(clamp(h.phiSegments ?? 64, 8, 128))
     };
 
     const pm = params.pommel;
@@ -380,6 +384,54 @@ function buildBladeShape(b: BladeParams): THREE.Shape {
   for (let i = pointsLeft.length - 1; i >= 0; i--) shape.lineTo(pointsLeft[i].x, pointsLeft[i].y);
   shape.closePath();
   return shape;
+}
+
+export function buildBladeOutlinePoints(b: BladeParams): THREE.Vector2[] {
+  const length = Math.max(0.01, b.length);
+  const baseW = Math.max(0.002, b.baseWidth);
+  const tipW = Math.max(0, b.tipWidth);
+  const steps = 200;
+  const serrAmp = b.serrationAmplitude ?? 0;
+  const serrFreq = b.serrationFrequency ?? 0;
+  const pts: THREE.Vector2[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const y = t * length;
+    const w = baseW + (tipW - baseW) * t;
+    const serr = serrAmp > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmp * (1 - t) : 0;
+    const half = Math.max(0.001, w * 0.5 + serr);
+    const bend = (b.curvature || 0) * (t * t - t) * length;
+    pts.push(new THREE.Vector2(+half + bend, y));
+  }
+  for (let i = steps; i >= 0; i--) {
+    const t = i / steps;
+    const y = t * length;
+    const w = baseW + (tipW - baseW) * t;
+    const serr = serrAmp > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmp * (1 - t) : 0;
+    const half = Math.max(0.001, w * 0.5 + serr);
+    const bend = (b.curvature || 0) * (t * t - t) * length;
+    pts.push(new THREE.Vector2(-half + bend, y));
+  }
+  return pts;
+}
+
+export function bladeOutlineToSVG(points: THREE.Vector2[], stroke = '#e2e8f0'): string {
+  if (!points.length) return '';
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of points) { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }
+  const pad = 10; // px padding
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const sx = pad - minX;
+  const sy = pad - minY;
+  let d = '';
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    d += (i === 0 ? 'M' : 'L') + (p.x + sx).toFixed(3) + ' ' + (height + pad * 2 - (p.y + sy)).toFixed(3) + ' ';
+  }
+  d += 'Z';
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${(width + pad * 2).toFixed(2)}" height="${(height + pad * 2).toFixed(2)}" viewBox="0 0 ${(width + pad * 2).toFixed(2)} ${(height + pad * 2).toFixed(2)}">\n  <path d="${d}" fill="none" stroke="${stroke}" stroke-width="1"/>\n</svg>`;
+  return svg;
 }
 
 function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
@@ -494,7 +546,8 @@ export function defaultSwordParams(): SwordParams {
       segmentation: true,
       wrapEnabled: false,
       wrapTurns: 6,
-      wrapDepth: 0.015
+      wrapDepth: 0.015,
+      phiSegments: 64
     },
     pommel: {
       size: 0.16,

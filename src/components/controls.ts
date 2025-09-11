@@ -98,27 +98,44 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
 
   const btnRandom = document.createElement('button');
   btnRandom.textContent = 'Randomize (full)';
+  btnRandom.classList.add('model-only');
   toolbar.appendChild(btnRandom);
 
   const btnRandomSafe = document.createElement('button');
   btnRandomSafe.textContent = 'Randomize (safe)';
+  btnRandomSafe.classList.add('model-only');
   toolbar.appendChild(btnRandomSafe);
 
   const btnExport = document.createElement('button');
   btnExport.textContent = 'Export GLB';
+  btnExport.classList.add('model-only');
   toolbar.appendChild(btnExport);
 
   const btnExportOBJ = document.createElement('button');
   btnExportOBJ.textContent = 'Export OBJ';
+  btnExportOBJ.classList.add('model-only');
   toolbar.appendChild(btnExportOBJ);
 
   const btnExportSTL = document.createElement('button');
   btnExportSTL.textContent = 'Export STL';
+  btnExportSTL.classList.add('model-only');
   toolbar.appendChild(btnExportSTL);
 
   const btnExportSVG = document.createElement('button');
   btnExportSVG.textContent = 'Export SVG';
+  btnExportSVG.classList.add('model-only');
   toolbar.appendChild(btnExportSVG);
+
+  // JSON Export/Import
+  const btnExportJSON = document.createElement('button');
+  btnExportJSON.textContent = 'Export JSON';
+  toolbar.appendChild(btnExportJSON);
+  const btnImportJSON = document.createElement('button');
+  btnImportJSON.textContent = 'Import JSON';
+  toolbar.appendChild(btnImportJSON);
+  const fileJSON = document.createElement('input');
+  fileJSON.type = 'file'; fileJSON.accept = 'application/json'; fileJSON.style.display = 'none';
+  el.appendChild(fileJSON);
 
   // Sections
   const sections: Record<Category, HTMLElement> = {
@@ -141,6 +158,9 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     sections.Pommel.style.display = isRender ? 'none' : '';
     sections.Other.style.display = isRender ? 'none' : '';
     sections.Render.style.display = isRender ? '' : 'none';
+    // Hide model-only toolbar items on Render tab
+    const modelOnly = toolbar.querySelectorAll('.model-only');
+    modelOnly.forEach((b) => { (b as HTMLElement).style.display = isRender ? 'none' : ''; });
   };
   tabModel.addEventListener('click', () => showTab('Model'));
   tabRender.addEventListener('click', () => showTab('Render'));
@@ -494,6 +514,67 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     URL.revokeObjectURL(url);
   });
 
+  // JSON export: model + render + materials
+  btnExportJSON.addEventListener('click', () => {
+    const payload = {
+      version: 1,
+      model: state,
+      render: { ...rstate },
+      materials: matState
+    } as const;
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'swordmaker.json'; a.click();
+    URL.revokeObjectURL(url);
+  });
+  btnImportJSON.addEventListener('click', () => fileJSON.click());
+  fileJSON.addEventListener('change', async () => {
+    const f = fileJSON.files?.[0]; if (!f) return;
+    try {
+      const text = await f.text();
+      const obj = JSON.parse(text);
+      if (obj?.model) { assignParams(state, obj.model); rerender(); refreshInputs(el, state); }
+      if (obj?.materials) {
+        const parts: (keyof typeof matState)[] = ['blade','guard','handle','pommel'];
+        for (const part of parts) {
+          const m = obj.materials[part]; if (!m) continue;
+          matState[part] = { ...matState[part], ...m };
+          const c = parseInt((matState[part].color||'#ffffff').replace('#','0x'));
+          render?.setPartColor(part, c);
+          render?.setPartMetalness(part, matState[part].metalness);
+          render?.setPartRoughness(part, matState[part].roughness);
+          render?.setPartClearcoat(part, matState[part].clearcoat);
+          render?.setPartClearcoatRoughness(part, matState[part].clearcoatRoughness);
+          render?.setPartBump(part, matState[part].bumpEnabled, matState[part].bumpScale, matState[part].bumpNoiseScale, matState[part].bumpSeed);
+        }
+      }
+      if (obj?.render && render) {
+        const R = obj.render;
+        const col = typeof R.bgColor === 'string' ? parseInt(R.bgColor.replace('#','0x')) : undefined;
+        if (typeof R.exposure === 'number') { rstate.exposure = R.exposure; render.setExposure(R.exposure); }
+        if (typeof R.ambient === 'number') { rstate.ambient = R.ambient; render.setAmbient(R.ambient); }
+        if (typeof R.keyIntensity === 'number') { rstate.keyIntensity = R.keyIntensity; render.setKeyIntensity(R.keyIntensity); }
+        if (typeof R.keyAz === 'number' || typeof R.keyEl === 'number') { rstate.keyAz = R.keyAz ?? rstate.keyAz; rstate.keyEl = R.keyEl ?? rstate.keyEl; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }
+        if (typeof R.rimIntensity === 'number') { rstate.rimIntensity = R.rimIntensity; render.setRimIntensity(R.rimIntensity); }
+        if (typeof R.rimAz === 'number' || typeof R.rimEl === 'number') { rstate.rimAz = R.rimAz ?? rstate.rimAz; rstate.rimEl = R.rimEl ?? rstate.rimEl; render.setRimAngles(rstate.rimAz, rstate.rimEl); }
+        if (typeof R.rimColor === 'string') { rstate.rimColor = R.rimColor; render.setRimColor(parseInt(R.rimColor.replace('#','0x'))); }
+        if (typeof R.bgBrightness === 'number') { rstate.bgBrightness = R.bgBrightness; render.setBackgroundBrightness(R.bgBrightness); }
+        if (typeof col === 'number') { rstate.bgColor = R.bgColor; render.setBackgroundColor(col); }
+        if (typeof R.bloomEnabled === 'boolean' || typeof R.bloomStrength === 'number' || typeof R.bloomThreshold === 'number' || typeof R.bloomRadius === 'number') {
+          rstate.bloomEnabled = R.bloomEnabled ?? rstate.bloomEnabled; rstate.bloomStrength = R.bloomStrength ?? rstate.bloomStrength; rstate.bloomThreshold = R.bloomThreshold ?? rstate.bloomThreshold; rstate.bloomRadius = R.bloomRadius ?? rstate.bloomRadius;
+          render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius);
+        }
+      }
+      // Sync material UI for current part
+      setTimeout(()=>syncMaterialInputs(),0);
+    } catch (e) {
+      console.error('Import JSON failed', e);
+    } finally {
+      fileJSON.value = '';
+    }
+  });
+
   const updateWarnings = () => {
     const w: string[] = [];
     const blade = state.blade;
@@ -593,7 +674,14 @@ function slider(parent: HTMLElement, label: string, min: number, max: number, st
   row.className = 'row';
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) lab.title = tooltip;
+  if (tooltip) {
+    lab.title = tooltip;
+    const hi = document.createElement('span');
+    hi.className = 'help-icon';
+    hi.textContent = '?';
+    hi.title = tooltip;
+    lab.appendChild(hi);
+  }
   const range = document.createElement('input');
   range.type = 'range';
   range.min = String(min);
@@ -627,7 +715,7 @@ function select(parent: HTMLElement, label: string, options: string[], value: st
   row.className = 'row';
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) lab.title = tooltip;
+  if (tooltip) { lab.title = tooltip; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
   const sel = document.createElement('select');
   for (const opt of options) {
     const o = document.createElement('option');
@@ -650,7 +738,7 @@ function checkbox(parent: HTMLElement, label: string, value: boolean, onChange: 
   row.className = 'row';
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) lab.title = tooltip;
+  if (tooltip) { lab.title = tooltip; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
   const input = document.createElement('input');
   input.type = 'checkbox';
   input.checked = value;
@@ -671,7 +759,7 @@ function colorPicker(parent: HTMLElement, label: string, value: string, onChange
   row.className = 'row';
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) lab.title = tooltip;
+  if (tooltip) { lab.title = tooltip; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
   const input = document.createElement('input');
   input.type = 'color';
   input.value = value;

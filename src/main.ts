@@ -9,6 +9,10 @@ if (!canvas) {
 
 const { renderer, camera, controls, scene, composer, dispose, updateFXAA, renderHooks } = setupScene(canvas) as any;
 
+// Simple FPS overlay
+const fpsEl = document.getElementById('fps');
+let _fpsAccum = 0; let _fpsFrames = 0; let _fpsLast = performance.now();
+
 let disposed = false;
 function onResize() {
   if (disposed) return;
@@ -37,6 +41,15 @@ function animate(t: number) {
     composer.render();
   } else {
     renderer.render(scene, camera);
+  }
+  // FPS update every ~500ms
+  _fpsFrames++;
+  const now = performance.now();
+  const elapsed = now - _fpsLast;
+  if (elapsed >= 500) {
+    const fps = Math.round((_fpsFrames * 1000) / elapsed);
+    if (fpsEl) fpsEl.textContent = `FPS: ${fps}`;
+    _fpsFrames = 0; _fpsLast = now;
   }
   requestAnimationFrame(animate);
 }

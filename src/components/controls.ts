@@ -1,11 +1,15 @@
 import { SwordGenerator, SwordParams, defaultSwordParams } from '../three/SwordGenerator';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
+import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
+import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 
 type Category = 'Blade' | 'Guard' | 'Handle' | 'Pommel' | 'Other';
 
 export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: SwordParams) {
   const state: SwordParams = JSON.parse(JSON.stringify(params));
-  const rerender = () => { sword.updateGeometry(state); updateWarnings(); };
+  let raf = 0; let needs = false;
+  const flush = () => { raf = 0; if (!needs) return; needs = false; sword.updateGeometry(state); updateWarnings(); };
+  const rerender = () => { needs = true; if (!raf) raf = requestAnimationFrame(flush); };
 
   el.innerHTML = '';
   const title = document.createElement('h2');
@@ -43,6 +47,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   btnExport.textContent = 'Export GLB';
   toolbar.appendChild(btnExport);
 
+  const btnExportOBJ = document.createElement('button');
+  btnExportOBJ.textContent = 'Export OBJ';
+  toolbar.appendChild(btnExportOBJ);
+
+  const btnExportSTL = document.createElement('button');
+  btnExportSTL.textContent = 'Export STL';
+  toolbar.appendChild(btnExportSTL);
+
   // Sections
   const sections: Record<Category, HTMLElement> = {
     Blade: addSection(el, 'Blade'),
@@ -51,6 +63,25 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     Pommel: addSection(el, 'Pommel'),
     Other: addSection(el, 'Other')
   };
+
+  // Per-section shuffle buttons
+  addShuffleButton(sections.Blade, () => { randomizeBlade(state, true); rerender(); refreshInputs(el, state); });
+  addShuffleButton(sections.Guard, () => { randomizeGuard(state, true); rerender(); refreshInputs(el, state); });
+  addShuffleButton(sections.Handle, () => { randomizeHandle(state, true); rerender(); refreshInputs(el, state); });
+  addShuffleButton(sections.Pommel, () => { randomizePommel(state, true); rerender(); refreshInputs(el, state); });
+
+  // Section highlight (mouseenter/leave)
+  const highlight = (part: 'blade'|'guard'|'handle'|'pommel'|null) => {
+    (sword as any)?.setHighlight?.(part);
+  };
+  sections.Blade.addEventListener('mouseenter', () => highlight('blade'));
+  sections.Blade.addEventListener('mouseleave', () => highlight(null));
+  sections.Guard.addEventListener('mouseenter', () => highlight('guard'));
+  sections.Guard.addEventListener('mouseleave', () => highlight(null));
+  sections.Handle.addEventListener('mouseenter', () => highlight('handle'));
+  sections.Handle.addEventListener('mouseleave', () => highlight(null));
+  sections.Pommel.addEventListener('mouseenter', () => highlight('pommel'));
+  sections.Pommel.addEventListener('mouseleave', () => highlight(null));
 
   const warningsBox = document.createElement('div');
   warningsBox.style.fontSize = '12px';
@@ -63,30 +94,38 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Blade, 'Base Width', 0.05, 1.0, 0.005, state.blade.baseWidth, (v) => (state.blade.baseWidth = v), rerender);
   slider(sections.Blade, 'Tip Width', 0, 0.5, 0.005, state.blade.tipWidth, (v) => (state.blade.tipWidth = v), rerender);
   slider(sections.Blade, 'Blade Thickness', 0.02, 0.2, 0.001, state.blade.thickness, (v) => (state.blade.thickness = v), rerender);
-  slider(sections.Blade, 'Curvature', -1, 1, 0.01, state.blade.curvature, (v) => (state.blade.curvature = v), rerender);
-  slider(sections.Blade, 'Fuller Depth', 0, 0.1, 0.001, state.blade.fullerDepth ?? 0, (v) => (state.blade.fullerDepth = v), rerender);
-  slider(sections.Blade, 'Fuller Length', 0, 1, 0.01, state.blade.fullerLength ?? 0, (v) => (state.blade.fullerLength = v), rerender);
-  slider(sections.Blade, 'Serration Amp', 0, 0.2, 0.001, state.blade.serrationAmplitude ?? 0, (v) => (state.blade.serrationAmplitude = v), rerender);
-  slider(sections.Blade, 'Serration Freq', 0, 30, 1, state.blade.serrationFrequency ?? 0, (v) => (state.blade.serrationFrequency = v), rerender);
+  slider(sections.Blade, 'Curvature', -1, 1, 0.01, state.blade.curvature, (v) => (state.blade.curvature = v), rerender, 'Bends the blade along its length (negative curves opposite).');
+  slider(sections.Blade, 'Chaos', 0, 1, 0.01, state.blade.chaos ?? 0, (v) => (state.blade.chaos = v), rerender, 'Adds small edge roughness for fantasy blades.');
+  checkbox(sections.Blade, 'Enable Fullers', state.blade.fullerEnabled ?? false, (v) => (state.blade.fullerEnabled = v), rerender, 'Toggle decorative grooves along the blade faces.');
+  slider(sections.Blade, 'Fuller Depth', 0, 0.1, 0.001, state.blade.fullerDepth ?? 0, (v) => (state.blade.fullerDepth = v), rerender, 'Visual depth/shading of the groove; not actual subtraction.');
+  slider(sections.Blade, 'Fuller Length', 0, 1, 0.01, state.blade.fullerLength ?? 0, (v) => (state.blade.fullerLength = v), rerender, 'Portion of blade occupied by the groove (0..1).');
+  slider(sections.Blade, 'Serration Amp', 0, 0.2, 0.001, state.blade.serrationAmplitude ?? 0, (v) => (state.blade.serrationAmplitude = v), rerender, 'Amplitude of edge waviness along the blade.');
+  slider(sections.Blade, 'Serration Freq', 0, 30, 1, state.blade.serrationFrequency ?? 0, (v) => (state.blade.serrationFrequency = v), rerender, 'Number of serration cycles along the blade.');
 
   // Guard controls
   slider(sections.Guard, 'Width', 0.2, 3.0, 0.01, state.guard.width, (v) => (state.guard.width = v), rerender);
   slider(sections.Guard, 'Guard Thickness', 0.05, 0.6, 0.005, state.guard.thickness, (v) => (state.guard.thickness = v), rerender);
-  slider(sections.Guard, 'Curve', -1, 1, 0.01, state.guard.curve, (v) => (state.guard.curve = v), rerender);
-  slider(sections.Guard, 'Tilt', -1.57, 1.57, 0.01, state.guard.tilt, (v) => (state.guard.tilt = v), rerender);
+  slider(sections.Guard, 'Curve', -1, 1, 0.01, state.guard.curve, (v) => (state.guard.curve = v), rerender, 'Bends ornate guards upward/downward.');
+  slider(sections.Guard, 'Tilt', -1.57, 1.57, 0.01, state.guard.tilt, (v) => (state.guard.tilt = v), rerender, 'Rotates the guard around the blade axis.');
   select(sections.Guard, 'Style', ['bar', 'winged', 'claw'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
 
   // Handle controls
   slider(sections.Handle, 'Length', 0.2, 2.0, 0.01, state.handle.length, (v) => (state.handle.length = v), rerender);
   slider(sections.Handle, 'Radius Top', 0.05, 0.3, 0.001, state.handle.radiusTop, (v) => (state.handle.radiusTop = v), rerender);
   slider(sections.Handle, 'Radius Bottom', 0.05, 0.3, 0.001, state.handle.radiusBottom, (v) => (state.handle.radiusBottom = v), rerender);
-  checkbox(sections.Handle, 'Ridges', state.handle.segmentation, (v) => (state.handle.segmentation = v), rerender);
+  checkbox(sections.Handle, 'Ridges', state.handle.segmentation, (v) => (state.handle.segmentation = v), rerender, 'Adds axial ridges along the grip.');
+  checkbox(sections.Handle, 'Wrap Enabled', state.handle.wrapEnabled ?? false, (v) => (state.handle.wrapEnabled = v), rerender, 'Enable helical wrap deformation for the grip.');
+  slider(sections.Handle, 'Wrap Turns', 0, 20, 1, state.handle.wrapTurns ?? 6, (v) => (state.handle.wrapTurns = v), rerender, 'Number of helical cycles along the grip.');
+  slider(sections.Handle, 'Wrap Depth', 0, 0.05, 0.001, state.handle.wrapDepth ?? 0.015, (v) => (state.handle.wrapDepth = v), rerender, 'Radial amplitude of the wrap pattern.');
 
   // Pommel controls
   select(sections.Pommel, 'Style', ['orb', 'disk', 'spike'], state.pommel.style, (v) => (state.pommel.style = v as any), rerender);
   slider(sections.Pommel, 'Size', 0.05, 0.5, 0.001, state.pommel.size, (v) => (state.pommel.size = v), rerender);
   slider(sections.Pommel, 'Elongation', 0.5, 2.0, 0.01, state.pommel.elongation, (v) => (state.pommel.elongation = v), rerender);
   slider(sections.Pommel, 'Morph', 0, 1, 0.01, state.pommel.shapeMorph, (v) => (state.pommel.shapeMorph = v), rerender);
+
+  // Other controls
+  slider(sections.Other, 'Blade Detail', 16, 512, 1, state.blade.sweepSegments ?? 128, (v) => (state.blade.sweepSegments = Math.round(v)), rerender, 'Controls blade tessellation along its length.');
 
   // Presets handling
   presetSel.addEventListener('change', () => {
@@ -136,15 +175,53 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     );
   });
 
+  btnExportOBJ.addEventListener('click', () => {
+    const exporter = new OBJExporter();
+    const result = exporter.parse(sword.group);
+    const blob = new Blob([result], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sword.obj';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  btnExportSTL.addEventListener('click', () => {
+    const exporter = new STLExporter();
+    const result = exporter.parse(sword.group, { binary: true } as any);
+    const blob = new Blob([result as ArrayBuffer], { type: 'model/stl' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sword.stl';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
   const updateWarnings = () => {
     const w: string[] = [];
     const blade = state.blade;
     const guard = state.guard;
     const handle = state.handle;
-    if (guard.width > blade.length) w.push('Guard very wide vs. blade length');
-    if (handle.length > blade.length * 0.8) w.push('Handle unusually long for blade');
-    if (blade.tipWidth > blade.baseWidth * 0.8) w.push('Tip width close to base width');
-    if ((blade.serrationAmplitude ?? 0) > blade.baseWidth * 0.2) w.push('Serration amplitude high for base width');
+    // Clear existing inline warn styles
+    clearWarns(el);
+    if (guard.width > blade.length) {
+      w.push('Guard very wide vs. blade length');
+      setWarn(el, 'Width', true, 'Guard width is large vs. blade length');
+    }
+    if (handle.length > blade.length * 0.8) {
+      w.push('Handle unusually long for blade');
+      setWarn(el, 'Length', true, 'Handle length is large relative to blade');
+    }
+    if (blade.tipWidth > blade.baseWidth * 0.8) {
+      w.push('Tip width close to base width');
+      setWarn(el, 'Tip Width', true, 'Tip nearly as wide as base');
+    }
+    if ((blade.serrationAmplitude ?? 0) > blade.baseWidth * 0.2) {
+      w.push('Serration amplitude high for base width');
+      setWarn(el, 'Serration Amp', true, 'Serration amplitude is high');
+    }
     warningsBox.innerHTML = w.length ? ('Warnings:\n- ' + w.join('\n- ')).replace(/\n/g, '<br/>') : 'No warnings';
   };
 
@@ -161,11 +238,46 @@ function addSection(root: HTMLElement, title: string) {
   return wrap;
 }
 
-function slider(parent: HTMLElement, label: string, min: number, max: number, step: number, value: number, onChange: (v: number) => void, rerender: () => void) {
+function clearWarns(root: HTMLElement) {
+  const labels = root.querySelectorAll('.row label');
+  labels.forEach((lab) => {
+    (lab as HTMLElement).style.color = '';
+    (lab as HTMLElement).title = (lab as HTMLElement).getAttribute('data-title') || (lab as HTMLElement).title;
+  });
+}
+
+function setWarn(root: HTMLElement, labelText: string, on: boolean, tooltip?: string) {
+  const rows = Array.from(root.querySelectorAll('.row')) as HTMLElement[];
+  for (const row of rows) {
+    const lab = row.querySelector('label');
+    if (!lab) continue;
+    if (lab.textContent === labelText) {
+      const el = lab as HTMLElement;
+      if (!el.getAttribute('data-title')) el.setAttribute('data-title', el.title || '');
+      el.style.color = on ? '#eab308' : '';
+      if (on && tooltip) el.title = tooltip; else el.title = el.getAttribute('data-title') || '';
+      break;
+    }
+  }
+}
+
+function addShuffleButton(section: HTMLElement, onClick: () => void) {
+  const header = section.querySelector('h2');
+  if (!header) return;
+  const btn = document.createElement('button');
+  btn.textContent = 'Shuffle';
+  btn.style.marginLeft = '8px';
+  btn.title = 'Randomize values in this section';
+  btn.addEventListener('click', onClick);
+  header.appendChild(btn);
+}
+
+function slider(parent: HTMLElement, label: string, min: number, max: number, step: number, value: number, onChange: (v: number) => void, rerender: () => void, tooltip?: string) {
   const row = document.createElement('div');
   row.className = 'row';
   const lab = document.createElement('label');
   lab.textContent = label;
+  if (tooltip) lab.title = tooltip;
   const range = document.createElement('input');
   range.type = 'range';
   range.min = String(min);
@@ -194,11 +306,12 @@ function slider(parent: HTMLElement, label: string, min: number, max: number, st
   parent.appendChild(row);
 }
 
-function select(parent: HTMLElement, label: string, options: string[], value: string, onChange: (v: string) => void, rerender: () => void) {
+function select(parent: HTMLElement, label: string, options: string[], value: string, onChange: (v: string) => void, rerender: () => void, tooltip?: string) {
   const row = document.createElement('div');
   row.className = 'row';
   const lab = document.createElement('label');
   lab.textContent = label;
+  if (tooltip) lab.title = tooltip;
   const sel = document.createElement('select');
   for (const opt of options) {
     const o = document.createElement('option');
@@ -216,11 +329,12 @@ function select(parent: HTMLElement, label: string, options: string[], value: st
   parent.appendChild(row);
 }
 
-function checkbox(parent: HTMLElement, label: string, value: boolean, onChange: (v: boolean) => void, rerender: () => void) {
+function checkbox(parent: HTMLElement, label: string, value: boolean, onChange: (v: boolean) => void, rerender: () => void, tooltip?: string) {
   const row = document.createElement('div');
   row.className = 'row';
   const lab = document.createElement('label');
   lab.textContent = label;
+  if (tooltip) lab.title = tooltip;
   const input = document.createElement('input');
   input.type = 'checkbox';
   input.checked = value;
@@ -244,10 +358,13 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Tip Width': params.blade.tipWidth,
     'Blade Thickness': params.blade.thickness,
     'Curvature': params.blade.curvature,
+    'Chaos': params.blade.chaos ?? 0,
+    'Enable Fullers': params.blade.fullerEnabled ?? false,
     'Fuller Depth': params.blade.fullerDepth ?? 0,
     'Fuller Length': params.blade.fullerLength ?? 0,
     'Serration Amp': params.blade.serrationAmplitude ?? 0,
     'Serration Freq': params.blade.serrationFrequency ?? 0,
+    'Blade Detail': params.blade.sweepSegments ?? 128,
     'Width': params.guard.width,
     'Guard Thickness': params.guard.thickness,
     'Curve': params.guard.curve,
@@ -257,6 +374,9 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Radius Top': params.handle.radiusTop,
     'Radius Bottom': params.handle.radiusBottom,
     'Ridges': params.handle.segmentation,
+    'Wrap Enabled': params.handle.wrapEnabled ?? false,
+    'Wrap Turns': params.handle.wrapTurns ?? 6,
+    'Wrap Depth': params.handle.wrapDepth ?? 0.015,
     'Style_p': params.pommel.style,
     'Size': params.pommel.size,
     'Elongation': params.pommel.elongation,
@@ -291,27 +411,50 @@ function clamp(v: number, lo: number, hi: number) { return Math.min(hi, Math.max
 
 function randomize(p: SwordParams, safe: boolean) {
   const r = (a: number, b: number) => a + Math.random() * (b - a);
+  randomizeBlade(p, safe);
+  randomizeGuard(p, safe);
+  randomizeHandle(p, safe);
+  randomizePommel(p, safe);
+}
+
+function randomizeBlade(p: SwordParams, safe: boolean) {
+  const r = (a: number, b: number) => a + Math.random() * (b - a);
   p.blade.length = safe ? r(0.8, 3.5) : r(0.3, 5.5);
   p.blade.baseWidth = safe ? r(0.15, 0.35) : r(0.05, 0.8);
   p.blade.tipWidth = clamp(r(0, p.blade.baseWidth * (safe ? 0.6 : 1)), 0, 1);
   p.blade.thickness = safe ? r(0.05, 0.12) : r(0.02, 0.18);
   p.blade.curvature = safe ? r(-0.2, 0.4) : r(-0.8, 0.8);
+  p.blade.chaos = safe ? r(0, 0.2) : r(0, 0.6);
   p.blade.serrationAmplitude = safe ? 0 : r(0, 0.15);
   p.blade.serrationFrequency = p.blade.serrationAmplitude! > 0 ? Math.floor(r(2, safe ? 8 : 20)) : 0;
-  p.blade.fullerDepth = safe ? r(0.01, 0.04) : r(0, 0.08);
-  p.blade.fullerLength = safe ? r(0.4, 0.8) : r(0, 1);
+  p.blade.fullerEnabled = Math.random() > 0.6;
+  p.blade.fullerDepth = p.blade.fullerEnabled ? (safe ? r(0.01, 0.04) : r(0, 0.08)) : 0;
+  p.blade.fullerLength = p.blade.fullerEnabled ? (safe ? r(0.4, 0.8) : r(0, 1)) : 0;
+  p.blade.sweepSegments = Math.round(safe ? r(96, 160) : r(64, 192));
+}
 
+function randomizeGuard(p: SwordParams, safe: boolean) {
+  const r = (a: number, b: number) => a + Math.random() * (b - a);
   p.guard.width = safe ? r(0.8, 1.6) : r(0.4, 2.5);
   p.guard.thickness = safe ? r(0.1, 0.25) : r(0.08, 0.5);
   p.guard.curve = safe ? r(-0.3, 0.6) : r(-1, 1);
   p.guard.tilt = safe ? r(-0.2, 0.2) : r(-0.6, 0.6);
   p.guard.style = (['bar', 'winged', 'claw'] as const)[Math.floor(r(0, 3))];
+}
 
+function randomizeHandle(p: SwordParams, safe: boolean) {
+  const r = (a: number, b: number) => a + Math.random() * (b - a);
   p.handle.length = safe ? r(0.7, 1.2) : r(0.4, 1.6);
   p.handle.radiusTop = safe ? r(0.1, 0.18) : r(0.08, 0.25);
   p.handle.radiusBottom = safe ? r(0.1, 0.18) : r(0.08, 0.25);
   p.handle.segmentation = Math.random() > 0.5;
+  p.handle.wrapEnabled = Math.random() > 0.5;
+  p.handle.wrapTurns = p.handle.wrapEnabled ? Math.floor(r(4, 12)) : 6;
+  p.handle.wrapDepth = p.handle.wrapEnabled ? (safe ? r(0.006, 0.02) : r(0.003, 0.035)) : 0.015;
+}
 
+function randomizePommel(p: SwordParams, safe: boolean) {
+  const r = (a: number, b: number) => a + Math.random() * (b - a);
   p.pommel.style = (['orb', 'disk', 'spike'] as const)[Math.floor(r(0, 3))];
   p.pommel.size = safe ? r(0.12, 0.22) : r(0.08, 0.3);
   p.pommel.elongation = safe ? r(0.8, 1.3) : r(0.5, 1.6);
@@ -320,7 +463,7 @@ function randomize(p: SwordParams, safe: boolean) {
 
 function presetKatana(): SwordParams {
   const p = defaultSwordParams();
-  p.blade.length = 3.4; p.blade.baseWidth = 0.22; p.blade.tipWidth = 0.06; p.blade.curvature = 0.25; p.blade.thickness = 0.08; p.blade.fullerDepth = 0.015; p.blade.fullerLength = 0.7;
+  p.blade.length = 3.4; p.blade.baseWidth = 0.22; p.blade.tipWidth = 0.06; p.blade.curvature = 0.25; p.blade.thickness = 0.08; p.blade.fullerEnabled = true; p.blade.fullerDepth = 0.015; p.blade.fullerLength = 0.7;
   p.guard.style = 'bar'; p.guard.width = 0.9; p.guard.thickness = 0.18; p.guard.curve = 0;
   p.handle.length = 1.1; p.handle.radiusTop = 0.12; p.handle.radiusBottom = 0.12; p.handle.segmentation = true;
   p.pommel.style = 'disk'; p.pommel.size = 0.15; p.pommel.elongation = 1.0; p.pommel.shapeMorph = 0.2;
@@ -329,7 +472,7 @@ function presetKatana(): SwordParams {
 
 function presetClaymore(): SwordParams {
   const p = defaultSwordParams();
-  p.blade.length = 2.8; p.blade.baseWidth = 0.32; p.blade.tipWidth = 0.08; p.blade.curvature = 0.0; p.blade.fullerDepth = 0.03; p.blade.fullerLength = 0.6;
+  p.blade.length = 2.8; p.blade.baseWidth = 0.32; p.blade.tipWidth = 0.08; p.blade.curvature = 0.0; p.blade.fullerEnabled = true; p.blade.fullerDepth = 0.03; p.blade.fullerLength = 0.6;
   p.guard.style = 'winged'; p.guard.width = 1.6; p.guard.thickness = 0.24; p.guard.curve = 0.15;
   p.handle.length = 0.9; p.handle.radiusTop = 0.13; p.handle.radiusBottom = 0.13; p.handle.segmentation = false;
   p.pommel.style = 'orb'; p.pommel.size = 0.18; p.pommel.elongation = 1.0; p.pommel.shapeMorph = 0.1;
@@ -338,7 +481,7 @@ function presetClaymore(): SwordParams {
 
 function presetRapier(): SwordParams {
   const p = defaultSwordParams();
-  p.blade.length = 3.2; p.blade.baseWidth = 0.18; p.blade.tipWidth = 0.05; p.blade.curvature = 0.0; p.blade.fullerDepth = 0.0; p.blade.fullerLength = 0.0;
+  p.blade.length = 3.2; p.blade.baseWidth = 0.18; p.blade.tipWidth = 0.05; p.blade.curvature = 0.0; p.blade.fullerEnabled = false; p.blade.fullerDepth = 0.0; p.blade.fullerLength = 0.0;
   p.guard.style = 'claw'; p.guard.width = 1.2; p.guard.thickness = 0.18; p.guard.curve = 0.3; p.guard.tilt = 0.1;
   p.handle.length = 1.0; p.handle.radiusTop = 0.11; p.handle.radiusBottom = 0.11; p.handle.segmentation = false;
   p.pommel.style = 'disk'; p.pommel.size = 0.16; p.pommel.elongation = 1.0; p.pommel.shapeMorph = 0.3;
@@ -347,7 +490,7 @@ function presetRapier(): SwordParams {
 
 function presetDemon(): SwordParams {
   const p = defaultSwordParams();
-  p.blade.length = 3.6; p.blade.baseWidth = 0.28; p.blade.tipWidth = 0.02; p.blade.curvature = -0.2; p.blade.serrationAmplitude = 0.08; p.blade.serrationFrequency = 10; p.blade.fullerDepth = 0.02; p.blade.fullerLength = 0.4;
+  p.blade.length = 3.6; p.blade.baseWidth = 0.28; p.blade.tipWidth = 0.02; p.blade.curvature = -0.2; p.blade.serrationAmplitude = 0.08; p.blade.serrationFrequency = 10; p.blade.fullerEnabled = true; p.blade.fullerDepth = 0.02; p.blade.fullerLength = 0.4;
   p.guard.style = 'claw'; p.guard.width = 1.8; p.guard.thickness = 0.28; p.guard.curve = -0.5; p.guard.tilt = -0.2;
   p.handle.length = 0.9; p.handle.radiusTop = 0.13; p.handle.radiusBottom = 0.12; p.handle.segmentation = true;
   p.pommel.style = 'spike'; p.pommel.size = 0.18; p.pommel.elongation = 1.2; p.pommel.shapeMorph = 0.7;

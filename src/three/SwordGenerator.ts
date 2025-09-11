@@ -8,8 +8,11 @@ export type BladeParams = {
   curvature: number; // -1..1, bends along x
   serrationAmplitude?: number; // 0..(baseWidth/4)
   serrationFrequency?: number; // cycles along blade
-  fullerDepth?: number; // reserved (not yet applied)
-  fullerLength?: number; // reserved (not yet applied)
+  fullerDepth?: number; // visual groove depth hint
+  fullerLength?: number; // 0..1 portion of blade length
+  fullerEnabled?: boolean; // render fuller overlays
+  sweepSegments?: number; // longitudinal detail for blade sweep
+  chaos?: number; // 0..1 small edge roughness
 };
 
 export type GuardStyle = 'bar' | 'winged' | 'claw';
@@ -26,6 +29,9 @@ export type HandleParams = {
   radiusTop: number;
   radiusBottom: number;
   segmentation: boolean; // add ridges
+  wrapEnabled?: boolean; // helical wrap pattern
+  wrapTurns?: number; // number of helical turns along length
+  wrapDepth?: number; // radial amplitude of wrap
 };
 
 export type PommelStyle = 'orb' | 'disk' | 'spike';
@@ -51,6 +57,7 @@ export class SwordGenerator {
   public pommelMesh: THREE.Mesh | null = null;
   private guardGroup: THREE.Group | null = null;
   private fullerGroup: THREE.Group | null = null;
+  private highlighted: 'blade' | 'guard' | 'handle' | 'pommel' | null = null;
 
   private lastParams?: SwordParams;
 
@@ -63,29 +70,41 @@ export class SwordGenerator {
     const prev = this.lastParams;
     this.lastParams = p;
 
-    // Simple rebuild/scale heuristic for blade length changes only
-    const bladeOnlyLengthChange =
-      prev &&
-      prev.blade &&
-      prev.blade.length !== 0 &&
-      prev.blade.baseWidth === p.blade.baseWidth &&
-      prev.blade.tipWidth === p.blade.tipWidth &&
-      prev.blade.thickness === p.blade.thickness &&
-      prev.blade.curvature === p.blade.curvature &&
-      (prev.blade.serrationAmplitude || 0) === (p.blade.serrationAmplitude || 0) &&
-      (prev.blade.serrationFrequency || 0) === (p.blade.serrationFrequency || 0);
-
-    if (bladeOnlyLengthChange && this.bladeMesh) {
-      // Scale Y uniformly to match new length
-      const scale = p.blade.length / prev!.blade.length;
-      this.bladeMesh.scale.y = scale;
-    } else {
-      this.rebuildBlade(p.blade);
-    }
+    // Rebuild blade on any blade param change to avoid scaling artifacts
+    this.rebuildBlade(p.blade);
 
     this.rebuildGuard(p.guard);
     this.rebuildHandle(p.handle);
     this.rebuildPommel(p.pommel);
+  }
+
+  public setHighlight(part: 'blade' | 'guard' | 'handle' | 'pommel' | null) {
+    // Reset previous
+    const setEmissive = (obj: THREE.Object3D | null, on: boolean) => {
+      if (!obj) return;
+      obj.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        const mat = m.material as THREE.MeshStandardMaterial;
+        if (!mat || !(mat as any).emissive) return;
+        (mat as any).emissive?.setHex(on ? 0x333333 : 0x000000);
+        (mat as any).emissiveIntensity = on ? 0.6 : 1.0;
+      });
+    };
+    setEmissive(this.bladeMesh, false);
+    setEmissive(this.guardMesh, false);
+    setEmissive(this.guardGroup, false);
+    setEmissive(this.handleMesh, false);
+    setEmissive(this.pommelMesh, false);
+
+    this.highlighted = part;
+    if (part === 'blade') setEmissive(this.bladeMesh, true);
+    if (part === 'guard') {
+      setEmissive(this.guardMesh, true);
+      setEmissive(this.guardGroup, true);
+    }
+    if (part === 'handle') setEmissive(this.handleMesh, true);
+    if (part === 'pommel') setEmissive(this.pommelMesh, true);
   }
 
   private rebuildBlade(b: BladeParams) {
@@ -95,47 +114,12 @@ export class SwordGenerator {
       this.bladeMesh = null;
     }
 
-    const shape = buildBladeShape(b);
-    const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: b.thickness,
-      bevelEnabled: false,
-      steps: 1
-    });
-    geo.center();
-    // Reposition so base (guard) sits near y=0 and blade extends +y
-    geo.rotateX(Math.PI); // flip so positive y up
-    const box = new THREE.Box3().setFromBufferAttribute(geo.getAttribute('position'));
-    const size = new THREE.Vector3();
-    box.getSize(size);
-    const center = new THREE.Vector3();
-    box.getCenter(center);
-    const offset = new THREE.Vector3(-center.x, -box.min.y, -center.z);
-    geo.translate(offset.x, offset.y, offset.z);
-
-    // Curvature: bend along x based on y position
-    if (Math.abs(b.curvature) > 1e-6) {
-      const pos = geo.getAttribute('position') as THREE.BufferAttribute;
-      const arr = pos.array as unknown as number[];
-      const yMin = 0;
-      const yMax = size.y;
-      for (let i = 0; i < pos.count; i++) {
-        const ix = i * 3;
-        const x = arr[ix + 0];
-        const y = arr[ix + 1];
-        const z = arr[ix + 2];
-        const t = (y - yMin) / Math.max(1e-6, yMax - yMin);
-        // Quadratic bend profile
-        const bend = b.curvature * (t * t - t) * size.y; // symmetric curve
-        arr[ix + 0] = x + bend;
-        arr[ix + 2] = z;
-      }
-      pos.needsUpdate = true;
-      geo.computeVertexNormals();
-    }
+    const geo = buildBladeGeometry(b);
 
     const mat = new THREE.MeshStandardMaterial({ color: 0xb9c6ff, metalness: 0.7, roughness: 0.3 });
     this.bladeMesh = new THREE.Mesh(geo, mat);
-    this.bladeMesh.position.y = 0.1; // slight offset above ground
+    // Align blade base exactly at y=0 (no extra offset)
+    this.bladeMesh.position.y = 0.0;
     this.group.add(this.bladeMesh);
 
     // Fuller grooves (visual overlay): two thin insets on both faces
@@ -144,7 +128,7 @@ export class SwordGenerator {
       this.disposeGroup(this.fullerGroup);
       this.fullerGroup = null;
     }
-    if ((b.fullerDepth ?? 0) > 0 && (b.fullerLength ?? 0) > 0) {
+    if (b.fullerEnabled && (b.fullerDepth ?? 0) > 0 && (b.fullerLength ?? 0) > 0) {
       this.fullerGroup = buildFullerOverlays(b);
       this.fullerGroup.position.copy(this.bladeMesh.position);
       this.group.add(this.fullerGroup);
@@ -164,34 +148,22 @@ export class SwordGenerator {
       this.guardGroup = null;
     }
 
-    // Compute guard Y placement between handle top and blade base
+    // Compute guard placement: align its top to the blade base
     const GUARD_HEIGHT = 0.08;
-    let guardY = 0.0;
     let bladeBaseY: number | undefined;
     if (this.bladeMesh) {
       const bb = new THREE.Box3().setFromObject(this.bladeMesh);
       if (isFinite(bb.min.y)) bladeBaseY = bb.min.y;
     }
-    let handleTopY: number | undefined;
-    if (this.handleMesh) {
-      const hb = new THREE.Box3().setFromObject(this.handleMesh);
-      if (isFinite(hb.max.y)) handleTopY = hb.max.y;
-    }
-
-    if (bladeBaseY !== undefined && handleTopY !== undefined) {
-      guardY = handleTopY + (bladeBaseY - handleTopY) * 0.5;
-    } else if (bladeBaseY !== undefined) {
-      guardY = bladeBaseY - GUARD_HEIGHT * 0.5;
-    } else if (handleTopY !== undefined) {
-      guardY = handleTopY + GUARD_HEIGHT * 0.5;
-    }
+    const targetTopY = bladeBaseY ?? 0.0;
 
     const color = 0x8892b0;
     if (g.style === 'bar') {
       const geo = new THREE.BoxGeometry(g.width, GUARD_HEIGHT, g.thickness);
       const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.5 });
       this.guardMesh = new THREE.Mesh(geo, mat);
-      this.guardMesh.position.set(0, guardY, 0);
+      // Center so that top of the bar meets blade base
+      this.guardMesh.position.set(0, targetTopY - GUARD_HEIGHT * 0.5, 0);
       this.group.add(this.guardMesh);
     } else {
       const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.45, side: THREE.DoubleSide });
@@ -209,7 +181,8 @@ export class SwordGenerator {
 
       const group = new THREE.Group();
       group.add(meshR, meshL);
-      group.position.y = guardY;
+      // Align inner edge (y=0 at x=0) to the blade base
+      group.position.y = targetTopY;
       group.rotation.z = g.tilt;
       this.guardGroup = group;
       this.group.add(group);
@@ -233,7 +206,40 @@ export class SwordGenerator {
       const r = Math.max(0.02, baseR + bump);
       profile.push(new THREE.Vector2(r, y));
     }
-    const geo = new THREE.LatheGeometry(profile, 48);
+    const phiSegments = 64;
+    const geo = new THREE.LatheGeometry(profile, phiSegments);
+    // Optional helical wrap deformation
+    if (h.wrapEnabled && (h.wrapDepth ?? 0) > 0 && (h.wrapTurns ?? 0) > 0) {
+      const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+      const arr = pos.array as unknown as number[];
+      // Normalize y to 0..1 along handle
+      let yMin = +Infinity, yMax = -Infinity;
+      for (let i = 0; i < pos.count; i++) {
+        const iy = i * 3 + 1;
+        const y = arr[iy];
+        if (y < yMin) yMin = y;
+        if (y > yMax) yMax = y;
+      }
+      const turns = Math.max(0, h.wrapTurns || 0);
+      const amp = Math.min(0.1, Math.max(0, h.wrapDepth || 0));
+      for (let i = 0; i < pos.count; i++) {
+        const ix = i * 3;
+        const iy = ix + 1;
+        const iz = ix + 2;
+        const x = arr[ix];
+        const y = arr[iy];
+        const z = arr[iz];
+        const t = (y - yMin) / Math.max(1e-6, yMax - yMin);
+        const baseR = Math.max(0.01, Math.hypot(x, z));
+        const phi = Math.atan2(z, x) + 2 * Math.PI * turns * t;
+        const offset = amp * Math.sin(phi);
+        const scale = (baseR + offset) / baseR;
+        arr[ix] = x * scale;
+        arr[iz] = z * scale;
+      }
+      pos.needsUpdate = true;
+      geo.computeVertexNormals();
+    }
     const mat = new THREE.MeshStandardMaterial({ color: 0x5a6b78, metalness: 0.2, roughness: 0.8 });
     this.handleMesh = new THREE.Mesh(geo, mat);
     this.handleMesh.position.y = -h.length * 0.5;
@@ -281,14 +287,18 @@ export class SwordGenerator {
     const blade: BladeParams = {
       length: clamp(b.length, 0.1, 20),
       baseWidth: clamp(b.baseWidth, 0.02, 5),
-      tipWidth: clamp(b.tipWidth, 0, b.baseWidth),
+      // Allow unusual shapes: tip wider than base
+      tipWidth: clamp(b.tipWidth, 0, 5),
       thickness: clamp(b.thickness, 0.01, 2),
       curvature: clamp(b.curvature, -1, 1),
       serrationAmplitude: clamp(b.serrationAmplitude ?? 0, 0, (b.baseWidth || 0.2) / 3),
       serrationFrequency: clamp(b.serrationFrequency ?? 0, 0, 40),
       fullerDepth: clamp(b.fullerDepth ?? 0, 0, 0.2),
-      fullerLength: clamp(b.fullerLength ?? 0, 0, 1)
-    };
+    fullerLength: clamp(b.fullerLength ?? 0, 0, 1),
+    fullerEnabled: !!b.fullerEnabled,
+    sweepSegments: Math.round(clamp(b.sweepSegments ?? 128, 16, 512)),
+    chaos: clamp(b.chaos ?? 0, 0, 1)
+  };
 
     const g = params.guard;
     const guard: GuardParams = {
@@ -304,7 +314,10 @@ export class SwordGenerator {
       length: clamp(h.length, 0.2, 5),
       radiusTop: clamp(h.radiusTop, 0.05, 1),
       radiusBottom: clamp(h.radiusBottom, 0.05, 1),
-      segmentation: !!h.segmentation
+      segmentation: !!h.segmentation,
+      wrapEnabled: !!h.wrapEnabled,
+      wrapTurns: clamp(h.wrapTurns ?? 6, 0, 40),
+      wrapDepth: clamp(h.wrapDepth ?? 0.015, 0, 0.08)
     };
 
     const pm = params.pommel;
@@ -341,7 +354,7 @@ export class SwordGenerator {
 function buildBladeShape(b: BladeParams): THREE.Shape {
   const length = b.length;
   const baseW = b.baseWidth;
-  const tipW = Math.max(0, Math.min(b.tipWidth, baseW));
+  const tipW = Math.max(0, b.tipWidth);
 
   // Build an outline from base (y=0) to tip (y=length), symmetric around x=0
   const pointsRight: THREE.Vector2[] = [];
@@ -369,6 +382,87 @@ function buildBladeShape(b: BladeParams): THREE.Shape {
   return shape;
 }
 
+function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
+  const L = Math.max(0.01, b.length);
+  const T = Math.max(0.001, b.thickness);
+  const halfT = T * 0.5;
+  const baseW = Math.max(0.002, b.baseWidth);
+  const tipW = Math.max(0, b.tipWidth);
+  const segs = Math.max(16, Math.min(512, Math.round(b.sweepSegments ?? 128))); // longitudinal resolution
+  const serrAmp = b.serrationAmplitude ?? 0;
+  const serrFreq = b.serrationFrequency ?? 0;
+  const chaos = b.chaos ?? 0;
+
+  // Positions: per row we store 4 vertices: FL, FR, BL, BR
+  const positions = new Float32Array((segs + 1) * 4 * 3);
+  const indices: number[] = [];
+
+  const rowIndex = (i: number, j: number) => (i * 4 + j);
+  const setV = (i: number, j: number, x: number, y: number, z: number) => {
+    const idx = rowIndex(i, j) * 3;
+    positions[idx + 0] = x;
+    positions[idx + 1] = y;
+    positions[idx + 2] = z;
+  };
+
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs;
+    const y = t * L;
+    const w = baseW + (tipW - baseW) * t;
+    const serr = serrAmp > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmp * (1 - t) : 0;
+    // Chaos profile: bounded, smooth pseudo-noise (two sines)
+    const c1 = Math.sin(t * Math.PI * 16.0 + 1.3);
+    const c2 = Math.sin(t * Math.PI * 9.7 + 0.6);
+    const chaosOffset = (c1 * 0.6 + c2 * 0.4) * chaos * 0.08 * baseW * (1.0 - t * 0.6);
+    const half = Math.max(0.001, w * 0.5 + serr + chaosOffset);
+    const bend = (b.curvature || 0) * (t * t - t) * L;
+    const xl = -half + bend;
+    const xr = +half + bend;
+
+    // FL, FR at front face (z = -halfT); BL, BR at back face (z = +halfT)
+    setV(i, 0, xl, y, -halfT);
+    setV(i, 1, xr, y, -halfT);
+    setV(i, 2, xl, y, +halfT);
+    setV(i, 3, xr, y, +halfT);
+  }
+
+  // Faces along length for front and back
+  for (let i = 0; i < segs; i++) {
+    const a = rowIndex(i, 0);
+    const bR = rowIndex(i, 1);
+    const c = rowIndex(i + 1, 0);
+    const dR = rowIndex(i + 1, 1);
+    const aB = rowIndex(i, 2);
+    const bRB = rowIndex(i, 3);
+    const cB = rowIndex(i + 1, 2);
+    const dRB = rowIndex(i + 1, 3);
+
+    // Front face (z = -halfT)
+    indices.push(a, bR, dR, a, dR, c);
+    // Back face (z = +halfT)
+    indices.push(aB, dRB, bRB, aB, cB, dRB);
+
+    // Left side (connect FL<->BL)
+    indices.push(a, aB, cB, a, cB, c);
+    // Right side (connect FR<->BR)
+    indices.push(bR, dR, dRB, bR, dRB, bRB);
+  }
+
+  // Base cap at y=0
+  const fL0 = rowIndex(0, 0), fR0 = rowIndex(0, 1), bL0 = rowIndex(0, 2), bR0 = rowIndex(0, 3);
+  indices.push(fL0, fR0, bR0, fL0, bR0, bL0);
+  // Tip cap at y=L
+  const fLn = rowIndex(segs, 0), fRn = rowIndex(segs, 1), bLn = rowIndex(segs, 2), bRn = rowIndex(segs, 3);
+  indices.push(fLn, bRn, fRn, fLn, bLn, bRn);
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  geo.computeBoundingBox();
+  return geo;
+}
+
 export function defaultSwordParams(): SwordParams {
   return {
     blade: {
@@ -379,8 +473,12 @@ export function defaultSwordParams(): SwordParams {
       curvature: 0.0,
       serrationAmplitude: 0.0,
       serrationFrequency: 0,
-      fullerDepth: 0.02,
-      fullerLength: 0.6
+      // Disable fullers by default to avoid stray rectangles for new users
+      fullerDepth: 0.0,
+      fullerLength: 0.0,
+      fullerEnabled: false,
+      sweepSegments: 128,
+      chaos: 0.0
     },
     guard: {
       width: 1.2,
@@ -393,7 +491,10 @@ export function defaultSwordParams(): SwordParams {
       length: 0.9,
       radiusTop: 0.12,
       radiusBottom: 0.12,
-      segmentation: true
+      segmentation: true,
+      wrapEnabled: false,
+      wrapTurns: 6,
+      wrapDepth: 0.015
     },
     pommel: {
       size: 0.16,
@@ -406,21 +507,81 @@ export function defaultSwordParams(): SwordParams {
 
 function buildFullerOverlays(b: BladeParams): THREE.Group {
   const group = new THREE.Group();
-  const color = 0x475569; // darker groove
-  const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.3, roughness: 0.7 });
-  const length = b.length * THREE.MathUtils.clamp(b.fullerLength ?? 0, 0, 1);
-  const width = Math.max(0.01, (b.baseWidth * 0.4));
-  const depth = Math.min(b.thickness * 0.6, Math.max(0.005, b.fullerDepth ?? 0.01));
-  const offsetY = length * 0.5; // center along blade upper half
 
-  // Two grooves on both sides (z near 0 and z near thickness)
-  const buildStrip = (z: number) => {
-    const geo = new THREE.BoxGeometry(width, length, depth);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(0, offsetY + 0.1, z);
-    return mesh;
+  const totalLen = b.length;
+  const reqLen = totalLen * THREE.MathUtils.clamp(b.fullerLength ?? 0, 0, 1);
+  // Clearance from base and tip
+  const baseClear = Math.max(0.05, 0.18 * (b.baseWidth || 0.2));
+  const tipClear = Math.max(0.05, 0.12 * (b.baseWidth || 0.2));
+  const y0 = baseClear;
+  const y1 = Math.max(y0, totalLen - tipClear);
+  const usableLen = Math.max(0, Math.min(reqLen, y1 - y0));
+  if (usableLen < 0.08) return group; // too short: skip to avoid tiny rectangles
+
+  const segments = 64;
+  const margin = Math.max(0.015, 0.12 * (b.baseWidth || 0.2));
+  const serrAmp = b.serrationAmplitude ?? 0;
+  const serrFreq = b.serrationFrequency ?? 0;
+
+  // Visual depth effect: darker and slightly more inset with depth
+  const depthNorm = THREE.MathUtils.clamp((b.fullerDepth ?? 0) / 0.08, 0, 1);
+  const baseColor = new THREE.Color(0x475569);
+  const shade = baseColor.clone().multiplyScalar(1 - 0.6 * depthNorm);
+  const mat = new THREE.MeshStandardMaterial({
+    color: shade,
+    metalness: 0.3,
+    roughness: 0.7,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -1 - 2 * depthNorm,
+    polygonOffsetUnits: -2 - 2 * depthNorm
+  });
+
+  // Build a ribbon that follows curvature and taper
+  const buildRibbon = (z: number) => {
+    const positions: number[] = [];
+    const index: number[] = [];
+    const pushVertex = (x: number, y: number) => {
+      positions.push(x, y, z);
+    };
+    for (let i = 0; i <= segments; i++) {
+      const tLocal = i / segments; // 0..1 along ribbon
+      const y = y0 + tLocal * usableLen;
+      const tBlade = THREE.MathUtils.clamp(y / totalLen, 0, 1);
+      // Local half width of blade at this Y, including serrations
+      const baseW = b.baseWidth * 0.5;
+      const tipW = b.tipWidth * 0.5;
+      const wHalf = baseW + (tipW - baseW) * tBlade + (serrAmp > 0 && serrFreq > 0 ? Math.sin(tBlade * Math.PI * serrFreq) * 0.5 * serrAmp * (1 - tBlade) : 0);
+      const fHalf = Math.max(0.004, wHalf - margin);
+      // Curvature centerline offset (match blade bend profile)
+      const bend = (b.curvature || 0) * (tBlade * tBlade - tBlade) * totalLen;
+      const xL = -fHalf + bend;
+      const xR = +fHalf + bend;
+      pushVertex(xL, y);
+      pushVertex(xR, y);
+    }
+    for (let i = 0; i < segments; i++) {
+      const a = i * 2;
+      const bIdx = a + 1;
+      const c = a + 2;
+      const d = a + 3;
+      // two triangles (a, b, d) and (a, d, c)
+      index.push(a, bIdx, d, a, d, c);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setIndex(index);
+    geo.computeVertexNormals();
+    return new THREE.Mesh(geo, mat);
   };
-  group.add(buildStrip(depth * 0.25), buildStrip(b.thickness - depth * 0.25));
+
+  const halfT = b.thickness * 0.5;
+  const eps = 0.0006;
+  const inset = depthNorm * (halfT - eps * 8) * 0.8; // deeper depth -> more inset
+  const frontZ = halfT - eps - inset;
+  const backZ = -frontZ;
+  group.add(buildRibbon(frontZ));
+  group.add(buildRibbon(backZ));
   return group;
 }
 

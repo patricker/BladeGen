@@ -23,16 +23,19 @@
         border-radius: 6px;
         font-family: system-ui, sans-serif;
       }
-      #sidebar h2 { margin: 6px 0 8px; font-size: 14px; color: #cbd5e1; }
+      #sidebar h2 { margin: 6px 0 8px; font-size: 14px; color: #cbd5e1; display:flex; align-items:center; gap:6px; }
       .row { display: grid; grid-template-columns: 1fr 60px; gap: 8px; align-items: center; margin: 6px 0; }
       .row label { font-size: 12px; color: #94a3b8; }
       .row input[type="range"] { width: 100%; }
       .row input[type="number"], .row select { width: 60px; background: #0f1115; color: #e2e8f0; border: 1px solid #2a2e37; border-radius: 4px; padding: 2px 4px; }
       .section { margin: 10px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #222; }
+      .section:hover { background: rgba(255,255,255,0.02); border-radius: 4px; }
       .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
       .toolbar button { background: #334155; color: #e2e8f0; border: 1px solid #475569; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
       .toolbar button:hover { background: #3b4a63; }
-    </style>
+      .section h2 button { background:#475569; border:1px solid #64748b; color:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px; }
+      .section h2 button:hover { background:#516079; }
+   </style>
   </head>
   <body>
     <div id="app">

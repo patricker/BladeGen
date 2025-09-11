@@ -66,7 +66,7 @@
 
   * [x] `length`, `radiusTop`, `radiusBottom`.
   * [x] `segmentation` (wrap ridges toggle).
-* [ ] Optional wrap texture (procedural stripes).
+* [x] Optional wrap texture (procedural stripes).
 
 ### 7. Pommel Geometry
 
@@ -115,14 +115,50 @@
 ### 12. Fantasy Enhancements
 
 * [x] Add “chaos” param: jagged/noisy blade edges.
-* [ ] Add “symmetry toggle”: asymmetrical designs.
-* [ ] Add “stylization slider”: realistic ↔ exaggerated scaling.
+* [x] Add “symmetry toggle”: asymmetrical designs.
+* [x] Add “stylization slider”: realistic ↔ exaggerated scaling.
 * [ ] Add decorative noise/displacement.
+
+### 12b. KNOBS.md Coverage — New TODOs
+
+- Blade
+  - [ ] Twist angle (spiral/twisted blades)
+  - [ ] Tip shape control (pointed ↔ rounded ↔ leaf)
+  - [ ] Cross‑section profile (diamond ↔ lenticular ↔ hexagonal)
+  - [ ] Edge bevel angle (sharp vs thick edge)
+  - [ ] Double‑edge toggle (single/double edged rendering)
+  - [ ] Number of fullers (1–3) and layout
+  - [ ] Dedicated taper ratio knob (alt to base/tip widths)
+  - [ ] Serration per side (independent L/R; one‑sided)
+  - [ ] Thickness per side (edge thickness per edge)
+  - [ ] Edge type: single vs double‑edged (with dull‑side thickness control)
+
+- Guard / Crosspiece
+  - [ ] Guard height (vertical offset/clearance)
+  - [ ] Quillons: count and length
+  - [ ] Ornamentation complexity (flat ↔ ornate)
+  - [ ] Guard tip style as continuous control
+  - [ ] Asymmetry toggle for guard arms
+  - [ ] Tsuba/disk guard details (slot, optional cutouts)
+  - [ ] Habaki collar (blade collar at guard)
+
+- Handle / Grip
+  - [ ] Segmentation count (rings/bands)
+  - [ ] Grip flare at pommel
+  - [ ] Handle curvature (straight ↔ slightly bent)
+  - [ ] Tang visibility (hidden ↔ full tang)
+  - [ ] Oval handle cross-section (katana tsuka shape)
+
+- Pommel
+  - [ ] Offset (centered ↔ angled)
+  - [ ] Facet count (gem‑like)
+  - [ ] Balance weight ratio (vs blade mass)
+  - [ ] Spike length (when applicable)
 
 ### 13. Validation & Feedback
 
 * [x] Implement soft warnings for extreme ratios (e.g. guard >> blade).
-* [ ] Non-blocking indicators (icon + tooltip).
+* [x] Non-blocking indicators (icon + tooltip).
 * [x] Ensure geometry doesn’t break on extremes (clamps + rebuild path).
 
 ---
@@ -159,8 +195,8 @@
 
 ### 18. Documentation
 
-* [ ] Write developer docs: parameter definitions, code structure.
-* [ ] Write user guide: how to use presets, randomizer, export.
+* [x] Write developer docs: parameter definitions, code structure.
+* [x] Write user guide: how to use presets, randomizer, export.
 
 ### 19. Deployment
 

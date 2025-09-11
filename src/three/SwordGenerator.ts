@@ -8,14 +8,17 @@ export type BladeParams = {
   curvature: number; // -1..1, bends along x
   serrationAmplitude?: number; // 0..(baseWidth/4)
   serrationFrequency?: number; // cycles along blade
+  serrationAmplitudeLeft?: number; // independent L/R serration
+  serrationAmplitudeRight?: number;
   fullerDepth?: number; // visual groove depth hint
   fullerLength?: number; // 0..1 portion of blade length
   fullerEnabled?: boolean; // render fuller overlays
   sweepSegments?: number; // longitudinal detail for blade sweep
   chaos?: number; // 0..1 small edge roughness
+  asymmetry?: number; // -1..1 widen right(+) or left(-)
 };
 
-export type GuardStyle = 'bar' | 'winged' | 'claw';
+export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk';
 export type GuardParams = {
   width: number;
   thickness: number;
@@ -34,6 +37,9 @@ export type HandleParams = {
   wrapTurns?: number; // number of helical turns along length
   wrapDepth?: number; // radial amplitude of wrap
   phiSegments?: number; // radial tessellation
+  wrapTexture?: boolean; // enable procedural wrap texture
+  wrapTexScale?: number; // texture repeat scale
+  wrapTexAngle?: number; // stripe angle in radians
 };
 
 export type PommelStyle = 'orb' | 'disk' | 'spike';
@@ -167,6 +173,14 @@ export class SwordGenerator {
       // Center so that top of the bar meets blade base
       this.guardMesh.position.set(0, targetTopY - GUARD_HEIGHT * 0.5, 0);
       this.group.add(this.guardMesh);
+    } else if (g.style === 'disk') {
+      const radius = Math.max(0.05, g.width * 0.5);
+      const heightY = Math.max(0.04, Math.min(0.2, g.thickness));
+      const geo = new THREE.CylinderGeometry(radius, radius, heightY, 48);
+      const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.45 });
+      this.guardMesh = new THREE.Mesh(geo, mat);
+      this.guardMesh.position.set(0, targetTopY, 0);
+      this.group.add(this.guardMesh);
     } else {
       const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.45, side: THREE.DoubleSide });
       const half = buildGuardHalfShape(g);
@@ -243,6 +257,11 @@ export class SwordGenerator {
       geo.computeVertexNormals();
     }
     const mat = new THREE.MeshStandardMaterial({ color: 0x5a6b78, metalness: 0.2, roughness: 0.8 });
+    if (h.wrapTexture) {
+      const tex = makeWrapTexture(h.wrapTexScale ?? 10, h.wrapTexAngle ?? (Math.PI / 4));
+      mat.map = tex;
+      mat.needsUpdate = true;
+    }
     this.handleMesh = new THREE.Mesh(geo, mat);
     this.handleMesh.position.y = -h.length * 0.5;
     this.group.add(this.handleMesh);
@@ -294,13 +313,16 @@ export class SwordGenerator {
       thickness: clamp(b.thickness, 0.01, 2),
       curvature: clamp(b.curvature, -1, 1),
       serrationAmplitude: clamp(b.serrationAmplitude ?? 0, 0, (b.baseWidth || 0.2) / 3),
+      serrationAmplitudeLeft: clamp((b.serrationAmplitudeLeft ?? b.serrationAmplitude ?? 0), 0, (b.baseWidth || 0.2) / 3),
+      serrationAmplitudeRight: clamp((b.serrationAmplitudeRight ?? b.serrationAmplitude ?? 0), 0, (b.baseWidth || 0.2) / 3),
       serrationFrequency: clamp(b.serrationFrequency ?? 0, 0, 40),
       fullerDepth: clamp(b.fullerDepth ?? 0, 0, 0.2),
-    fullerLength: clamp(b.fullerLength ?? 0, 0, 1),
-    fullerEnabled: !!b.fullerEnabled,
-    sweepSegments: Math.round(clamp(b.sweepSegments ?? 128, 16, 512)),
-    chaos: clamp(b.chaos ?? 0, 0, 1)
-  };
+      fullerLength: clamp(b.fullerLength ?? 0, 0, 1),
+      fullerEnabled: !!b.fullerEnabled,
+      sweepSegments: Math.round(clamp(b.sweepSegments ?? 128, 16, 512)),
+      chaos: clamp(b.chaos ?? 0, 0, 1),
+      asymmetry: clamp(b.asymmetry ?? 0, -1, 1)
+    };
 
     const g = params.guard;
     const guard: GuardParams = {
@@ -321,7 +343,10 @@ export class SwordGenerator {
       wrapEnabled: !!h.wrapEnabled,
       wrapTurns: clamp(h.wrapTurns ?? 6, 0, 40),
       wrapDepth: clamp(h.wrapDepth ?? 0.015, 0, 0.08),
-      phiSegments: Math.round(clamp(h.phiSegments ?? 64, 8, 128))
+      phiSegments: Math.round(clamp(h.phiSegments ?? 64, 8, 128)),
+      wrapTexture: !!h.wrapTexture,
+      wrapTexScale: clamp(h.wrapTexScale ?? 10, 1, 64),
+      wrapTexAngle: clamp(h.wrapTexAngle ?? (Math.PI / 4), -Math.PI, Math.PI)
     };
 
     const pm = params.pommel;
@@ -332,7 +357,16 @@ export class SwordGenerator {
       shapeMorph: clamp(pm.shapeMorph, 0, 1)
     };
 
-    return { blade, guard, handle, pommel };
+    // Stylization: exaggerate proportions globally
+    const style = clamp((params as any).styleFactor ?? 0, 0, 1);
+    if (style > 0) {
+      blade.curvature *= (1 + 0.8 * style);
+      guard.width *= (1 + 1.0 * style);
+      guard.curve *= (1 + 0.8 * style);
+      pommel.size *= (1 + 0.5 * style);
+    }
+
+    return { blade, guard, handle, pommel } as any as SwordParams;
   }
 
   private disposeMesh(mesh: THREE.Mesh) {
@@ -365,6 +399,8 @@ function buildBladeShape(b: BladeParams): THREE.Shape {
   const pointsLeft: THREE.Vector2[] = [];
   const steps = 100;
   const serrAmp = b.serrationAmplitude ?? 0;
+  const serrAmpL = b.serrationAmplitudeLeft ?? serrAmp;
+  const serrAmpR = b.serrationAmplitudeRight ?? serrAmp;
   const serrFreq = b.serrationFrequency ?? 0;
 
   for (let i = 0; i <= steps; i++) {
@@ -392,25 +428,31 @@ export function buildBladeOutlinePoints(b: BladeParams): THREE.Vector2[] {
   const tipW = Math.max(0, b.tipWidth);
   const steps = 200;
   const serrAmp = b.serrationAmplitude ?? 0;
+  const serrAmpL = b.serrationAmplitudeLeft ?? serrAmp;
+  const serrAmpR = b.serrationAmplitudeRight ?? serrAmp;
   const serrFreq = b.serrationFrequency ?? 0;
   const pts: THREE.Vector2[] = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     const y = t * length;
     const w = baseW + (tipW - baseW) * t;
-    const serr = serrAmp > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmp * (1 - t) : 0;
-    const half = Math.max(0.001, w * 0.5 + serr);
+    const serrR = serrAmpR > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpR * (1 - t) : 0;
+    const half = Math.max(0.001, w * 0.5);
+    const asym = (b.asymmetry ?? 0);
+    const rightHalf = Math.max(0.0005, (half + serrR) * (1 + 0.5 * asym));
     const bend = (b.curvature || 0) * (t * t - t) * length;
-    pts.push(new THREE.Vector2(+half + bend, y));
+    pts.push(new THREE.Vector2(+rightHalf + bend, y));
   }
   for (let i = steps; i >= 0; i--) {
     const t = i / steps;
     const y = t * length;
     const w = baseW + (tipW - baseW) * t;
-    const serr = serrAmp > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmp * (1 - t) : 0;
-    const half = Math.max(0.001, w * 0.5 + serr);
+    const serrL = serrAmpL > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpL * (1 - t) : 0;
+    const half = Math.max(0.001, w * 0.5);
+    const asym = (b.asymmetry ?? 0);
+    const leftHalf = Math.max(0.0005, (half + serrL) * (1 - 0.5 * asym));
     const bend = (b.curvature || 0) * (t * t - t) * length;
-    pts.push(new THREE.Vector2(-half + bend, y));
+    pts.push(new THREE.Vector2(-leftHalf + bend, y));
   }
   return pts;
 }
@@ -434,6 +476,35 @@ export function bladeOutlineToSVG(points: THREE.Vector2[], stroke = '#e2e8f0'): 
   return svg;
 }
 
+function makeWrapTexture(scale: number, angleRad: number): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  // Background
+  ctx.fillStyle = '#2a313a';
+  ctx.fillRect(0, 0, size, size);
+  // Draw diagonal stripes
+  ctx.save();
+  ctx.translate(size / 2, size / 2);
+  ctx.rotate(angleRad);
+  ctx.translate(-size / 2, -size / 2);
+  const stripe = Math.max(2, Math.floor(size / scale));
+  const gap = Math.max(2, Math.floor(stripe * 0.6));
+  ctx.fillStyle = '#3d4754';
+  for (let x = -size; x < size * 2; x += stripe + gap) {
+    ctx.fillRect(x, -size, stripe, size * 3);
+  }
+  ctx.restore();
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 6);
+  tex.colorSpace = THREE.SRGBColorSpace as any;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   const L = Math.max(0.01, b.length);
   const T = Math.max(0.001, b.thickness);
@@ -442,6 +513,8 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   const tipW = Math.max(0, b.tipWidth);
   const segs = Math.max(16, Math.min(512, Math.round(b.sweepSegments ?? 128))); // longitudinal resolution
   const serrAmp = b.serrationAmplitude ?? 0;
+  const serrAmpL = b.serrationAmplitudeLeft ?? serrAmp;
+  const serrAmpR = b.serrationAmplitudeRight ?? serrAmp;
   const serrFreq = b.serrationFrequency ?? 0;
   const chaos = b.chaos ?? 0;
 
@@ -461,15 +534,19 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     const t = i / segs;
     const y = t * L;
     const w = baseW + (tipW - baseW) * t;
-    const serr = serrAmp > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmp * (1 - t) : 0;
+    const serrL = serrAmpL > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpL * (1 - t) : 0;
+    const serrR = serrAmpR > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpR * (1 - t) : 0;
     // Chaos profile: bounded, smooth pseudo-noise (two sines)
     const c1 = Math.sin(t * Math.PI * 16.0 + 1.3);
     const c2 = Math.sin(t * Math.PI * 9.7 + 0.6);
     const chaosOffset = (c1 * 0.6 + c2 * 0.4) * chaos * 0.08 * baseW * (1.0 - t * 0.6);
-    const half = Math.max(0.001, w * 0.5 + serr + chaosOffset);
+    const baseHalf = Math.max(0.001, w * 0.5 + chaosOffset);
+    const asym = (b.asymmetry ?? 0);
+    const leftHalf = Math.max(0.0005, (baseHalf + serrL) * (1 - 0.5 * asym));
+    const rightHalf = Math.max(0.0005, (baseHalf + serrR) * (1 + 0.5 * asym));
     const bend = (b.curvature || 0) * (t * t - t) * L;
-    const xl = -half + bend;
-    const xr = +half + bend;
+    const xl = -leftHalf + bend;
+    const xr = +rightHalf + bend;
 
     // FL, FR at front face (z = -halfT); BL, BR at back face (z = +halfT)
     setV(i, 0, xl, y, -halfT);
@@ -530,7 +607,8 @@ export function defaultSwordParams(): SwordParams {
       fullerLength: 0.0,
       fullerEnabled: false,
       sweepSegments: 128,
-      chaos: 0.0
+      chaos: 0.0,
+      asymmetry: 0.0
     },
     guard: {
       width: 1.2,
@@ -547,7 +625,10 @@ export function defaultSwordParams(): SwordParams {
       wrapEnabled: false,
       wrapTurns: 6,
       wrapDepth: 0.015,
-      phiSegments: 64
+      phiSegments: 64,
+      wrapTexture: false,
+      wrapTexScale: 10,
+      wrapTexAngle: 0.7853981633974483
     },
     pommel: {
       size: 0.16,

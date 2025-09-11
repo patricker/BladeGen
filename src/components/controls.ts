@@ -99,11 +99,13 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Blade, 'Tip Width', 0, 0.5, 0.005, state.blade.tipWidth, (v) => (state.blade.tipWidth = v), rerender);
   slider(sections.Blade, 'Blade Thickness', 0.02, 0.2, 0.001, state.blade.thickness, (v) => (state.blade.thickness = v), rerender);
   slider(sections.Blade, 'Curvature', -1, 1, 0.01, state.blade.curvature, (v) => (state.blade.curvature = v), rerender, 'Bends the blade along its length (negative curves opposite).');
+  slider(sections.Blade, 'Asymmetry', -1, 1, 0.01, state.blade.asymmetry ?? 0, (v) => (state.blade.asymmetry = v), rerender, 'Positive widens right edge, negative widens left.');
   slider(sections.Blade, 'Chaos', 0, 1, 0.01, state.blade.chaos ?? 0, (v) => (state.blade.chaos = v), rerender, 'Adds small edge roughness for fantasy blades.');
   checkbox(sections.Blade, 'Enable Fullers', state.blade.fullerEnabled ?? false, (v) => (state.blade.fullerEnabled = v), rerender, 'Toggle decorative grooves along the blade faces.');
   slider(sections.Blade, 'Fuller Depth', 0, 0.1, 0.001, state.blade.fullerDepth ?? 0, (v) => (state.blade.fullerDepth = v), rerender, 'Visual depth/shading of the groove; not actual subtraction.');
   slider(sections.Blade, 'Fuller Length', 0, 1, 0.01, state.blade.fullerLength ?? 0, (v) => (state.blade.fullerLength = v), rerender, 'Portion of blade occupied by the groove (0..1).');
-  slider(sections.Blade, 'Serration Amp', 0, 0.2, 0.001, state.blade.serrationAmplitude ?? 0, (v) => (state.blade.serrationAmplitude = v), rerender, 'Amplitude of edge waviness along the blade.');
+  slider(sections.Blade, 'Serration Left', 0, 0.2, 0.001, state.blade.serrationAmplitudeLeft ?? (state.blade.serrationAmplitude ?? 0), (v) => (state.blade.serrationAmplitudeLeft = v), rerender, 'Left edge serration amplitude.');
+  slider(sections.Blade, 'Serration Right', 0, 0.2, 0.001, state.blade.serrationAmplitudeRight ?? (state.blade.serrationAmplitude ?? 0), (v) => (state.blade.serrationAmplitudeRight = v), rerender, 'Right edge serration amplitude.');
   slider(sections.Blade, 'Serration Freq', 0, 30, 1, state.blade.serrationFrequency ?? 0, (v) => (state.blade.serrationFrequency = v), rerender, 'Number of serration cycles along the blade.');
 
   // Guard controls
@@ -111,7 +113,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Guard, 'Guard Thickness', 0.05, 0.6, 0.005, state.guard.thickness, (v) => (state.guard.thickness = v), rerender);
   slider(sections.Guard, 'Curve', -1, 1, 0.01, state.guard.curve, (v) => (state.guard.curve = v), rerender, 'Bends ornate guards upward/downward.');
   slider(sections.Guard, 'Tilt', -1.57, 1.57, 0.01, state.guard.tilt, (v) => (state.guard.tilt = v), rerender, 'Rotates the guard around the blade axis.');
-  select(sections.Guard, 'Style', ['bar', 'winged', 'claw'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
+  select(sections.Guard, 'Style', ['bar', 'winged', 'claw', 'disk'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
   slider(sections.Guard, 'Guard Detail', 3, 64, 1, state.guard.curveSegments ?? 12, (v) => (state.guard.curveSegments = Math.round(v)), rerender, 'Detail for guard curves.');
 
   // Handle controls
@@ -123,6 +125,9 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Handle, 'Wrap Turns', 0, 20, 1, state.handle.wrapTurns ?? 6, (v) => (state.handle.wrapTurns = v), rerender, 'Number of helical cycles along the grip.');
   slider(sections.Handle, 'Wrap Depth', 0, 0.05, 0.001, state.handle.wrapDepth ?? 0.015, (v) => (state.handle.wrapDepth = v), rerender, 'Radial amplitude of the wrap pattern.');
   slider(sections.Handle, 'Handle Sides', 8, 128, 1, state.handle.phiSegments ?? 64, (v) => (state.handle.phiSegments = Math.round(v)), rerender, 'Radial tessellation (higher is smoother).');
+  checkbox(sections.Handle, 'Wrap Texture', state.handle.wrapTexture ?? false, (v) => (state.handle.wrapTexture = v), rerender, 'Procedural diagonal stripe texture on grip.');
+  slider(sections.Handle, 'Wrap Tex Scale', 1, 32, 1, state.handle.wrapTexScale ?? 10, (v) => (state.handle.wrapTexScale = Math.round(v)), rerender, 'Texture repeat scale.');
+  slider(sections.Handle, 'Wrap Tex Angle', -90, 90, 1, (state.handle.wrapTexAngle ?? (Math.PI/4)) * 180/Math.PI, (v) => (state.handle.wrapTexAngle = (v*Math.PI/180)), rerender, 'Stripe angle (degrees).');
 
   // Pommel controls
   select(sections.Pommel, 'Style', ['orb', 'disk', 'spike'], state.pommel.style, (v) => (state.pommel.style = v as any), rerender);
@@ -131,6 +136,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Pommel, 'Morph', 0, 1, 0.01, state.pommel.shapeMorph, (v) => (state.pommel.shapeMorph = v), rerender);
 
   // Other controls
+  slider(sections.Other, 'Stylization', 0, 1, 0.01, (state as any).styleFactor ?? 0, (v) => ((state as any).styleFactor = v), rerender, 'Exaggerates proportions (guard width, curvature, pommel size).');
   slider(sections.Other, 'Blade Detail', 16, 512, 1, state.blade.sweepSegments ?? 128, (v) => (state.blade.sweepSegments = Math.round(v)), rerender, 'Controls blade tessellation along its length.');
 
   // Presets handling
@@ -236,9 +242,13 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       w.push('Tip width close to base width');
       setWarn(el, 'Tip Width', true, 'Tip nearly as wide as base');
     }
-    if ((blade.serrationAmplitude ?? 0) > blade.baseWidth * 0.2) {
+    const serrL = blade.serrationAmplitudeLeft ?? (blade.serrationAmplitude ?? 0);
+    const serrR = blade.serrationAmplitudeRight ?? (blade.serrationAmplitude ?? 0);
+    const serrMax = Math.max(serrL, serrR);
+    if (serrMax > blade.baseWidth * 0.2) {
       w.push('Serration amplitude high for base width');
-      setWarn(el, 'Serration Amp', true, 'Serration amplitude is high');
+      setWarn(el, 'Serration Left', serrL > blade.baseWidth * 0.2, 'Left serration amplitude is high');
+      setWarn(el, 'Serration Right', serrR > blade.baseWidth * 0.2, 'Right serration amplitude is high');
     }
     warningsBox.innerHTML = w.length ? ('Warnings:\n- ' + w.join('\n- ')).replace(/\n/g, '<br/>') : 'No warnings';
   };
@@ -262,6 +272,7 @@ function clearWarns(root: HTMLElement) {
     (lab as HTMLElement).style.color = '';
     (lab as HTMLElement).title = (lab as HTMLElement).getAttribute('data-title') || (lab as HTMLElement).title;
   });
+  root.querySelectorAll('.row .warn-icon').forEach((el) => el.remove());
 }
 
 function setWarn(root: HTMLElement, labelText: string, on: boolean, tooltip?: string) {
@@ -274,6 +285,22 @@ function setWarn(root: HTMLElement, labelText: string, on: boolean, tooltip?: st
       if (!el.getAttribute('data-title')) el.setAttribute('data-title', el.title || '');
       el.style.color = on ? '#eab308' : '';
       if (on && tooltip) el.title = tooltip; else el.title = el.getAttribute('data-title') || '';
+      // Add/remove warn icon
+      const existing = row.querySelector('.warn-icon');
+      if (on) {
+        if (!existing) {
+          const icon = document.createElement('span');
+          icon.className = 'warn-icon';
+          icon.textContent = '⚠';
+          icon.title = tooltip || 'Extreme value';
+          icon.style.marginLeft = '4px';
+          icon.style.color = '#eab308';
+          icon.style.fontSize = '12px';
+          el.insertAdjacentElement('beforeend', icon);
+        }
+      } else {
+        existing?.remove();
+      }
       break;
     }
   }
@@ -376,12 +403,15 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Tip Width': params.blade.tipWidth,
     'Blade Thickness': params.blade.thickness,
     'Curvature': params.blade.curvature,
+    'Asymmetry': params.blade.asymmetry ?? 0,
     'Chaos': params.blade.chaos ?? 0,
     'Enable Fullers': params.blade.fullerEnabled ?? false,
     'Fuller Depth': params.blade.fullerDepth ?? 0,
     'Fuller Length': params.blade.fullerLength ?? 0,
-    'Serration Amp': params.blade.serrationAmplitude ?? 0,
+    'Serration Left': params.blade.serrationAmplitudeLeft ?? (params.blade.serrationAmplitude ?? 0),
+    'Serration Right': params.blade.serrationAmplitudeRight ?? (params.blade.serrationAmplitude ?? 0),
     'Serration Freq': params.blade.serrationFrequency ?? 0,
+    'Stylization': (params as any).styleFactor ?? 0,
     'Blade Detail': params.blade.sweepSegments ?? 128,
     'Width': params.guard.width,
     'Guard Thickness': params.guard.thickness,
@@ -397,6 +427,9 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Wrap Turns': params.handle.wrapTurns ?? 6,
     'Wrap Depth': params.handle.wrapDepth ?? 0.015,
     'Handle Sides': params.handle.phiSegments ?? 64,
+    'Wrap Texture': params.handle.wrapTexture ?? false,
+    'Wrap Tex Scale': params.handle.wrapTexScale ?? 10,
+    'Wrap Tex Angle': ((params.handle.wrapTexAngle ?? (Math.PI/4)) * 180/Math.PI),
     'Style_p': params.pommel.style,
     'Size': params.pommel.size,
     'Elongation': params.pommel.elongation,
@@ -445,8 +478,16 @@ function randomizeBlade(p: SwordParams, safe: boolean) {
   p.blade.thickness = safe ? r(0.05, 0.12) : r(0.02, 0.18);
   p.blade.curvature = safe ? r(-0.2, 0.4) : r(-0.8, 0.8);
   p.blade.chaos = safe ? r(0, 0.2) : r(0, 0.6);
-  p.blade.serrationAmplitude = safe ? 0 : r(0, 0.15);
-  p.blade.serrationFrequency = p.blade.serrationAmplitude! > 0 ? Math.floor(r(2, safe ? 8 : 20)) : 0;
+  const amp = safe ? 0 : r(0, 0.15);
+  const sideMode = Math.random();
+  if (sideMode < 0.33) {
+    p.blade.serrationAmplitudeLeft = amp; p.blade.serrationAmplitudeRight = 0;
+  } else if (sideMode < 0.66) {
+    p.blade.serrationAmplitudeLeft = 0; p.blade.serrationAmplitudeRight = amp;
+  } else {
+    p.blade.serrationAmplitudeLeft = amp; p.blade.serrationAmplitudeRight = amp;
+  }
+  p.blade.serrationFrequency = (p.blade.serrationAmplitudeLeft! > 0 || p.blade.serrationAmplitudeRight! > 0) ? Math.floor(r(2, safe ? 8 : 20)) : 0;
   p.blade.fullerEnabled = Math.random() > 0.6;
   p.blade.fullerDepth = p.blade.fullerEnabled ? (safe ? r(0.01, 0.04) : r(0, 0.08)) : 0;
   p.blade.fullerLength = p.blade.fullerEnabled ? (safe ? r(0.4, 0.8) : r(0, 1)) : 0;
@@ -459,7 +500,7 @@ function randomizeGuard(p: SwordParams, safe: boolean) {
   p.guard.thickness = safe ? r(0.1, 0.25) : r(0.08, 0.5);
   p.guard.curve = safe ? r(-0.3, 0.6) : r(-1, 1);
   p.guard.tilt = safe ? r(-0.2, 0.2) : r(-0.6, 0.6);
-  p.guard.style = (['bar', 'winged', 'claw'] as const)[Math.floor(r(0, 3))];
+  p.guard.style = (['bar', 'winged', 'claw', 'disk'] as const)[Math.floor(r(0, 4))] as any;
 }
 
 function randomizeHandle(p: SwordParams, safe: boolean) {
@@ -471,6 +512,9 @@ function randomizeHandle(p: SwordParams, safe: boolean) {
   p.handle.wrapEnabled = Math.random() > 0.5;
   p.handle.wrapTurns = p.handle.wrapEnabled ? Math.floor(r(4, 12)) : 6;
   p.handle.wrapDepth = p.handle.wrapEnabled ? (safe ? r(0.006, 0.02) : r(0.003, 0.035)) : 0.015;
+  p.handle.wrapTexture = Math.random() > 0.5;
+  p.handle.wrapTexScale = p.handle.wrapTexture ? Math.floor(r(6, 16)) : 10;
+  p.handle.wrapTexAngle = p.handle.wrapTexture ? ((r(-60, 60)) * Math.PI / 180) : (Math.PI/4);
 }
 
 function randomizePommel(p: SwordParams, safe: boolean) {
@@ -483,10 +527,12 @@ function randomizePommel(p: SwordParams, safe: boolean) {
 
 function presetKatana(): SwordParams {
   const p = defaultSwordParams();
-  p.blade.length = 3.4; p.blade.baseWidth = 0.22; p.blade.tipWidth = 0.06; p.blade.curvature = 0.25; p.blade.thickness = 0.08; p.blade.fullerEnabled = true; p.blade.fullerDepth = 0.015; p.blade.fullerLength = 0.7;
-  p.guard.style = 'bar'; p.guard.width = 0.9; p.guard.thickness = 0.18; p.guard.curve = 0;
-  p.handle.length = 1.1; p.handle.radiusTop = 0.12; p.handle.radiusBottom = 0.12; p.handle.segmentation = true;
-  p.pommel.style = 'disk'; p.pommel.size = 0.15; p.pommel.elongation = 1.0; p.pommel.shapeMorph = 0.2;
+  // Katana: curved, single-edged look, slender blade, tsuba disk guard, long wrapped handle
+  p.blade.length = 3.3; p.blade.baseWidth = 0.22; p.blade.tipWidth = 0.06; p.blade.curvature = 0.25; p.blade.thickness = 0.08;
+  p.blade.fullerEnabled = false; p.blade.fullerDepth = 0; p.blade.fullerLength = 0; (p.blade as any).asymmetry = 0.2; p.blade.chaos = 0.05;
+  p.guard.style = 'disk'; p.guard.width = 0.36; p.guard.thickness = 0.1; p.guard.curve = 0; p.guard.tilt = 0;
+  p.handle.length = 1.1; p.handle.radiusTop = 0.11; p.handle.radiusBottom = 0.11; p.handle.segmentation = false; p.handle.wrapEnabled = true; (p.handle as any).wrapTexture = true; p.handle.wrapTurns = 10; p.handle.wrapDepth = 0.012;
+  p.pommel.style = 'disk'; p.pommel.size = 0.12; p.pommel.elongation = 1.0; p.pommel.shapeMorph = 0.1;
   return p;
 }
 

@@ -44,10 +44,16 @@ export function setupScene(canvas: HTMLCanvasElement) {
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
   controls.target.set(0, 1, 0);
-  let spinEnabled = true;
-  controls.addEventListener('start', () => { spinEnabled = false; });
-  controls.addEventListener('end', () => { setTimeout(() => { spinEnabled = true; }, 600); });
-  canvas.addEventListener('wheel', () => { spinEnabled = false; clearTimeout((canvas as any).__wheelTO); (canvas as any).__wheelTO = setTimeout(()=>{ spinEnabled = true; }, 600); }, { passive: true });
+  // Auto-rotation pause handling
+  let isDragging = false;
+  let spinResumeAt = 0; // ms timestamp when spin may resume
+  const resumeDelayMs = 1500; // wait after last interaction before resuming
+  const nownow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const bumpResume = () => { spinResumeAt = nownow() + resumeDelayMs; };
+  controls.addEventListener('start', () => { isDragging = true; });
+  controls.addEventListener('change', () => { bumpResume(); });
+  controls.addEventListener('end', () => { isDragging = false; bumpResume(); });
+  canvas.addEventListener('wheel', () => { bumpResume(); }, { passive: true });
 
   // Lights
   const amb = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
@@ -96,8 +102,9 @@ export function setupScene(canvas: HTMLCanvasElement) {
   const clock = new THREE.Clock();
   const bbox = new THREE.Box3();
   const tick = () => {
-    const t = clock.getElapsedTime();
-    if (spinEnabled) sword.group.rotation.y = t * 0.25;
+    const dt = clock.getDelta();
+    const allowSpin = !isDragging && nownow() >= spinResumeAt;
+    if (allowSpin) sword.group.rotation.y += dt * 0.25;
     sword.group.position.y = 0.0;
     // Keep ground slightly below sword's lowest point to avoid occlusion
     bbox.setFromObject(sword.group);
@@ -277,6 +284,107 @@ export function setupScene(canvas: HTMLCanvasElement) {
       dir1.shadow.mapSize.set(size, size);
       dir1.shadow.dispose?.();
     },
+    // Procedural bump/noise on selected part
+    setPartBump: (part: 'blade'|'guard'|'handle'|'pommel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => {
+      const makeNoiseTexture = (scale = 8, seedVal = 1337) => {
+        const size = 256;
+        const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+        // seeded PRNG
+        let s = seedVal | 0; const rnd = () => { s ^= s << 13; s ^= s >> 17; s ^= s << 5; return ((s>>>0) % 1000000) / 1000000; };
+        const img = ctx.createImageData(size, size);
+        for (let y=0; y<size; y++) {
+          for (let x=0; x<size; x++) {
+            const nx = (x/size) * scale, ny = (y/size) * scale;
+            // simple value noise: 3 octave hash-based noise
+            const h = (u:number,v:number) => { const n = Math.sin(u*12.9898+v*78.233)*43758.5453; return n - Math.floor(n); };
+            let n = 0, amp = 1, freq = 1;
+            for (let o=0;o<3;o++){ n += h(Math.floor(nx*freq)+o*7, Math.floor(ny*freq)+o*19) * amp; amp *= 0.5; freq *= 2; }
+            const v = Math.max(0, Math.min(255, Math.floor(n * 255)));
+            const idx = (y*size + x)*4; img.data[idx]=v; img.data[idx+1]=v; img.data[idx+2]=v; img.data[idx+3]=255;
+          }
+        }
+        ctx.putImageData(img, 0, 0);
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.needsUpdate = true;
+        return tex;
+      };
+      const apply = (obj?: THREE.Object3D|null) => {
+        if (!obj) return; obj.traverse((o)=>{
+          const mat = (o as any).material as any; if (!mat) return;
+          if (enabled) {
+            mat.bumpMap = makeNoiseTexture(noiseScale ?? 8, seed ?? 1337);
+            mat.bumpScale = (bumpScale ?? 0.02);
+          } else {
+            mat.bumpMap = null; mat.bumpScale = 0;
+          }
+          mat.needsUpdate = true;
+        });
+      };
+      if (part === 'blade') apply(sword.bladeMesh);
+      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any)['guardGroup']); }
+      if (part === 'handle') apply(sword.handleMesh);
+      if (part === 'pommel') apply(sword.pommelMesh);
+    },
+    // Blade gradient/wear overlay
+    setBladeGradientWear: (() => {
+      let gwGroup: THREE.Group | null = null;
+      const build = (base: number, edge: number, edgeFade: number, wear: number) => {
+        if (!sword.bladeMesh) return null;
+        const bbox = new THREE.Box3().setFromObject(sword.bladeMesh);
+        const yMin = bbox.min.y, yMax = bbox.max.y;
+        const mat = new THREE.ShaderMaterial({
+          uniforms: {
+            uBase: { value: new THREE.Color(base) },
+            uEdge: { value: new THREE.Color(edge) },
+            uYMin: { value: yMin },
+            uYMax: { value: yMax },
+            uEdgeFade: { value: edgeFade },
+            uWear: { value: wear }
+          },
+          vertexShader: `
+            varying vec3 vWorldPos; varying vec3 vNormal;
+            void main(){ vec4 wp = modelMatrix * vec4(position,1.0); vWorldPos = wp.xyz; vNormal = normalize(normalMatrix*normal); gl_Position = projectionMatrix * viewMatrix * wp; }
+          `,
+          fragmentShader: `
+            uniform vec3 uBase; uniform vec3 uEdge; uniform float uYMin; uniform float uYMax; uniform float uEdgeFade; uniform float uWear;
+            varying vec3 vWorldPos; varying vec3 vNormal;
+            float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+            void main(){
+              float t = clamp((vWorldPos.y - uYMin) / max(1e-6, (uYMax - uYMin)), 0.0, 1.0);
+              vec3 col = mix(uBase, uEdge, t);
+              // crude edge fade based on normal's XZ tilt (simulates side edges)
+              float edge = pow(1.0 - abs(normalize(vNormal).z), 1.0);
+              float fade = smoothstep(1.0 - uEdgeFade, 1.0, edge);
+              // wear noise
+              float n = hash(vWorldPos.xz*4.0);
+              col *= mix(1.0, 0.7 + 0.3*n, uWear * fade);
+              gl_FragColor = vec4(col, 0.35); // transparent overlay
+            }
+          `,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.MultiplyBlending,
+          side: THREE.FrontSide
+        });
+        const g = new THREE.Group();
+        const addCopy = (mesh: THREE.Mesh) => {
+          const copy = new THREE.Mesh(mesh.geometry, mat);
+          copy.position.copy(mesh.position); copy.quaternion.copy(mesh.quaternion); copy.scale.copy(mesh.scale);
+          g.add(copy);
+        };
+        addCopy(sword.bladeMesh);
+        return g;
+      };
+      return (enabled: boolean, base?: number, edge?: number, edgeFade?: number, wear?: number) => {
+        if (gwGroup) { scene.remove(gwGroup); gwGroup = null; }
+        if (enabled) {
+          gwGroup = build(base ?? 0xb9c6ff, edge ?? 0xffffff, edgeFade ?? 0.2, wear ?? 0.2);
+          if (gwGroup) scene.add(gwGroup);
+        }
+      };
+    })(),
     setFresnel: (enabled: boolean, colorHex?: number, intensity?: number, power?: number) => {
       if (fresnelGroup) { scene.remove(fresnelGroup); fresnelGroup = null; }
       if (enabled) {
@@ -325,7 +433,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
         });
       };
       if (part === 'blade') apply(sword.bladeMesh);
-      if (part === 'guard') { apply(sword.guardMesh); apply(sword as any)['guardGroup']; }
+      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
       if (part === 'handle') apply(sword.handleMesh);
       if (part === 'pommel') apply(sword.pommelMesh);
     },
@@ -334,7 +442,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
         if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'metalness' in m) m.metalness = v; });
       };
       if (part === 'blade') apply(sword.bladeMesh);
-      if (part === 'guard') { apply(sword.guardMesh); apply(sword as any)['guardGroup']; }
+      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
       if (part === 'handle') apply(sword.handleMesh);
       if (part === 'pommel') apply(sword.pommelMesh);
     },
@@ -343,7 +451,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
         if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'roughness' in m) m.roughness = v; });
       };
       if (part === 'blade') apply(sword.bladeMesh);
-      if (part === 'guard') { apply(sword.guardMesh); apply(sword as any)['guardGroup']; }
+      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
       if (part === 'handle') apply(sword.handleMesh);
       if (part === 'pommel') apply(sword.pommelMesh);
     },
@@ -352,7 +460,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
         if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'clearcoat' in m) m.clearcoat = v; });
       };
       if (part === 'blade') apply(sword.bladeMesh);
-      if (part === 'guard') { apply(sword.guardMesh); apply(sword as any)['guardGroup']; }
+      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
       if (part === 'handle') apply(sword.handleMesh);
       if (part === 'pommel') apply(sword.pommelMesh);
     },
@@ -361,7 +469,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
         if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'clearcoatRoughness' in m) m.clearcoatRoughness = v; });
       };
       if (part === 'blade') apply(sword.bladeMesh);
-      if (part === 'guard') { apply(sword.guardMesh); apply(sword as any)['guardGroup']; }
+      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
       if (part === 'handle') apply(sword.handleMesh);
       if (part === 'pommel') apply(sword.pommelMesh);
     },

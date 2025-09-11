@@ -257,19 +257,19 @@ This phase focuses on visual fidelity and performance, guided by renderguidance.
 
 ## 23. Materials: PBR and Procedural
 
-* [ ] Material presets per part
-  * [ ] Blade: MeshPhysicalMaterial base (metalness/roughness/clearcoat)
-  * [ ] Guard: metal presets (iron/bronze/brass) with tinted specular
-  * [ ] Handle: leather/wood wrap (dielectric, high roughness)
-  * [ ] Pommel: matches guard with variation
-* [ ] Procedural bump/noise (Technique 1)
-  * [ ] Noise DataTexture generator (seed/scale/intensity)
-  * [ ] Hook into bumpMap/normalMap (bumpScale knob)
-  * [ ] Per‑part toggles (blade/guard/handle/pommel)
-* [ ] Gradient/wear shader overlay (Technique 5)
-  * [ ] ShaderMaterial with gradient base→tip, edge fade, optional noise
+* [x] Material presets per part
+  * [x] Blade: MeshPhysicalMaterial base (metalness/roughness/clearcoat)
+  * [x] Guard: metal presets (iron/bronze/brass) with tinted specular
+  * [x] Handle: leather/wood wrap (dielectric, high roughness)
+  * [x] Pommel: matches guard with variation
+* [x] Procedural bump/noise (Technique 1)
+  * [x] Noise CanvasTexture generator (seed/scale/intensity)
+  * [x] Hook into bumpMap (bumpScale knob)
+  * [x] Per‑part toggles (blade/guard/handle/pommel)
+* [x] Gradient/wear shader overlay (Technique 5)
+  * [x] ShaderMaterial with gradient base→tip, edge fade, optional noise
   * [ ] Time uniform for subtle animated shimmer (optional)
-  * [ ] Blend strategy: separate overlay mesh or material onBeforeCompile
+  * [x] Blend strategy: separate overlay mesh
 
 ## 24. Post‑Processing
 

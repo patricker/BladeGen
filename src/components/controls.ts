@@ -24,6 +24,8 @@ type RenderHooks = {
   setShadowBias: (bias: number, normalBias?: number) => void;
   setShadowMapSize: (size: 512|1024|2048|4096) => void;
   setDPRCap: (cap: number) => void;
+  setPartBump: (part: 'blade'|'guard'|'handle'|'pommel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => void;
+  setBladeGradientWear: (enabled: boolean, base?: number, edge?: number, edgeFade?: number, wear?: number) => void;
   setPartColor: (part: 'blade'|'guard'|'handle'|'pommel', hex: number) => void;
   setPartMetalness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
   setPartRoughness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
@@ -50,6 +52,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     bloomThreshold: 0.85,
     bloomRadius: 0.2,
   };
+  type Part = 'blade'|'guard'|'handle'|'pommel';
+  const matState: Record<Part, { color: string; metalness: number; roughness: number; clearcoat: number; clearcoatRoughness: number; preset: string; bumpEnabled: boolean; bumpScale: number; bumpNoiseScale: number; bumpSeed: number; }>
+    = {
+      blade: { color: '#b9c6ff', metalness: 0.8, roughness: 0.25, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337 },
+      guard: { color: '#8892b0', metalness: 0.6, roughness: 0.45, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337 },
+      handle: { color: '#5a6b78', metalness: 0.1, roughness: 0.85, clearcoat: 0.0, clearcoatRoughness: 0.6, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337 },
+      pommel: { color: '#9aa4b2', metalness: 0.75, roughness: 0.35, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337 }
+    };
   let raf = 0; let needs = false;
   const flush = () => { raf = 0; if (!needs) return; needs = false; sword.updateGeometry(state); updateWarnings(); };
   const rerender = () => { needs = true; if (!raf) raf = requestAnimationFrame(flush); };
@@ -207,20 +217,97 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     checkbox(sections.Render, 'Vignette', false, (v) => { render.setVignette(v, 0.25, 0.5); }, () => {}, 'Enable vignette shading.');
     slider(sections.Render, 'Vignette Strength', 0, 1.0, 0.01, 0.25, (v) => { render.setVignette(true, v, undefined); }, () => {}, 'Strength of vignette.');
     slider(sections.Render, 'Vignette Softness', 0, 1.0, 0.01, 0.5, (v) => { render.setVignette(true, undefined, v); }, () => {}, 'Softness of vignette edge.');
+    // Fresnel edge accent
+    checkbox(sections.Render, 'Fresnel', false, (v) => { (render as any).setFresnel?.(v, 0xffffff, 0.6, 2.0); }, () => {}, 'Additive edge accent based on view angle.');
+    slider(sections.Render, 'Fresnel Intensity', 0, 2.0, 0.01, 0.6, (v) => { (render as any).setFresnel?.(true, undefined, v, undefined); }, () => {}, 'Fresnel intensity.');
+    slider(sections.Render, 'Fresnel Power', 0.5, 6.0, 0.1, 2.0, (v) => { (render as any).setFresnel?.(true, undefined, undefined, v); }, () => {}, 'Fresnel power exponent.');
+    colorPicker(sections.Render, 'Fresnel Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); (render as any).setFresnel?.(true, n, undefined, undefined); }, () => {}, 'Fresnel color.');
   } else {
     sections.Render.style.display = 'none';
+  }
+
+  // Helper to sync Render material controls to the selected part's stored values
+  function syncMaterialInputs(currentPart?: Part) {
+    const partKey: Part = currentPart || 'blade';
+    const root = sections.Render;
+    const setSlider = (label: string, val: number) => {
+      const row = Array.from(root.querySelectorAll('.row')).find((r) => r.querySelector('label')?.textContent === label) as HTMLElement | undefined;
+      if (!row) return;
+      const range = row.querySelector('input[type=range]') as HTMLInputElement | null;
+      const num = row.querySelector('input[type=number]') as HTMLInputElement | null;
+      if (range) range.value = String(val);
+      if (num) num.value = String(val);
+    };
+    const setCheckbox = (label: string, checked: boolean) => {
+      const row = Array.from(root.querySelectorAll('.row')).find((r) => r.querySelector('label')?.textContent === label) as HTMLElement | undefined;
+      if (!row) return;
+      const inp = row.querySelector('input[type=checkbox]') as HTMLInputElement | null;
+      if (inp) inp.checked = checked;
+    };
+    const setColor = (label: string, hex: string) => {
+      const row = Array.from(root.querySelectorAll('.row')).find((r) => r.querySelector('label')?.textContent === label) as HTMLElement | undefined;
+      if (!row) return;
+      const inp = row.querySelector('input[type=color]') as HTMLInputElement | null;
+      if (inp) inp.value = hex;
+    };
+    const setSelect = (label: string, value: string) => {
+      const row = Array.from(root.querySelectorAll('.row')).find((r) => r.querySelector('label')?.textContent === label) as HTMLElement | undefined;
+      if (!row) return;
+      const sel = row.querySelector('select') as HTMLSelectElement | null;
+      if (sel) sel.value = value;
+    };
+    const m = matState[partKey];
+    setColor('Base Color', m.color);
+    setSlider('Metalness', m.metalness);
+    setSlider('Roughness', m.roughness);
+    setSlider('Clearcoat', m.clearcoat);
+    setSlider('Clearcoat Rough', m.clearcoatRoughness);
+    setSelect('Mat Preset', m.preset || 'None');
+    setCheckbox('Bump Enabled', m.bumpEnabled);
+    setSlider('Bump Scale', m.bumpScale);
+    setSlider('Noise Scale', m.bumpNoiseScale);
+    setSlider('Noise Seed', m.bumpSeed);
   }
 
   // Material Base (Render tab)
   if (render) {
     const matPartOpts = ['blade','guard','handle','pommel'] as const;
-    let matPart: 'blade'|'guard'|'handle'|'pommel' = 'blade';
-    select(sections.Render, 'Material Part', [...matPartOpts] as unknown as string[], 'blade', (v) => { matPart = v as any; }, () => {});
-    colorPicker(sections.Render, 'Base Color', '#b9c6ff', (hex) => { const n = parseInt(hex.replace('#','0x')); render.setPartColor(matPart, n); }, () => {}, 'Albedo color.');
-    slider(sections.Render, 'Metalness', 0, 1, 0.01, 0.7, (v) => { render.setPartMetalness(matPart, v); }, () => {}, 'PBR metalness.');
-    slider(sections.Render, 'Roughness', 0, 1, 0.01, 0.3, (v) => { render.setPartRoughness(matPart, v); }, () => {}, 'PBR roughness.');
-    slider(sections.Render, 'Clearcoat', 0, 1, 0.01, 0.0, (v) => { render.setPartClearcoat(matPart, v); }, () => {}, 'Clearcoat layer (if supported).');
-    slider(sections.Render, 'Clearcoat Rough', 0, 1, 0.01, 0.5, (v) => { render.setPartClearcoatRoughness(matPart, v); }, () => {}, 'Clearcoat roughness (if supported).');
+    let matPart: Part = 'blade';
+    select(sections.Render, 'Material Part', [...matPartOpts] as unknown as string[], 'blade', (v) => { matPart = v as Part; syncMaterialInputs(matPart); }, () => {});
+    colorPicker(sections.Render, 'Base Color', matState[matPart].color, (hex) => { matState[matPart].color = hex; const n = parseInt(hex.replace('#','0x')); render.setPartColor(matPart, n); }, () => {}, 'Albedo color.');
+    slider(sections.Render, 'Metalness', 0, 1, 0.01, matState[matPart].metalness, (v) => { matState[matPart].metalness = v; render.setPartMetalness(matPart, v); }, () => {}, 'PBR metalness.');
+    slider(sections.Render, 'Roughness', 0, 1, 0.01, matState[matPart].roughness, (v) => { matState[matPart].roughness = v; render.setPartRoughness(matPart, v); }, () => {}, 'PBR roughness.');
+    slider(sections.Render, 'Clearcoat', 0, 1, 0.01, matState[matPart].clearcoat, (v) => { matState[matPart].clearcoat = v; render.setPartClearcoat(matPart, v); }, () => {}, 'Clearcoat layer (if supported).');
+    slider(sections.Render, 'Clearcoat Rough', 0, 1, 0.01, matState[matPart].clearcoatRoughness, (v) => { matState[matPart].clearcoatRoughness = v; render.setPartClearcoatRoughness(matPart, v); }, () => {}, 'Clearcoat roughness (if supported).');
+    // Material presets
+    select(sections.Render, 'Mat Preset', ['None','Steel','Iron','Bronze','Brass','Leather','Wood','Matte'], matState[matPart].preset, (v) => {
+      const apply = (c:number,m:number,r:number,cc:number,ccr:number) => {
+        matState[matPart].color = '#' + c.toString(16).padStart(6,'0');
+        matState[matPart].metalness = m; matState[matPart].roughness = r; matState[matPart].clearcoat = cc; matState[matPart].clearcoatRoughness = ccr; matState[matPart].preset = v;
+        render.setPartColor(matPart, c); render.setPartMetalness(matPart, m); render.setPartRoughness(matPart, r); render.setPartClearcoat(matPart, cc); render.setPartClearcoatRoughness(matPart, ccr);
+        syncMaterialInputs(matPart);
+      };
+      if (v==='Steel') apply(0xb9c6ff,0.9,0.25,0.2,0.4);
+      else if (v==='Iron') apply(0x9aa4b2,0.8,0.45,0.05,0.6);
+      else if (v==='Bronze') apply(0xcd7f32,0.6,0.5,0.05,0.6);
+      else if (v==='Brass') apply(0xb5a642,0.6,0.5,0.05,0.6);
+      else if (v==='Leather') apply(0x6b4f3a,0.05,0.85,0.0,0.8);
+      else if (v==='Wood') apply(0x8b6f47,0.02,0.8,0.0,0.8);
+      else if (v==='Matte') apply(0xbfbfbf,0.0,0.9,0.0,1.0);
+      else { matState[matPart].preset = 'None'; syncMaterialInputs(matPart); }
+    }, () => {}, 'Quick material presets');
+    // Procedural bump/noise for selected part
+    checkbox(sections.Render, 'Bump Enabled', matState[matPart].bumpEnabled, (v) => { matState[matPart].bumpEnabled = v; render.setPartBump(matPart, v, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Procedural noise bump.');
+    slider(sections.Render, 'Bump Scale', 0, 0.08, 0.001, matState[matPart].bumpScale, (v) => { matState[matPart].bumpScale = v; render.setPartBump(matPart, matState[matPart].bumpEnabled, v, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Bump map scale.');
+    slider(sections.Render, 'Noise Scale', 1, 32, 1, matState[matPart].bumpNoiseScale, (v) => { matState[matPart].bumpNoiseScale = Math.round(v); render.setPartBump(matPart, matState[matPart].bumpEnabled, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Noise frequency.');
+    slider(sections.Render, 'Noise Seed', 0, 9999, 1, matState[matPart].bumpSeed, (v) => { matState[matPart].bumpSeed = Math.round(v); render.setPartBump(matPart, matState[matPart].bumpEnabled, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Noise seed.');
+    // Blade gradient/wear overlay
+    let gradEnabled = false; let gradBase = '#b9c6ff'; let gradEdge = '#ffffff'; let gradFade = 0.2; let gradWear = 0.2;
+    checkbox(sections.Render, 'Blade Gradient', false, (v) => { gradEnabled = v; render.setBladeGradientWear(gradEnabled, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Enable blade gradient/wear overlay.');
+    colorPicker(sections.Render, 'Grad Base', gradBase, (hex) => { gradBase = hex; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Gradient base color.');
+    colorPicker(sections.Render, 'Grad Edge', gradEdge, (hex) => { gradEdge = hex; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Gradient edge color.');
+    slider(sections.Render, 'Grad Edge Fade', 0, 1, 0.01, gradFade, (v) => { gradFade = v; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Edge fade thickness.');
+    slider(sections.Render, 'Wear Intensity', 0, 1, 0.01, gradWear, (v) => { gradWear = v; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Wear noise amount.');
   }
 
   // Blade controls

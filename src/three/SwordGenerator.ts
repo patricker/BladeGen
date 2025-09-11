@@ -14,6 +14,11 @@ export type BladeParams = {
   fullerLength?: number; // 0..1 portion of blade length
   fullerEnabled?: boolean; // render fuller overlays
   fullerCount?: number; // 0..3 number of grooves per face
+  // New: fuller carve options
+  fullerMode?: 'overlay' | 'carve';
+  fullerProfile?: 'u' | 'v' | 'flat';
+  fullerWidth?: number; // groove width across face (scene units)
+  fullerInset?: number; // inset into thickness (fallback to fullerDepth)
   sweepSegments?: number; // longitudinal detail for blade sweep
   chaos?: number; // 0..1 small edge roughness
   asymmetry?: number; // -1..1 widen right(+) or left(-)
@@ -30,6 +35,9 @@ export type BladeParams = {
   hamonAmplitude?: number; // waviness amplitude across X
   hamonFrequency?: number; // waves along blade
   hamonSide?: 'auto' | 'left' | 'right' | 'both';
+  // New: serration patterns
+  serrationPattern?: 'sine' | 'saw' | 'scallop' | 'random';
+  serrationSeed?: number;
   twistAngle?: number; // radians of total twist from base to tip
   crossSection?: 'flat' | 'lenticular' | 'diamond' | 'hexagonal';
   bevel?: number; // 0..1 bevel intensity for profiles
@@ -112,9 +120,74 @@ export class SwordGenerator {
   private highlighted: 'blade' | 'guard' | 'handle' | 'pommel' | null = null;
 
   private lastParams?: SwordParams;
+  private mats?: Record<'blade'|'guard'|'handle'|'pommel', any>;
 
-  constructor(initial: SwordParams) {
+  constructor(initial: SwordParams, materials?: Record<'blade'|'guard'|'handle'|'pommel', any>) {
+    this.mats = materials;
     this.updateGeometry(initial);
+  }
+  public setMaterials(mats: Record<'blade'|'guard'|'handle'|'pommel', any>) {
+    this.mats = mats; this.reapplyMaterials();
+  }
+  private makeMaterial(part: 'blade'|'guard'|'handle'|'pommel'): THREE.MeshPhysicalMaterial {
+    const m = this.mats?.[part] || {};
+    const defaults: Record<string, any> = {
+      blade: { color: 0xb9c6ff, metalness: 0.8, roughness: 0.25, clearcoat: 0.0, clearcoatRoughness: 0.5 },
+      guard: { color: 0x8892b0, metalness: 0.6, roughness: 0.4, clearcoat: 0.0, clearcoatRoughness: 0.5 },
+      handle:{ color: 0x5a6b78, metalness: 0.1, roughness: 0.85, clearcoat: 0.0, clearcoatRoughness: 0.6 },
+      pommel:{ color: 0x9aa4b2, metalness: 0.75,roughness: 0.35,clearcoat: 0.0, clearcoatRoughness: 0.5 }
+    };
+    const base = defaults[part];
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color(m.color ?? base.color),
+      metalness: m.metalness ?? base.metalness,
+      roughness: m.roughness ?? base.roughness,
+      clearcoat: m.clearcoat ?? base.clearcoat,
+      clearcoatRoughness: m.clearcoatRoughness ?? base.clearcoatRoughness
+    });
+    if (m.emissiveColor) { (mat as any).emissive = new THREE.Color(m.emissiveColor); (mat as any).emissiveIntensity = m.emissiveIntensity ?? 0.5; }
+    if (m.transmission) { (mat as any).transmission = m.transmission; (mat as any).ior = m.ior ?? 1.5; (mat as any).thickness = m.thickness ?? 0.2; if (m.attenuationColor) (mat as any).attenuationColor = new THREE.Color(m.attenuationColor); if (m.attenuationDistance!==undefined) (mat as any).attenuationDistance = m.attenuationDistance; }
+    if (m.sheen!==undefined) { (mat as any).sheen = m.sheen; if (m.sheenColor) (mat as any).sheenColor = new THREE.Color(m.sheenColor); }
+    if (m.iridescence!==undefined) { (mat as any).iridescence = m.iridescence; (mat as any).iridescenceIOR = m.iridescenceIOR ?? 1.3; (mat as any).iridescenceThicknessRange = [m.iridescenceThicknessMin ?? 100, m.iridescenceThicknessMax ?? 400]; }
+    // Optional texture maps
+    if (m.map) { const t = this.loadTexture(m.map, true); if (t) (mat as any).map = t; }
+    if (m.normalMap) { const t = this.loadTexture(m.normalMap, false); if (t) (mat as any).normalMap = t; }
+    if (m.roughnessMap) { const t = this.loadTexture(m.roughnessMap, false); if (t) (mat as any).roughnessMap = t; }
+    if (m.metalnessMap) { const t = this.loadTexture(m.metalnessMap, false); if (t) (mat as any).metalnessMap = t; }
+    if (m.aoMap) { const t = this.loadTexture(m.aoMap, false); if (t) (mat as any).aoMap = t; }
+    if (m.bumpMap) { const t = this.loadTexture(m.bumpMap, false); if (t) (mat as any).bumpMap = t; }
+    if (m.displacementMap) { const t = this.loadTexture(m.displacementMap, false); if (t) (mat as any).displacementMap = t; }
+    if (m.alphaMap) { const t = this.loadTexture(m.alphaMap, false); if (t) (mat as any).alphaMap = t; }
+    if (m.clearcoatNormalMap) { const t = this.loadTexture(m.clearcoatNormalMap, false); if (t) (mat as any).clearcoatNormalMap = t; }
+    if (m.envMapIntensity !== undefined) (mat as any).envMapIntensity = m.envMapIntensity;
+    return mat;
+  }
+  private reapplyMaterials() {
+    const apply = (obj: THREE.Object3D | null | undefined, part: 'blade'|'guard'|'handle'|'pommel') => {
+      if (!obj) return; const mat = this.makeMaterial(part);
+      obj.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.material = mat; });
+    };
+    apply(this.bladeMesh, 'blade');
+    apply(this.guardMesh ?? this.guardGroup, 'guard');
+    apply(this.handleMesh, 'handle');
+    apply(this.pommelMesh, 'pommel');
+  }
+
+  private _texLoader?: THREE.TextureLoader;
+  private _texCache?: Map<string, THREE.Texture>;
+  private loadTexture(url?: string, sRGB = false): THREE.Texture | undefined {
+    if (!url) return undefined;
+    this._texLoader = this._texLoader || new THREE.TextureLoader();
+    this._texCache = this._texCache || new Map();
+    const cached = this._texCache.get(url);
+    if (cached) return cached;
+    const dummy = new THREE.Texture(); // placeholder until load completes
+    this._texLoader.load(url, (tex) => {
+      if (sRGB) (tex as any).colorSpace = THREE.SRGBColorSpace;
+      tex.needsUpdate = true;
+      this._texCache!.set(url, tex);
+    });
+    return dummy;
   }
 
   updateGeometry(params: SwordParams) {
@@ -168,20 +241,21 @@ export class SwordGenerator {
 
     const geo = buildBladeGeometry(b);
 
-    const mat = new THREE.MeshPhysicalMaterial({ color: 0xb9c6ff, metalness: 0.8, roughness: 0.25, clearcoat: 0.0, clearcoatRoughness: 0.5, side: THREE.DoubleSide });
+    const mat = this.makeMaterial('blade');
+    mat.side = THREE.DoubleSide as any;
     this.bladeMesh = new THREE.Mesh(geo, mat);
     // Align blade base exactly at y=0 (no extra offset)
     this.bladeMesh.position.y = 0.0;
     this.bladeMesh.castShadow = true;
     this.group.add(this.bladeMesh);
 
-    // Fuller grooves (visual overlay): two thin insets on both faces
+    // Fuller grooves: overlay ribbons (default) or carved geometry reduction
     if (this.fullerGroup) {
       this.group.remove(this.fullerGroup);
       this.disposeGroup(this.fullerGroup);
       this.fullerGroup = null;
     }
-    if (b.fullerEnabled && (b.fullerDepth ?? 0) > 0 && (b.fullerLength ?? 0) > 0) {
+    if (b.fullerEnabled && (b.fullerLength ?? 0) > 0 && (b.fullerMode ?? 'overlay') === 'overlay' && (b.fullerDepth ?? 0) > 0) {
       this.fullerGroup = buildFullerOverlays(b);
       this.fullerGroup.position.copy(this.bladeMesh.position);
       this.group.add(this.fullerGroup);
@@ -225,8 +299,8 @@ export class SwordGenerator {
     const color = 0x8892b0;
     if (g.style === 'bar') {
       const geo = new THREE.BoxGeometry(g.width, GUARD_HEIGHT, g.thickness);
-      const mat = new THREE.MeshPhysicalMaterial({ color, metalness: 0.6, roughness: 0.45, clearcoat: 0.0, clearcoatRoughness: 0.5 });
-      this.guardMesh = new THREE.Mesh(geo, mat);
+      const gmat = this.makeMaterial('guard');
+      this.guardMesh = new THREE.Mesh(geo, gmat);
       this.guardMesh.castShadow = true;
       // Center so that top of the bar meets blade base
       this.guardMesh.position.set(0, targetTopY - GUARD_HEIGHT * 0.5, 0);
@@ -248,19 +322,19 @@ export class SwordGenerator {
       }
       const geo = new THREE.ExtrudeGeometry(shape, { depth: heightY, bevelEnabled: false, steps: 1, curveSegments: Math.max(12, Math.round(g.curveSegments ?? 24)) });
       geo.center();
-      const mat = new THREE.MeshPhysicalMaterial({ color, metalness: 0.6, roughness: 0.4, clearcoat: 0.0, clearcoatRoughness: 0.5, side: THREE.DoubleSide });
-      this.guardMesh = new THREE.Mesh(geo, mat);
+      const gmat2 = this.makeMaterial('guard'); (gmat2 as any).side = THREE.DoubleSide;
+      this.guardMesh = new THREE.Mesh(geo, gmat2);
       this.guardMesh.castShadow = true;
       this.guardMesh.position.set(0, targetTopY, 0);
       this.guardMesh.rotation.z = g.tilt;
       this.group.add(this.guardMesh);
     } else {
-      const mat = new THREE.MeshPhysicalMaterial({ color, metalness: 0.6, roughness: 0.4, clearcoat: 0.0, clearcoatRoughness: 0.5, side: THREE.DoubleSide });
+      const gmat3 = this.makeMaterial('guard'); (gmat3 as any).side = THREE.DoubleSide;
       const half = buildGuardHalfShape(g);
       const depth = g.thickness;
       const geoR = new THREE.ExtrudeGeometry(half, { depth, bevelEnabled: false, steps: 1, curveSegments: Math.max(3, Math.min(64, Math.round(g.curveSegments ?? 12))) });
       // Do not center: keep inner edge at x=0 for correct alignment
-      const meshR = new THREE.Mesh(geoR, mat);
+      const meshR = new THREE.Mesh(geoR, gmat3);
       // Right half attached at inner edge x=0
       meshR.position.set(0, 0, -depth / 2);
 
@@ -305,7 +379,7 @@ export class SwordGenerator {
     if (qc > 0) {
       const qLen = Math.max(0.05, g.quillonLength ?? 0.25);
       const qRad = Math.max(0.01, 0.025 + (g.ornamentation ?? 0) * 0.02);
-      const qMat = new THREE.MeshPhysicalMaterial({ color, metalness: 0.6, roughness: 0.35, clearcoat: 0.0, clearcoatRoughness: 0.5 });
+      const qMat = this.makeMaterial('guard');
       const cyl = new THREE.CylinderGeometry(qRad, qRad, qLen, Math.max(8, Math.round(12 + (g.ornamentation ?? 0) * 12)));
       const tipSharp = Math.max(0, Math.min(1, g.tipSharpness ?? 0.5));
       const cone = new THREE.ConeGeometry(qRad * (0.8 + 0.4 * tipSharp), qLen * 0.25 * tipSharp, 12);
@@ -381,7 +455,7 @@ export class SwordGenerator {
       pos.needsUpdate = true;
       geo.computeVertexNormals();
     }
-    const mat = new THREE.MeshPhysicalMaterial({ color: 0x5a6b78, metalness: 0.1, roughness: 0.85, clearcoat: 0.0, clearcoatRoughness: 0.6 });
+    const mat = this.makeMaterial('handle');
     if (h.wrapTexture) {
       const tex = makeWrapTexture(h.wrapTexScale ?? 10, h.wrapTexAngle ?? (Math.PI / 4));
       mat.map = tex;
@@ -434,7 +508,7 @@ export class SwordGenerator {
       this.disposeMesh(this.pommelMesh);
       this.pommelMesh = null;
     }
-    const mat = new THREE.MeshPhysicalMaterial({ color: 0x9aa4b2, metalness: 0.75, roughness: 0.35, clearcoat: 0.0, clearcoatRoughness: 0.5 });
+    const mat = this.makeMaterial('pommel');
     let mesh: THREE.Mesh;
     const facets = Math.max(6, Math.round(p.facetCount ?? 32));
 
@@ -499,6 +573,10 @@ export class SwordGenerator {
       fullerLength: clamp(b.fullerLength ?? 0, 0, 1),
       fullerEnabled: !!b.fullerEnabled,
       fullerCount: Math.round(clamp(b.fullerCount ?? 1, 0, 3)),
+      fullerMode: (b.fullerMode ?? 'overlay') as any,
+      fullerProfile: (b.fullerProfile ?? 'u') as any,
+      fullerWidth: clamp(b.fullerWidth ?? 0, 0, (b.baseWidth || 0.25)),
+      fullerInset: clamp(b.fullerInset ?? (b.fullerDepth ?? 0), 0, 0.2),
       sweepSegments: Math.round(clamp(b.sweepSegments ?? 128, 16, 512)),
       chaos: clamp(b.chaos ?? 0, 0, 1),
       asymmetry: clamp(b.asymmetry ?? 0, -1, 1),
@@ -515,6 +593,8 @@ export class SwordGenerator {
       hamonAmplitude: clamp(b.hamonAmplitude ?? 0, 0, Math.max(0.005, (b.baseWidth || 0.25) * 0.2)),
       hamonFrequency: clamp(b.hamonFrequency ?? 0, 0, 30),
       hamonSide: (b.hamonSide ?? 'auto') as any,
+      serrationPattern: (b.serrationPattern ?? 'sine') as any,
+      serrationSeed: Math.round(clamp(b.serrationSeed ?? 1337, 0, 999999)),
       twistAngle: clamp(b.twistAngle ?? 0, -Math.PI * 2, Math.PI * 2),
       crossSection: (b.crossSection ?? 'flat') as any,
       bevel: clamp(b.bevel ?? 0.5, 0, 1),
@@ -651,12 +731,24 @@ export function buildBladeOutlinePoints(b: BladeParams): THREE.Vector2[] {
   const serrAmpL = b.serrationAmplitudeLeft ?? serrAmp;
   const serrAmpR = b.serrationAmplitudeRight ?? serrAmp;
   const serrFreq = b.serrationFrequency ?? 0;
+  const serPat = b.serrationPattern ?? 'sine';
+  const serSeed = b.serrationSeed ?? 1337;
+  const serr = (t:number, freq:number, amp:number) => {
+    if (!amp || !freq) return 0;
+    const ph = t * Math.PI * freq;
+    switch(serPat){
+      case 'saw': { const k = ph/Math.PI; return amp * (2*(k - Math.floor(k+0.5))); }
+      case 'scallop': return amp * (1 - Math.abs(Math.sin(ph)));
+      case 'random': return amp * (Math.sin(ph*1.7+serSeed*0.1)+Math.sin(ph*2.3+serSeed*0.2))*0.5;
+      default: return amp * Math.sin(ph);
+    }
+  };
   const pts: THREE.Vector2[] = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     const y = t * length;
     const w = tipWidthWithKissaki(b, t, baseW, tipW);
-    const serrR = serrAmpR > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpR * (1 - t) : 0;
+    const serrR = serr(t, serrFreq, serrAmpR) * (1 - t);
     const half = Math.max(0.001, w * 0.5);
     const asym = (b.asymmetry ?? 0);
     const rightHalf = Math.max(0.0005, (half + serrR) * (1 + 0.5 * asym));
@@ -667,7 +759,7 @@ export function buildBladeOutlinePoints(b: BladeParams): THREE.Vector2[] {
     const t = i / steps;
     const y = t * length;
     const w = tipWidthWithKissaki(b, t, baseW, tipW);
-    const serrL = serrAmpL > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpL * (1 - t) : 0;
+    const serrL = serr(t, serrFreq, serrAmpL) * (1 - t);
     const half = Math.max(0.001, w * 0.5);
     const asym = (b.asymmetry ?? 0);
     const leftHalf = Math.max(0.0005, (half + serrL) * (1 - 0.5 * asym));
@@ -677,7 +769,7 @@ export function buildBladeOutlinePoints(b: BladeParams): THREE.Vector2[] {
   return pts;
 }
 
-export function bladeOutlineToSVG(points: THREE.Vector2[], stroke = '#e2e8f0'): string {
+export function bladeOutlineToSVG(points: THREE.Vector2[], stroke = '#111827'): string {
   if (!points.length) return '';
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const p of points) { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }
@@ -692,7 +784,7 @@ export function bladeOutlineToSVG(points: THREE.Vector2[], stroke = '#e2e8f0'): 
     d += (i === 0 ? 'M' : 'L') + (p.x + sx).toFixed(3) + ' ' + (height + pad * 2 - (p.y + sy)).toFixed(3) + ' ';
   }
   d += 'Z';
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${(width + pad * 2).toFixed(2)}" height="${(height + pad * 2).toFixed(2)}" viewBox="0 0 ${(width + pad * 2).toFixed(2)} ${(height + pad * 2).toFixed(2)}">\n  <path d="${d}" fill="none" stroke="${stroke}" stroke-width="1"/>\n</svg>`;
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${(width + pad * 2).toFixed(2)}" height="${(height + pad * 2).toFixed(2)}" viewBox="0 0 ${(width + pad * 2).toFixed(2)} ${(height + pad * 2).toFixed(2)}" preserveAspectRatio="xMidYMid meet">\n  <path d="${d}" fill="none" stroke="${stroke}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\n</svg>`;
   return svg;
 }
 
@@ -822,12 +914,34 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     }
   };
 
+  // serration helper
+  const serr = (t:number, freq:number, amp:number, pattern: BladeParams['serrationPattern'], seed:number) => {
+    if (!amp || !freq) return 0;
+    const ph = t * Math.PI * freq;
+    switch(pattern){
+      case 'saw': {
+        const k = ph/Math.PI; return amp * (2*(k - Math.floor(k+0.5)));
+      }
+      case 'scallop': return amp * (1 - Math.abs(Math.sin(ph)));
+      case 'random': return amp * (Math.sin(ph*1.7+seed*0.1)+Math.sin(ph*2.3+seed*0.2))*0.5;
+      default: return amp * Math.sin(ph);
+    }
+  };
+  const serPat = b.serrationPattern ?? 'sine';
+  const serSeed = (b.serrationSeed ?? 1337);
+
+  // fuller carve helpers
+  const wantCarve = (b.fullerMode ?? 'overlay') === 'carve' && (b.fullerEnabled ?? false) && (b.fullerLength ?? 0) > 0 && (b.fullerInset ?? b.fullerDepth ?? 0) > 0;
+  const carveWidth = (b.fullerWidth && b.fullerWidth > 0) ? b.fullerWidth : (b.baseWidth || 0.25) * 0.3;
+  const insetBase = Math.min(Math.max(0, b.fullerInset ?? b.fullerDepth ?? 0), 0.2);
+  const prof = b.fullerProfile ?? 'u';
+
   for (let i = 0; i <= segs; i++) {
     const t = i / segs;
     const y = t * L;
     const w = tipWidthWithKissaki(b, t, baseW, tipW);
-    const serrL = serrAmpL > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpL * (1 - t) : 0;
-    const serrR = serrAmpR > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serrAmpR * (1 - t) : 0;
+    const serrL = serr(t, serrFreq, serrAmpL, serPat, serSeed) * (1 - t);
+    const serrR = serr(t, serrFreq, serrAmpR, serPat, serSeed) * (1 - t);
     // Chaos profile: bounded, smooth pseudo-noise (two sines)
     const c1 = Math.sin(t * Math.PI * 16.0 + 1.3);
     const c2 = Math.sin(t * Math.PI * 9.7 + 0.6);
@@ -853,7 +967,25 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
       const xRaw = THREE.MathUtils.lerp(xl, xr, s);
       const edgeHalf = THREE.MathUtils.lerp(halfEdgeL, halfEdgeR, s);
       const f = shapeFactor(u);
-      const zHalf = edgeHalf + (centerHalf - edgeMidHalf) * f;
+      let zHalf = edgeHalf + (centerHalf - edgeMidHalf) * f;
+      // Optional carved fuller reduction across face
+      if (wantCarve) {
+        const y0 = Math.max(0, (b.fullerLength ?? 0) * 0.0 * L + 0.05 * L);
+        const y1 = L - Math.max(0, 0.12 * (b.baseWidth || 0.2));
+        if (y >= y0 && y <= y1) {
+          const cx = bend; // approximate center line
+          const halfW = carveWidth * 0.5;
+          const dx = Math.abs(xRaw - cx);
+          if (dx <= halfW) {
+            const tX = 1 - THREE.MathUtils.clamp(dx / Math.max(1e-6, halfW), 0, 1);
+            let profile = tX;
+            if (prof === 'u') profile = Math.sqrt(tX);
+            else if (prof === 'v') profile = tX;
+            const inset = profile * insetBase;
+            zHalf = Math.max(0.0006, zHalf - inset);
+          }
+        }
+      }
       const front = rot(xRaw, -zHalf);
       const back = rot(xRaw, +zHalf);
       setV(i, j, 0, front.x, y, front.z);

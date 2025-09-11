@@ -16,6 +16,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
   let bgTarget = new THREE.Color(0x3a3f4a);
   let bgBrightness = 0.0; // 0 extra -> dark; increase to lighten
   let groundMat: THREE.MeshStandardMaterial | null = null;
+  let groundClearance = 0.08; // distance between sword's lowest point and ground
   const applyBackground = () => {
     const c = bgBase.clone();
     // lighten toward target by bgBrightness
@@ -88,7 +89,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
   groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1d24, metalness: 0.0, roughness: 1.0 });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.05;
+  ground.position.y = -groundClearance;
   ground.receiveShadow = true;
   scene.add(ground);
   // Sync ground tint to current background
@@ -119,7 +120,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
     // Keep ground slightly below sword's lowest point to avoid occlusion
     bbox.setFromObject(sword.group);
     if (isFinite(bbox.min.y)) {
-      ground.position.y = bbox.min.y - 0.02;
+      ground.position.y = bbox.min.y - groundClearance;
     }
   };
   renderer.setAnimationLoop(tick);

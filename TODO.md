@@ -214,6 +214,57 @@
 
 ---
 
+# Phase 8: SwordMaker+ (from newfeatures.md)
+
+Prioritized additions; all default to off and remain back‑compatible.
+
+## 29. Material System (centralize looks)
+
+- [ ] Add MaterialState extensions (emissive, transmission, sheen, iridescence, maps, anisotropyFake)
+- [ ] Add SwordGenerator.setMaterials() and makeMaterial(part)
+- [ ] Swap hard‑coded materials in rebuild* to use makeMaterial()
+- [ ] Optional texture loader (cached) + SRGB mapping
+
+## 30. Blade Upgrades
+
+- [ ] Fuller mode: overlay (default) vs carve (geometry)
+- [ ] Fuller profile/width/inset params; carve inside buildBladeGeometry
+- [ ] Serration patterns: sine (default), saw, scallop, random + seed
+- [ ] Engravings/inlays (text/shape/decal) as shallow extrusions or decals
+
+## 31. Guard Enhancements
+
+- [ ] New styles: basket, knucklebow, swept (tube/lathe builders)
+- [ ] Guard extras: loops, side rings, finger guard (Torus/TubeGeometry)
+- [ ] Arm asymmetry beyond scale (shape bias per side)
+- [ ] Guard↔blade blend fillet
+
+## 32. Handle Layers & Details
+
+- [ ] handleLayers: core/wrap/ring/inlay (criss‑cross wrap variant)
+- [ ] menuki and rivets placement along grip
+- [ ] Migrate to handleGroup for highlighting + disposal
+
+## 33. Pommel Variants
+
+- [ ] New styles: wheel, scentStopper, ring, crown
+- [ ] Ring inner radius; crown spike count/sharpness; wheel bevel
+
+## 34. Proportional Ratios
+
+- [ ] useRatios + ratios: auto‑derive guard width, handle length, pommel size
+- [ ] resolveDerivedParams() pre‑validation fill‑in
+
+## 35. Render/FX
+
+- [ ] RenderState additions: envMap URL + intensity, fog, optional flares/SSR flags
+- [ ] EnvMap loader + assignment (optional HDR equirect)
+
+Notes:
+- Implement in the order: Materials → Blade (carve/serration) → Guard (knucklebow) → Handle layers → Pommel → Engravings.
+- Keep geometry stable and dispose any new groups.
+
+
 # Phase 7: Rendering Quality & Effects
 
 This phase focuses on visual fidelity and performance, guided by renderguidance.md. Goals: physically‑based lighting/materials, robust post‑processing, crisp edges, pleasant defaults on desktop/mobile, and a future “Render” tab to expose controls.

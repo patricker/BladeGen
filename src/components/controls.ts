@@ -331,6 +331,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   }
 
   // Blade controls
+  // Serration pattern & seed
+  select(sections.Blade, 'Serration Pattern', ['sine','saw','scallop','random'], (state.blade as any).serrationPattern ?? 'sine', (v) => { (state.blade as any).serrationPattern = v as any; }, rerender, 'Pattern used for serrations along edges.');
+  slider(sections.Blade, 'Serration Seed', 0, 999999, 1, (state.blade as any).serrationSeed ?? 1337, (v) => { (state.blade as any).serrationSeed = Math.round(v); }, rerender, 'Seed value for random serration pattern.');
+  // Fuller carve options
+  select(sections.Blade, 'Fuller Mode', ['overlay','carve'], (state.blade as any).fullerMode ?? 'overlay', (v) => { (state.blade as any).fullerMode = v as any; }, rerender, 'overlay: visual ribbons; carve: actual groove reduces thickness.');
+  select(sections.Blade, 'Fuller Profile', ['u','v','flat'], (state.blade as any).fullerProfile ?? 'u', (v) => { (state.blade as any).fullerProfile = v as any; }, rerender, 'Cross-section profile for carved fuller.');
+  slider(sections.Blade, 'Fuller Width', 0, 0.6, 0.001, (state.blade as any).fullerWidth ?? 0, (v) => { (state.blade as any).fullerWidth = v; }, rerender, 'Groove width across the blade face (scene units). 0 = auto.');
+  slider(sections.Blade, 'Fuller Inset', 0, 0.2, 0.001, (state.blade as any).fullerInset ?? (state.blade.fullerDepth ?? 0), (v) => { (state.blade as any).fullerInset = v; }, rerender, 'Groove depth inside thickness when carving. Defaults to Fuller Depth.');
   slider(sections.Blade, 'Length', 0.5, 6, 0.01, state.blade.length, (v) => (state.blade.length = v), rerender);
   slider(sections.Blade, 'Base Width', 0.05, 1.0, 0.005, state.blade.baseWidth, (v) => (state.blade.baseWidth = v), rerender);
   slider(sections.Blade, 'Tip Width', 0, 0.5, 0.005, state.blade.tipWidth, (v) => (state.blade.tipWidth = v), rerender);
@@ -518,7 +526,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   btnExportJSON.addEventListener('click', () => {
     const payload = {
       $schema: 'schema/sword.schema.json',
-      version: 1,
+      version: 2,
       model: state,
       render: { ...rstate },
       materials: matState
@@ -535,6 +543,24 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     try {
       const text = await f.text();
       const obj = JSON.parse(text);
+      // Validate against JSON Schema using Ajv
+      try {
+        const schemaUrl = obj?.$schema || 'schema/sword.schema.json';
+        const res = await fetch(schemaUrl);
+        const schema = await res.json();
+        // @ts-ignore
+        const Ajv = (await import('ajv')).default;
+        const ajv = new Ajv({ allErrors: true, allowUnionTypes: true });
+        const validate = ajv.compile(schema);
+        const valid = validate(obj);
+        if (!valid) {
+          const errs = (validate.errors || []).map((e:any) => `- ${e.instancePath || e.schemaPath}: ${e.message}`).join('\n');
+          alert('Import failed: JSON does not match schema.\n' + errs);
+          return;
+        }
+      } catch (e) {
+        console.warn('Schema validation skipped or failed to load:', e);
+      }
       if (obj?.model) { assignParams(state, obj.model); rerender(); refreshInputs(el, state); }
       if (obj?.materials) {
         const parts: (keyof typeof matState)[] = ['blade','guard','handle','pommel'];
@@ -802,6 +828,12 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Hamon Side': params.blade.hamonSide ?? 'auto',
     'Asymmetry': params.blade.asymmetry ?? 0,
     'Chaos': params.blade.chaos ?? 0,
+    'Serration Pattern': (params.blade as any).serrationPattern ?? 'sine',
+    'Serration Seed': (params.blade as any).serrationSeed ?? 1337,
+    'Fuller Mode': (params.blade as any).fullerMode ?? 'overlay',
+    'Fuller Profile': (params.blade as any).fullerProfile ?? 'u',
+    'Fuller Width': (params.blade as any).fullerWidth ?? 0,
+    'Fuller Inset': (params.blade as any).fullerInset ?? (params.blade.fullerDepth ?? 0),
     'Enable Fullers': params.blade.fullerEnabled ?? false,
     'Fuller Depth': params.blade.fullerDepth ?? 0,
     'Fuller Length': params.blade.fullerLength ?? 0,

@@ -12,8 +12,8 @@
     },
     "version": {
       "type": "integer",
-      "const": 1,
-      "description": "Document format version. Incremented when breaking changes occur. Consumers should reject unknown major versions."
+      "const": 2,
+      "description": "Document format version (2 adds materials extensions, blade carve fullers, serration patterns, guard/handle/pommel new fields)."
     },
     "model": {
       "$ref": "#/$defs/SwordParams",
@@ -58,7 +58,11 @@
         "serrationFrequency": { "type": "number", "minimum": 0, "maximum": 40, "description": "Number of sine-wave serration cycles along the blade. Effective only when amplitude > 0." },
         "serrationAmplitudeLeft": { "type": "number", "minimum": 0, "maximum": 1.666, "description": "Left-edge serration amplitude (overrides serrationAmplitude for left if given)." },
         "serrationAmplitudeRight": { "type": "number", "minimum": 0, "maximum": 1.666, "description": "Right-edge serration amplitude (overrides serrationAmplitude for right if given)." },
-        "fullerDepth": { "type": "number", "minimum": 0, "maximum": 0.2, "description": "Visual groove (fuller) depth used to offset overlay ribbons; not a boolean carve. Effective when fullerEnabled=true and fullerLength>0." },
+        "fullerDepth": { "type": "number", "minimum": 0, "maximum": 0.2, "description": "Fuller depth (legacy overlay usage). When fullerMode='overlay', controls overlay shading depth only." },
+        "fullerMode": { "type": "string", "enum": ["overlay","carve"], "description": "overlay (default) draws visual ribbons; carve reduces blade thickness within a band across the face for a real groove." },
+        "fullerProfile": { "type": "string", "enum":["u","v","flat"], "description": "Carved fuller cross-profile: rounded U, sharp V, or flat-bottom." },
+        "fullerWidth": { "type": "number", "minimum": 0, "maximum": 1, "description": "Approximate groove width across blade face (scene units). If 0, auto from baseWidth." },
+        "fullerInset": { "type": "number", "minimum": 0, "maximum": 0.2, "description": "How much to push inside thickness when carving (fallback to fullerDepth if unset)." },
         "fullerLength": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fraction of blade length spanned by the fuller(s) (0..1)." },
         "fullerEnabled": { "type": "boolean", "description": "Enable fuller overlay ribbons (visual effect)." },
         "fullerCount": { "type": "integer", "minimum": 0, "maximum": 3, "description": "Number of fuller grooves per face: 0, 1, 2, or 3."
@@ -79,11 +83,25 @@
         "hamonAmplitude": { "type": "number", "minimum": 0, "maximum": 0.5, "description": "Waviness amplitude of hamon along the edge (visual overlay)." },
         "hamonFrequency": { "type": "number", "minimum": 0, "maximum": 30, "description": "Waviness frequency (cycles across blade length)." },
         "hamonSide": { "type": "string", "enum": ["auto", "left", "right", "both"], "description": "Which edge(s) get a hamon overlay. 'auto' picks the thinner side when edgeType='single'; both sides when 'double'." },
+        "serrationPattern": { "type": "string", "enum":["sine","saw","scallop","random"], "description": "Pattern for serrations (sine default)." },
+        "serrationSeed": { "type": "integer", "minimum": 0, "maximum": 999999, "description": "Seed used by random serration pattern." },
         "twistAngle": { "type": "number", "minimum": -6.283185307, "maximum": 6.283185307, "description": "Total twist around +Y (radians) from base to tip. Positive = right-handed twist." },
         "crossSection": { "type": "string", "enum": ["flat", "lenticular", "diamond", "hexagonal"], "description": "Transverse profile family. 'flat' yields planar faces; others bulge the spine based on bevel." },
         "bevel": { "type": "number", "minimum": 0, "maximum": 1, "description": "Profile sharpness control (0..1). For diamond/lenticular/hexagonal, higher values increase center thickness relative to edges." },
         "tipShape": { "type": "string", "enum": ["pointed", "rounded", "leaf"], "description": "High-level tip shaping. 'leaf' can add a mid-blade bulge via tipBulge." },
-        "tipBulge": { "type": "number", "minimum": 0, "maximum": 1, "description": "For tipShape='leaf': additional symmetric width bulge across the blade (0..1)." }
+        "tipBulge": { "type": "number", "minimum": 0, "maximum": 1, "description": "For tipShape='leaf': additional symmetric width bulge across the blade (0..1)." },
+        "engravings": { "type":"array", "items": { "type":"object", "additionalProperties": false, "properties": {
+          "type": { "type":"string", "enum":["text","shape","decal"] },
+          "content": { "type":"string" },
+          "fontUrl": { "type":"string" },
+          "width": { "type":"number", "minimum":0 },
+          "height": { "type":"number", "minimum":0 },
+          "depth": { "type":"number", "minimum":0 },
+          "offsetY": { "type":"number" },
+          "offsetX": { "type":"number" },
+          "rotation": { "type":"number" },
+          "side": { "type":"string", "enum":["left","right","both"] }
+        } } }
       },
       "required": ["length", "baseWidth", "tipWidth", "thickness", "curvature"]
     },
@@ -97,7 +115,7 @@
         "thickness": { "type": "number", "minimum": 0.05, "maximum": 2, "description": "Thickness/extrude depth. For disk this becomes coin thickness (clamped internally)." },
         "curve": { "type": "number", "minimum": -1, "maximum": 1, "description": "Vertical curvature of the wing/claw arms (−1..1). Positive bends upward (+Y), negative downward." },
         "tilt": { "type": "number", "minimum": -1.570796327, "maximum": 1.570796327, "description": "Rotation around Z (radians). Applies to all styles, including disk (tsuba tilt)." },
-        "style": { "type": "string", "enum": ["bar", "winged", "claw", "disk"], "description": "Guard style preset: rectangular bar, curved wing, pointy claw, or circular disk (tsuba)." },
+        "style": { "type": "string", "enum": ["bar", "winged", "claw", "disk", "basket", "knucklebow", "swept"], "description": "Guard style preset: rectangular bar, curved wing, pointy claw, circular disk (tsuba), basket shell, knuckle bow, or swept hilt." },
         "curveSegments": { "type": "integer", "minimum": 3, "maximum": 64, "description": "2D curve tessellation for extruded styles (winged/claw). Higher → smoother and heavier." },
         "habakiEnabled": { "type": "boolean", "description": "Add a rectangular habaki (blade collar) immediately above the guard." },
         "habakiHeight": { "type": "number", "minimum": 0.02, "maximum": 0.2, "description": "Habaki height along +Y." },
@@ -110,7 +128,15 @@
         "cutoutCount": { "type": "integer", "minimum": 0, "maximum": 12, "description": "For style='disk': number of radial cutouts (holes). 0 disables." },
         "cutoutRadius": { "type": "number", "minimum": 0.1, "maximum": 0.8, "description": "For style='disk': cutout radius as a fraction of disk radius (0.1–0.8)." },
         "asymmetricArms": { "type": "boolean", "description": "Enable left/right scale asymmetry for winged/claw arms." },
-        "asymmetry": { "type": "number", "minimum": -1, "maximum": 1, "description": "Wing/claw scale bias across X when asymmetricArms=true. Positive scales right larger, left smaller; negative inverses it." }
+        "asymmetry": { "type": "number", "minimum": -1, "maximum": 1, "description": "Wing/claw scale bias across X when asymmetricArms=true. Positive scales right larger, left smaller; negative inverses it." },
+        "extras": { "type":"array", "items": { "type":"object", "additionalProperties": false, "properties": {
+          "kind": { "type":"string", "enum":["loop","sideRing","fingerGuard"] },
+          "radius": { "type":"number", "minimum":0 },
+          "thickness": { "type":"number", "minimum":0 },
+          "offsetY": { "type":"number" },
+          "offsetX": { "type":"number" },
+          "tilt": { "type":"number" }
+        } } }
       },
       "required": ["width", "thickness", "curve", "tilt", "style"]
     },
@@ -137,7 +163,27 @@
         "curvature": { "type": "number", "minimum": -0.2, "maximum": 0.2, "description": "Slight bend of the handle along X as a quadratic function of Y (visual ergonomics)." },
         "tangVisible": { "type": "boolean", "description": "Render a rectangular tang (blade extension) through the handle as a separate overlay mesh." },
         "tangWidth": { "type": "number", "minimum": 0.005, "maximum": 0.2, "description": "Tang overlay width across X when tangVisible=true." },
-        "tangThickness": { "type": "number", "minimum": 0.003, "maximum": 0.1, "description": "Tang overlay thickness across Z when tangVisible=true." }
+        "tangThickness": { "type": "number", "minimum": 0.003, "maximum": 0.1, "description": "Tang overlay thickness across Z when tangVisible=true." },
+        "handleLayers": { "type":"array", "items": { "type":"object", "additionalProperties": false, "properties": {
+          "kind": { "type":"string", "enum":["core","wrap","ring","inlay"] },
+          "radiusAdd": { "type":"number" },
+          "lengthFrac": { "type":"number" },
+          "y0Frac": { "type":"number" },
+          "wrapPattern": { "type":"string", "enum":["helical","crisscross"] },
+          "turns": { "type":"integer" },
+          "depth": { "type":"number" },
+          "spacing": { "type":"number" }
+        } } },
+        "menuki": { "type":"array", "items": { "type":"object", "additionalProperties": false, "properties": {
+          "positionFrac": { "type":"number" },
+          "side": { "type":"string", "enum":["left","right"] },
+          "size": { "type":"number" }
+        } } },
+        "rivets": { "type":"array", "items": { "type":"object", "additionalProperties": false, "properties": {
+          "count": { "type":"integer" },
+          "ringFrac": { "type":"number" },
+          "radius": { "type":"number" }
+        } } }
       },
       "required": ["length", "radiusTop", "radiusBottom", "segmentation"]
     },
@@ -187,7 +233,32 @@
         "bumpEnabled": { "type": "boolean", "description": "Enable procedural noise bump mapping on the part." },
         "bumpScale": { "type": "number", "minimum": 0, "maximum": 0.5, "description": "Bump height scale in scene units (visual normal perturbation depth)." },
         "bumpNoiseScale": { "type": "number", "minimum": 1, "maximum": 64, "description": "Procedural noise frequency (higher = finer detail)." },
-        "bumpSeed": { "type": "integer", "minimum": 0, "maximum": 999999, "description": "Seed for procedural noise (deterministic bump pattern)." }
+        "bumpSeed": { "type": "integer", "minimum": 0, "maximum": 999999, "description": "Seed for procedural noise (deterministic bump pattern)." },
+        "emissiveColor": { "$ref": "#/$defs/ColorHex", "description": "Emissive glow color." },
+        "emissiveIntensity": { "type": "number", "minimum": 0, "maximum": 10, "description": "Emissive glow intensity." },
+        "transmission": { "type": "number", "minimum": 0, "maximum": 1, "description": "Glass-like transmission (requires thickness/IOR)." },
+        "ior": { "type": "number", "minimum": 1, "maximum": 2.5, "description": "Index of refraction for transmission." },
+        "thickness": { "type": "number", "minimum": 0, "maximum": 5, "description": "Volume thickness for transmission." },
+        "attenuationColor": { "$ref": "#/$defs/ColorHex", "description": "Transmission attenuation color." },
+        "attenuationDistance": { "type": "number", "minimum": 0, "maximum": 10, "description": "Transmission attenuation distance." },
+        "sheen": { "type": "number", "minimum": 0, "maximum": 1, "description": "Cloth sheen intensity." },
+        "sheenColor": { "$ref": "#/$defs/ColorHex", "description": "Cloth sheen color." },
+        "iridescence": { "type": "number", "minimum": 0, "maximum": 1, "description": "Iridescence intensity." },
+        "iridescenceIOR": { "type": "number", "minimum": 1, "maximum": 3, "description": "Iridescence IOR." },
+        "iridescenceThicknessMin": { "type": "number", "minimum": 0, "maximum": 2000, "description": "Iridescence thickness min (nm)." },
+        "iridescenceThicknessMax": { "type": "number", "minimum": 0, "maximum": 2000, "description": "Iridescence thickness max (nm)." },
+        "map": { "type": "string", "description": "Albedo map URL (sRGB)." },
+        "normalMap": { "type": "string", "description": "Normal map URL (linear)." },
+        "roughnessMap": { "type": "string", "description": "Roughness map URL (linear)." },
+        "metalnessMap": { "type": "string", "description": "Metalness map URL (linear)." },
+        "aoMap": { "type": "string", "description": "Ambient occlusion map URL (linear)." },
+        "bumpMap": { "type": "string", "description": "Bump map URL (linear)." },
+        "displacementMap": { "type": "string", "description": "Displacement map URL (linear)." },
+        "alphaMap": { "type": "string", "description": "Alpha map URL (linear)." },
+        "clearcoatNormalMap": { "type": "string", "description": "Clearcoat normal map URL (linear)." },
+        "envMapIntensity": { "type": "number", "minimum": 0, "maximum": 8, "description": "Per-material environment map intensity multiplier." },
+        "anisotropyFake": { "type": "boolean", "description": "Enable visual anisotropy via oriented normal map." },
+        "anisotropyDirection": { "type": "number", "minimum": -3.1416, "maximum": 3.1416, "description": "Anisotropy direction angle in radians (if anisotropyFake)." }
       },
       "required": ["color", "metalness", "roughness", "clearcoat", "clearcoatRoughness", "preset", "bumpEnabled", "bumpScale", "bumpNoiseScale", "bumpSeed"]
     },
@@ -235,4 +306,3 @@
     }
   ]
 }
-

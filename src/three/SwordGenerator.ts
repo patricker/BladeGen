@@ -117,6 +117,7 @@ export class SwordGenerator {
   public handleMesh: THREE.Mesh | null = null;
   public pommelMesh: THREE.Mesh | null = null;
   private guardGroup: THREE.Group | null = null;
+  private handleGroup: THREE.Group | null = null;
   private fullerGroup: THREE.Group | null = null;
   private hamonGroup: THREE.Group | null = null;
   private engravingGroup: THREE.Group | null = null;
@@ -223,6 +224,7 @@ export class SwordGenerator {
     setEmissive(this.guardMesh, false);
     setEmissive(this.guardGroup, false);
     setEmissive(this.handleMesh, false);
+    setEmissive(this.handleGroup, false);
     setEmissive(this.pommelMesh, false);
 
     this.highlighted = part;
@@ -231,7 +233,7 @@ export class SwordGenerator {
       setEmissive(this.guardMesh, true);
       setEmissive(this.guardGroup, true);
     }
-    if (part === 'handle') setEmissive(this.handleMesh, true);
+    if (part === 'handle') { setEmissive(this.handleMesh, true); setEmissive(this.handleGroup, true); }
     if (part === 'pommel') setEmissive(this.pommelMesh, true);
   }
 
@@ -425,6 +427,46 @@ export class SwordGenerator {
       group.rotation.z = g.tilt;
       this.guardGroup = group;
       this.group.add(group);
+    } else if ((g as any).style === 'basket') {
+      // Basket hilt: radial cage of rods around the grip
+      const group = new THREE.Group();
+      const yTop = targetTopY;
+      let yBottom = yTop - 0.25;
+      if (this.handleMesh) {
+        const hb = new THREE.Box3().setFromObject(this.handleMesh);
+        if (isFinite(hb.min.y) && isFinite(hb.max.y)) {
+          const H = hb.max.y - hb.min.y;
+          yBottom = yTop - Math.max(0.18, Math.min(0.35, H * 0.45));
+        }
+      }
+      const hParams:any = (this.lastParams?.handle || {});
+      const rTopBase = hParams.radiusTop ?? 0.12;
+      const oval = hParams.ovalRatio ?? 1.0;
+      const avgR = 0.5 * (rTopBase * oval + rTopBase / Math.max(1e-6, oval));
+      const margin = 0.05 + (g.ornamentation ?? 0) * 0.02;
+      const ringR = avgR + margin;
+      const gmat = this.makeMaterial('guard');
+      const count = Math.max(6, Math.round(6 + (g.ornamentation ?? 0) * 6));
+      const rodR = Math.max(0.006, Math.min(0.04, g.thickness * 0.18));
+      for (let i=0;i<count;i++) {
+        const phi = (i / count) * Math.PI * 2;
+        const xTop = Math.cos(phi) * ringR;
+        const zTop = Math.sin(phi) * ringR;
+        const xBot = Math.cos(phi) * (ringR * 0.7);
+        const zBot = Math.sin(phi) * (ringR * 0.7);
+        const p0 = new THREE.Vector3(xTop, yTop, zTop);
+        const p3 = new THREE.Vector3(xBot, yBottom, zBot);
+        const p1 = new THREE.Vector3(xTop*0.95, (yTop + yBottom)*0.7, zTop*0.7);
+        const p2 = new THREE.Vector3(xTop*0.85, (yTop + yBottom)*0.45, zTop*0.4);
+        const curve = new THREE.CubicBezierCurve3(p0, p1, p2, p3);
+        const tube = new THREE.TubeGeometry(curve, 64, rodR, 12, false);
+        const rod = new THREE.Mesh(tube, gmat);
+        rod.castShadow = true;
+        group.add(rod);
+      }
+      group.rotation.z = g.tilt;
+      this.guardGroup = group;
+      this.group.add(group);
     } else {
       const gmat3 = this.makeMaterial('guard'); (gmat3 as any).side = THREE.DoubleSide;
       const half = buildGuardHalfShape(g);
@@ -552,11 +594,8 @@ export class SwordGenerator {
   }
 
   private rebuildHandle(h: HandleParams) {
-    if (this.handleMesh) {
-      this.group.remove(this.handleMesh);
-      this.disposeMesh(this.handleMesh);
-      this.handleMesh = null;
-    }
+    if (this.handleMesh) { this.group.remove(this.handleMesh); this.disposeMesh(this.handleMesh); this.handleMesh = null; }
+    if (this.handleGroup) { this.group.remove(this.handleGroup); this.disposeGroup(this.handleGroup); this.handleGroup = null; }
     const profile: THREE.Vector2[] = [];
     const ridges = h.segmentation ? (h.segmentationCount ?? 8) : 0;
     const segments = 32;
@@ -636,7 +675,9 @@ export class SwordGenerator {
       this.handleMesh.scale.z /= oval;
     }
     this.handleMesh.position.y = -h.length * 0.5;
-    this.group.add(this.handleMesh);
+    this.handleGroup = new THREE.Group();
+    this.handleGroup.add(this.handleMesh);
+    this.group.add(this.handleGroup);
 
     // Optional visible tang (inside/through handle)
     if (h.tangVisible) {
@@ -647,7 +688,77 @@ export class SwordGenerator {
       const matTang = new THREE.MeshStandardMaterial({ color: 0x9aa4b2, metalness: 0.7, roughness: 0.4 });
       const tang = new THREE.Mesh(geoTang, matTang);
       tang.position.y = -h.length * 0.5 + ty * 0.5;
-      this.group.add(tang);
+      this.handleGroup.add(tang);
+    }
+    // Handle layers & extras
+    const layers = (h as any).handleLayers as any[] | undefined;
+    if (layers && layers.length) {
+      const gmat = this.makeMaterial('handle');
+      const hb = new THREE.Box3().setFromObject(this.handleMesh);
+      const yMin = hb.min.y, yMax = hb.max.y; const H = Math.max(1e-6, yMax - yMin);
+      const baseRadiusAt = (t:number) => {
+        const baseR = h.radiusBottom + (h.radiusTop - h.radiusBottom) * t;
+        const flare = Math.max(0, h.flare ?? 0) * Math.pow(1 - t, 2);
+        return Math.max(0.02, baseR + flare);
+      };
+      class HelixCurve extends (THREE as any).Curve {
+        constructor(public y0:number, public y1:number, public turns:number, public rFunc:(t:number)=>number, public phase:number){ super(); }
+        getPoint(u:number) {
+          const y = this.y0 + (this.y1 - this.y0) * u;
+          const t = (y - yMin) / Math.max(1e-6, H);
+          const r = this.rFunc(t);
+          const phi = this.phase + 2 * Math.PI * this.turns * u;
+          return new THREE.Vector3(Math.cos(phi)*r, y, Math.sin(phi)*r);
+        }
+      }
+      layers.forEach((L) => {
+        if (L.kind === 'wrap' && (L.wrapPattern === 'crisscross')) {
+          const y0 = yMin + (L.y0Frac ?? 0) * H;
+          const y1 = y0 + (L.lengthFrac ?? 1) * H;
+          const turns = Math.max(1, L.turns ?? 6);
+          const depth = Math.max(0.001, Math.min(0.05, L.depth ?? 0.012));
+          const rFunc = (t:number)=> baseRadiusAt(t) + depth;
+          const c1:any = new HelixCurve(y0, y1, +turns, rFunc, 0);
+          const c2:any = new HelixCurve(y0, y1, -turns, rFunc, 0);
+          const tubeR = Math.max(0.002, depth * 0.3);
+          const tube1 = new THREE.TubeGeometry(c1, 200, tubeR, 8, false);
+          const tube2 = new THREE.TubeGeometry(c2, 200, tubeR, 8, false);
+          this.handleGroup!.add(new THREE.Mesh(tube1, gmat), new THREE.Mesh(tube2, gmat));
+        }
+        if (L.kind === 'ring') {
+          const y = yMin + (L.y0Frac ?? 0.5) * H;
+          const t = (y - yMin) / H; const r = baseRadiusAt(t) + (L.radiusAdd ?? 0.0);
+          const tor = new THREE.TorusGeometry(r, Math.max(0.002, 0.01), 8, 32);
+          const ring = new THREE.Mesh(tor, gmat);
+          ring.position.y = y;
+          ring.rotation.x = Math.PI/2;
+          this.handleGroup!.add(ring);
+        }
+        if (L.kind === 'inlay') {
+          const y = yMin + (L.y0Frac ?? 0.5) * H;
+          const box = new THREE.BoxGeometry(0.03, 0.01, 0.005);
+          const m = new THREE.Mesh(box, gmat);
+          m.position.set(0, y, baseRadiusAt((y-yMin)/H) - 0.003);
+          this.handleGroup!.add(m);
+        }
+      });
+    }
+    // Menuki
+    const menuki = (h as any).menuki as any[] | undefined;
+    if (menuki && menuki.length) {
+      const matM = this.makeMaterial('handle');
+      const hb2 = new THREE.Box3().setFromObject(this.handleMesh);
+      const yMin2 = hb2.min.y, yMax2 = hb2.max.y; const H2 = Math.max(1e-6, yMax2 - yMin2);
+      menuki.forEach((m) => {
+        const y = yMin2 + (m.positionFrac ?? 0.5) * H2;
+        const t = (y - yMin2) / H2;
+        const r = Math.max(0.02, h.radiusBottom + (h.radiusTop - h.radiusBottom) * t);
+        const x = (m.side === 'left' ? -r : +r);
+        const sph = new THREE.SphereGeometry(Math.max(0.005, m.size ?? 0.02), 12, 8);
+        const mesh = new THREE.Mesh(sph, matM);
+        mesh.position.set(x, y, 0);
+        this.handleGroup!.add(mesh);
+      });
     }
   }
 

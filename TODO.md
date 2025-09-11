@@ -237,6 +237,7 @@ Prioritized additions; all default to off and remain back‑compatible.
 - [ ] New styles: basket, knucklebow, swept (tube/lathe builders)
   - [x] knucklebow style added (TubeGeometry bow)
   - [x] swept hilt style added (multiple curved bars)
+  - [x] basket hilt style added (radial cage of rods)
 - [ ] Guard extras: loops, side rings, finger guard (Torus/TubeGeometry)
   - [x] Finger guard extra (UI checkbox + TubeGeometry)
   - [x] Side rings extra (data + geometry; UI: radius/thickness/offset)

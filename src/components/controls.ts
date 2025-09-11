@@ -418,7 +418,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Guard, 'Guard Thickness', 0.05, 0.6, 0.005, state.guard.thickness, (v) => (state.guard.thickness = v), rerender);
   slider(sections.Guard, 'Curve', -1, 1, 0.01, state.guard.curve, (v) => (state.guard.curve = v), rerender, 'Bends ornate guards upward/downward.');
   slider(sections.Guard, 'Tilt', -1.57, 1.57, 0.01, state.guard.tilt, (v) => (state.guard.tilt = v), rerender, 'Rotates the guard around the blade axis.');
-  select(sections.Guard, 'Style', ['bar', 'winged', 'claw', 'disk', 'knucklebow'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
+  select(sections.Guard, 'Style', ['bar', 'winged', 'claw', 'disk', 'knucklebow', 'swept', 'basket'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
   slider(sections.Guard, 'Blend Fillet', 0, 1, 0.01, (state.guard as any).guardBlendFillet ?? 0, (v) => ((state.guard as any).guardBlendFillet = v), rerender, 'Small bridge piece between blade and guard.');
   checkbox(sections.Guard, 'Finger Guard', false, (v) => {
     const arr = (((state.guard as any).extras) || []) as any[];
@@ -478,6 +478,38 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   checkbox(sections.Handle, 'Tang Visible', state.handle.tangVisible ?? false, (v) => (state.handle.tangVisible = v), rerender, 'Show a rectangular tang through the handle.');
   slider(sections.Handle, 'Tang Width', 0.005, 0.2, 0.001, state.handle.tangWidth ?? 0.05, (v) => (state.handle.tangWidth = v), rerender, 'Visible tang width.');
   slider(sections.Handle, 'Tang Thickness', 0.003, 0.1, 0.001, state.handle.tangThickness ?? 0.02, (v) => (state.handle.tangThickness = v), rerender, 'Visible tang thickness.');
+  // Handle layers (simple)
+  checkbox(sections.Handle, 'Crisscross Wrap Layer', false, (v) => {
+    const arr = (((state.handle as any).handleLayers) || []) as any[];
+    const rest = arr.filter((e:any) => !(e.kind==='wrap' && e.wrapPattern==='crisscross'));
+    if (v) rest.push({ kind:'wrap', wrapPattern:'crisscross', y0Frac:0, lengthFrac:1, turns:7, depth:0.012 });
+    (state.handle as any).handleLayers = rest;
+  }, rerender, 'Adds two intertwined helices around the grip.');
+  slider(sections.Handle, 'Wrap Turns L', 1, 20, 1, 7, (val) => {
+    const arr = (((state.handle as any).handleLayers) || []) as any[];
+    (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='wrap' && e.wrapPattern==='crisscross' ? { ...e, turns: Math.round(val) } : e);
+  }, rerender, 'Number of crisscross turns.');
+  slider(sections.Handle, 'Wrap Depth', 0.001, 0.05, 0.001, 0.012, (val) => {
+    const arr = (((state.handle as any).handleLayers) || []) as any[];
+    (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='wrap' && e.wrapPattern==='crisscross' ? { ...e, depth: val } : e);
+  }, rerender, 'Radial height of the wrap layer.');
+  checkbox(sections.Handle, 'Handle Ring', false, (v) => {
+    const arr = (((state.handle as any).handleLayers) || []) as any[];
+    const rest = arr.filter((e:any) => e.kind!=='ring');
+    if (v) rest.push({ kind:'ring', y0Frac:0.5, radiusAdd:0.0 });
+    (state.handle as any).handleLayers = rest;
+  }, rerender, 'Add a decorative ring around the grip.');
+  slider(sections.Handle, 'Ring Y %', 0, 100, 1, 50, (val) => {
+    const arr = (((state.handle as any).handleLayers) || []) as any[];
+    (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='ring' ? { ...e, y0Frac: (val/100) } : e);
+  }, rerender, 'Vertical position of ring.');
+  slider(sections.Handle, 'Ring Radius +', 0, 0.2, 0.001, 0.0, (val) => {
+    const arr = (((state.handle as any).handleLayers) || []) as any[];
+    (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='ring' ? { ...e, radiusAdd: val } : e);
+  }, rerender, 'Additional radius for ring.');
+  checkbox(sections.Handle, 'Menuki', false, (v) => {
+    (state.handle as any).menuki = v ? [{ positionFrac: 0.55, side:'left', size:0.02 }] : [];
+  }, rerender, 'Add a menuki ornament on the grip.');
 
   // Pommel controls
   select(sections.Pommel, 'Style', ['orb', 'disk', 'spike'], state.pommel.style, (v) => (state.pommel.style = v as any), rerender);
@@ -1049,7 +1081,7 @@ function randomizeGuard(p: SwordParams, safe: boolean) {
   p.guard.thickness = safe ? r(0.1, 0.25) : r(0.08, 0.5);
   p.guard.curve = safe ? r(-0.3, 0.6) : r(-1, 1);
   p.guard.tilt = safe ? r(-0.2, 0.2) : r(-0.6, 0.6);
-  const styles = ['bar', 'winged', 'claw', 'disk', 'knucklebow'] as const;
+  const styles = ['bar', 'winged', 'claw', 'disk', 'knucklebow', 'swept', 'basket'] as const;
   p.guard.style = (styles as any)[Math.floor(r(0, styles.length))] as any;
 }
 

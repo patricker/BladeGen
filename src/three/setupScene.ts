@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { SwordGenerator, defaultSwordParams } from './SwordGenerator';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
@@ -273,6 +274,16 @@ export function setupScene(canvas: HTMLCanvasElement) {
       sword.setMaterials(materials);
     },
     setExposure: (v: number) => { renderer.toneMappingExposure = v; },
+    setToneMapping: (mode: 'None'|'Linear'|'Reinhard'|'Cineon'|'ACES') => {
+      const map: Record<string, any> = {
+        None: THREE.NoToneMapping,
+        Linear: THREE.LinearToneMapping,
+        Reinhard: THREE.ReinhardToneMapping,
+        Cineon: THREE.CineonToneMapping,
+        ACES: THREE.ACESFilmicToneMapping
+      };
+      renderer.toneMapping = map[mode] ?? THREE.ACESFilmicToneMapping;
+    },
     setAmbient: (v: number) => { amb.intensity = v; },
     setKeyIntensity: (v: number) => { dir1.intensity = v; },
     setKeyAngles: (az: number, el: number) => setKeyLightAngles(az, el),
@@ -314,17 +325,23 @@ export function setupScene(canvas: HTMLCanvasElement) {
           currentEnvTex?.dispose?.(); currentEnvTex = null as any;
           return;
         }
-        const loader = new THREE.TextureLoader();
-        loader.load(url, (tex) => {
-          tex.mapping = THREE.EquirectangularReflectionMapping;
+        const isHDR = url.toLowerCase().endsWith('.hdr');
+        const done = (tex: THREE.Texture) => {
           const pm = new THREE.PMREMGenerator(renderer);
           const rt = pm.fromEquirectangular(tex);
           const pmtex = rt.texture;
           scene.environment = pmtex;
-          if (asBackground) scene.background = pmtex; else scene.background = null;
+          scene.background = asBackground ? pmtex : null;
           currentEnvTex = pmtex;
           tex.dispose(); pm.dispose();
-        });
+        };
+        if (isHDR) {
+          const hdr = new RGBELoader();
+          hdr.load(url, (hdrTex: any) => { hdrTex.mapping = THREE.EquirectangularReflectionMapping; done(hdrTex as any); });
+        } else {
+          const loader = new THREE.TextureLoader();
+          loader.load(url, (tex) => { tex.mapping = THREE.EquirectangularReflectionMapping; done(tex); });
+        }
       } catch (e) { console.warn('EnvMap load failed', e); }
     },
     setFog: (colorHex?: number, density?: number) => {

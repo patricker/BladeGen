@@ -588,3 +588,14 @@ Notes:
 ---
 
 ✅ **End Goal**: A fully functional web app where users can design swords by adjusting 30–50 parameters, instantly preview them in 3D, load presets or randomize, push designs to extremes, and export to Blender via GLTF.
+\n---
+\n# Phase 7: Recent Additions (implemented)
+
+- [x] Engravings: added alignment and Decal type (projected decals)
+- [x] Engravings UI: per-entry type select, remove/reorder controls
+- [x] Basket guard: rim rings and configurable rod/ring counts and thickness
+- [x] Handle layers: crisscross wrap span (start/length) controls; multi-ring count
+- [x] Materials: added Glass and Gem presets; Reset Material button
+- [x] Render: tone-mapping mode dropdown; environment presets
+- [x] Schema: updated to include new fields (engravings.align, basket knobs)
+- [x] Tests: added decals check and schema validation via Ajv 2020

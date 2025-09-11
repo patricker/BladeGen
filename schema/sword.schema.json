@@ -100,7 +100,8 @@
           "offsetY": { "type":"number" },
           "offsetX": { "type":"number" },
           "rotation": { "type":"number" },
-          "side": { "type":"string", "enum":["left","right","both"] }
+          "side": { "type":"string", "enum":["left","right","both"] },
+          "align": { "type":"string", "enum":["left","center","right"], "description":"Horizontal alignment for text engravings. Ignored for non-text types." }
         } } }
       },
       "required": ["length", "baseWidth", "tipWidth", "thickness", "curvature"]
@@ -137,7 +138,12 @@
           "offsetY": { "type":"number" },
           "offsetX": { "type":"number" },
           "tilt": { "type":"number" }
-        } } }
+        } } },
+        "basketRodCount": { "type":"integer", "minimum": 4, "maximum": 64, "description": "For style='basket': number of radial rods forming the cage." },
+        "basketRodRadius": { "type":"number", "minimum": 0.001, "maximum": 0.2, "description": "For style='basket': radius of each rod (tube) in scene units." },
+        "basketRingCount": { "type":"integer", "minimum": 0, "maximum": 2, "description": "For style='basket': number of rim rings to add (0..2)." },
+        "basketRingRadiusAdd": { "type":"number", "minimum": 0, "maximum": 0.5, "description": "For style='basket': additional radius added to the base ring radius for rim rings." },
+        "basketRingThickness": { "type":"number", "minimum": 0.001, "maximum": 0.2, "description": "For style='basket': minor radius of the torus used for rim rings." }
       },
       "required": ["width", "thickness", "curve", "tilt", "style"]
     },

@@ -69,6 +69,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       handle: { color: '#5a6b78', metalness: 0.1, roughness: 0.85, clearcoat: 0.0, clearcoatRoughness: 0.6, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337 },
       pommel: { color: '#9aa4b2', metalness: 0.75, roughness: 0.35, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337 }
     };
+  const matDefaults: Record<Part, MatExt> = JSON.parse(JSON.stringify(matState));
   let raf = 0; let needs = false;
   const flush = () => { raf = 0; if (!needs) return; needs = false; sword.updateGeometry(state); updateWarnings(); };
   const rerender = () => { needs = true; if (!raf) raf = requestAnimationFrame(flush); };
@@ -217,6 +218,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     }, () => {}, 'Quality preset (affects AA, shadows, DPR).');
     select(sections.Render, 'Shadow Map', ['1024','2048','4096'], '2048', (v) => { render.setShadowMapSize(parseInt(v,10) as any); }, () => {}, 'Shadow map resolution.');
     slider(sections.Render, 'Shadow Bias', -0.01, 0.01, 0.0001, -0.0005, (v) => { render.setShadowBias(v); }, () => {}, 'Shadow acne/peter-panning tweak.');
+    select(sections.Render, 'Tone Mapping', ['ACES','Reinhard','Cineon','Linear','None'], 'ACES', (v) => { (render as any).setToneMapping?.(v as any); }, () => {}, 'Renderer tone mapping curve.');
     slider(sections.Render, 'Exposure', 0.5, 2.0, 0.01, rstate.exposure, (v) => { rstate.exposure = v; render.setExposure(v); }, () => {} , 'Tone mapping exposure.');
     slider(sections.Render, 'Env Intensity', 0, 3.0, 0.01, 1.0, (v) => { render.setEnvIntensity(v); }, () => {}, 'Environment map intensity (reflections).');
     colorPicker(sections.Render, 'Background Color', rstate.bgColor, (hex) => { rstate.bgColor = hex; const n = parseInt(hex.replace('#','0x')); render.setBackgroundColor(n); }, () => {}, 'Renderer clear color.');
@@ -248,6 +250,16 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(sections.Render, 'Vignette Softness', 0, 1.0, 0.01, 0.5, (v) => { render.setVignette(true, undefined, v); }, () => {}, 'Softness of vignette edge.');
     // EnvMap + Fog
     textRow(sections.Render, 'EnvMap URL', '', (v) => { (render as any).setEnvMap?.(v, false); }, 'Equirectangular image URL.');
+    select(sections.Render, 'Env Preset', ['None','Room','Royal Esplanade','Venice Sunset'], 'None', (v) => {
+      const map: Record<string,string|undefined> = {
+        None: undefined,
+        Room: undefined,
+        'Royal Esplanade': 'https://threejs.org/examples/textures/equirectangular/royal_esplanade_1k.hdr',
+        'Venice Sunset': 'https://threejs.org/examples/textures/equirectangular/venice_sunset_1k.hdr'
+      };
+      const url = map[v];
+      (render as any).setEnvMap?.(url, true);
+    }, () => {}, 'Quick env presets (loads remote HDR).');
     checkbox(sections.Render, 'Env as Background', false, (v) => { (render as any).setEnvMap?.(undefined, v); }, () => {}, 'Use environment as background. Load URL first, then toggle.');
     colorPicker(sections.Render, 'Fog Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); (render as any).setFog?.(n, 0.03); }, () => {}, 'Fog base color (exp2).');
     slider(sections.Render, 'Fog Density', 0, 0.1, 0.001, 0.03, (v) => { (render as any).setFog?.(undefined, v); }, () => {}, 'FogExp2 density (0 disables).');
@@ -314,11 +326,15 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(sections.Render, 'Clearcoat', 0, 1, 0.01, matState[matPart].clearcoat, (v) => { matState[matPart].clearcoat = v; render.setPartClearcoat(matPart, v); }, () => {}, 'Clearcoat layer (if supported).');
     slider(sections.Render, 'Clearcoat Rough', 0, 1, 0.01, matState[matPart].clearcoatRoughness, (v) => { matState[matPart].clearcoatRoughness = v; render.setPartClearcoatRoughness(matPart, v); }, () => {}, 'Clearcoat roughness (if supported).');
     // Material presets
-    select(sections.Render, 'Mat Preset', ['None','Steel','Iron','Bronze','Brass','Leather','Wood','Matte'], matState[matPart].preset, (v) => {
-      const apply = (c:number,m:number,r:number,cc:number,ccr:number) => {
+    select(sections.Render, 'Mat Preset', ['None','Steel','Iron','Bronze','Brass','Leather','Wood','Matte','Glass','Gem'], matState[matPart].preset, (v) => {
+      const apply = (c:number,m:number,r:number,cc:number,ccr:number, extra?: Partial<MatExt>) => {
         matState[matPart].color = '#' + c.toString(16).padStart(6,'0');
         matState[matPart].metalness = m; matState[matPart].roughness = r; matState[matPart].clearcoat = cc; matState[matPart].clearcoatRoughness = ccr; matState[matPart].preset = v;
         render.setPartColor(matPart, c); render.setPartMetalness(matPart, m); render.setPartRoughness(matPart, r); render.setPartClearcoat(matPart, cc); render.setPartClearcoatRoughness(matPart, ccr);
+        if (extra) {
+          Object.assign(matState[matPart], extra);
+          (render as any).setPartMaterial?.(matPart, extra);
+        }
         syncMaterialInputs(matPart);
       };
       if (v==='Steel') apply(0xb9c6ff,0.9,0.25,0.2,0.4);
@@ -328,8 +344,25 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       else if (v==='Leather') apply(0x6b4f3a,0.05,0.85,0.0,0.8);
       else if (v==='Wood') apply(0x8b6f47,0.02,0.8,0.0,0.8);
       else if (v==='Matte') apply(0xbfbfbf,0.0,0.9,0.0,1.0);
+      else if (v==='Glass') apply(0xffffff,0.0,0.05,0.0,1.0, { transmission: 0.95, ior: 1.5, thickness: 0.2, attenuationColor: '#ffffff', attenuationDistance: 1.0, envMapIntensity: 1.5 });
+      else if (v==='Gem') apply(0xc0e0ff,0.0,0.02,0.1,0.2, { transmission: 0.98, ior: 2.3, thickness: 0.4, attenuationColor: '#a0c8ff', attenuationDistance: 0.2, iridescence: 0.2 });
       else { matState[matPart].preset = 'None'; syncMaterialInputs(matPart); }
     }, () => {}, 'Quick material presets');
+    // Reset material for selected part
+    const resetBtn = document.createElement('button'); resetBtn.textContent = 'Reset Material'; resetBtn.title = 'Reset selected part material to defaults'; resetBtn.style.margin='4px 0';
+    resetBtn.addEventListener('click', () => {
+      const def = JSON.parse(JSON.stringify(matDefaults[matPart])) as MatExt;
+      matState[matPart] = def;
+      const c = parseInt(def.color.replace('#','0x'));
+      render.setPartColor(matPart, c);
+      render.setPartMetalness(matPart, def.metalness);
+      render.setPartRoughness(matPart, def.roughness);
+      render.setPartClearcoat(matPart, def.clearcoat);
+      render.setPartClearcoatRoughness(matPart, def.clearcoatRoughness);
+      (render as any).setPartMaterial?.(matPart, { emissiveColor: def.emissiveColor, emissiveIntensity: def.emissiveIntensity, transmission: def.transmission, ior: def.ior, thickness: def.thickness, attenuationColor: def.attenuationColor, attenuationDistance: def.attenuationDistance, sheen: def.sheen, sheenColor: def.sheenColor, iridescence: def.iridescence, iridescenceIOR: def.iridescenceIOR, iridescenceThicknessMin: def.iridescenceThicknessMin, iridescenceThicknessMax: def.iridescenceThicknessMax, envMapIntensity: def.envMapIntensity });
+      syncMaterialInputs(matPart);
+    });
+    sections.Render.appendChild(resetBtn);
     // Procedural bump/noise for selected part
     checkbox(sections.Render, 'Bump Enabled', matState[matPart].bumpEnabled, (v) => { matState[matPart].bumpEnabled = v; render.setPartBump(matPart, v, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Procedural noise bump.');
     slider(sections.Render, 'Bump Scale', 0, 0.08, 0.001, matState[matPart].bumpScale, (v) => { matState[matPart].bumpScale = v; render.setPartBump(matPart, matState[matPart].bumpEnabled, v, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Bump map scale.');
@@ -419,43 +452,47 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     if (v) rest.push({ type:'text', content:'ᚠᚢᚦ', fontUrl:'https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_regular.typeface.json', width:0.18, height:0.03, depth:0.002, offsetY: state.blade.length*0.5, offsetX:0, rotation:0, side:'right' });
     (state.blade as any).engravings = rest;
   }, rerender, 'Adds a text engraving (provide font URL and content).');
+  // Manage multiple engravings: add/remove/reorder and edit index
+  const engrToolbar = document.createElement('div'); engrToolbar.style.margin='4px 0'; engrToolbar.style.display='flex'; engrToolbar.style.gap='6px';
+  const engrAddBtn = document.createElement('button'); engrAddBtn.textContent = 'Add Engraving'; engrAddBtn.onclick = ()=>{ const arr = (((state.blade as any).engravings)||[]) as any[]; arr.push({ type:'text', content:'TEXT', fontUrl:'', width:0.1, height:0.02, depth:0.002, offsetY: state.blade.length*0.5, offsetX:0, rotation:0, side:'right', align:'center' }); (state.blade as any).engravings = arr; rerender(); };
+  const engrRemoveBtn = document.createElement('button'); engrRemoveBtn.textContent = 'Remove This'; engrRemoveBtn.onclick = ()=>{ const arr = (((state.blade as any).engravings)||[]) as any[]; if (!arr.length) return; if (engrIndex<0||engrIndex>=arr.length) return; arr.splice(engrIndex,1); (state.blade as any).engravings = arr; engrIndex = Math.max(0, Math.min(engrIndex, arr.length-1)); rerender(); };
+  const engrUpBtn = document.createElement('button'); engrUpBtn.textContent = 'Move Up'; engrUpBtn.onclick = ()=>{ const arr = (((state.blade as any).engravings)||[]) as any[]; if (engrIndex>0) { const t = arr[engrIndex]; arr[engrIndex] = arr[engrIndex-1]; arr[engrIndex-1] = t; engrIndex--; (state.blade as any).engravings = arr; rerender(); }};
+  const engrDownBtn = document.createElement('button'); engrDownBtn.textContent = 'Move Down'; engrDownBtn.onclick = ()=>{ const arr = (((state.blade as any).engravings)||[]) as any[]; if (engrIndex < arr.length-1) { const t = arr[engrIndex]; arr[engrIndex] = arr[engrIndex+1]; arr[engrIndex+1] = t; engrIndex++; (state.blade as any).engravings = arr; rerender(); }};
+  engrToolbar.appendChild(engrAddBtn); engrToolbar.appendChild(engrRemoveBtn); engrToolbar.appendChild(engrUpBtn); engrToolbar.appendChild(engrDownBtn);
+  sections.Blade.appendChild(engrToolbar);
+  let engrIndex = 0; const getEngr = ()=>{ const arr = (((state.blade as any).engravings)||[]) as any[]; if (!arr.length) return null; if (engrIndex>=arr.length) engrIndex = arr.length-1; return arr[engrIndex]; };
+  slider(sections.Blade, 'Engrave Index', 0, 10, 1, 0, (v)=>{ engrIndex = Math.max(0, Math.round(v)); }, ()=>{}, 'Which engraving to edit (0..N-1).');
+  select(sections.Blade, 'Engrave Type', ['text','shape','decal'], 'text', (v) => { const e = getEngr(); if (!e) return; e.type = v; rerender(); }, ()=>{}, 'Type of engraving primitive.');
   textRow(sections.Blade, 'Engrave Text', 'ᚠᚢᚦ', (v) => {
-    const list = (((state.blade as any).engravings) || []) as any[];
-    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, content: v } : e);
+    const e = getEngr(); if (!e) return; e.content = v; rerender();
   }, 'Unicode supported by the chosen font.');
   textRow(sections.Blade, 'Font URL', 'https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_regular.typeface.json', (v) => {
-    const list = (((state.blade as any).engravings) || []) as any[];
-    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, fontUrl: v } : e);
+    const e = getEngr(); if (!e) return; e.fontUrl = v; rerender();
   }, 'Typeface JSON URL (typeface.js format). For full Unicode, supply a suitable font.');
   slider(sections.Blade, 'Engrave Width', 0.02, 0.6, 0.001, 0.18, (val) => {
-    const list = (((state.blade as any).engravings) || []) as any[];
-    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, width: val } : e);
+    const e = getEngr(); if (!e) return; e.width = val; rerender();
   }, rerender, 'Max width of text region.');
   slider(sections.Blade, 'Engrave Height', 0.005, 0.1, 0.001, 0.03, (val) => {
-    const list = (((state.blade as any).engravings) || []) as any[];
-    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, height: val } : e);
+    const e = getEngr(); if (!e) return; e.height = val; rerender();
   }, rerender, 'Text letter height.');
   slider(sections.Blade, 'Engrave Depth', 0.0005, 0.02, 0.0005, 0.002, (val) => {
-    const list = (((state.blade as any).engravings) || []) as any[];
-    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, depth: val } : e);
+    const e = getEngr(); if (!e) return; e.depth = val; rerender();
   }, rerender, 'Extrusion depth of the engraving.');
   slider(sections.Blade, 'Engrave OffsetY', 0, 1, 0.001, 0.5, (val) => {
-    const list = (((state.blade as any).engravings) || []) as any[];
-    const off = state.blade.length * val;
-    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, offsetY: off } : e);
+    const e = getEngr(); if (!e) return; e.offsetY = state.blade.length * val; rerender();
   }, rerender, 'Position along blade length (0..1).');
   slider(sections.Blade, 'Engrave OffsetX', -0.4, 0.4, 0.001, 0, (val) => {
-    const list = (((state.blade as any).engravings) || []) as any[];
-    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, offsetX: val } : e);
+    const e = getEngr(); if (!e) return; e.offsetX = val; rerender();
   }, rerender, 'Lateral offset across blade width.');
   slider(sections.Blade, 'Engrave RotY', -180, 180, 1, 0, (deg) => {
-    const list = (((state.blade as any).engravings) || []) as any[];
-    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, rotation: (deg*Math.PI/180) } : e);
+    const e = getEngr(); if (!e) return; e.rotation = deg*Math.PI/180; rerender();
   }, rerender, 'Rotation around Y axis (deg).');
   select(sections.Blade, 'Engrave Side', ['left','right','both'], 'right', (v) => {
-    const list = (((state.blade as any).engravings) || []) as any[];
-    (state.blade as any).engravings = list.map((e:any) => e.type==='text' ? { ...e, side: v } : e);
+    const e = getEngr(); if (!e) return; e.side = v; rerender();
   }, rerender, 'Which blade face.');
+  select(sections.Blade, 'Text Align', ['left','center','right'], 'center', (v) => {
+    const e = getEngr(); if (!e) return; e.align = v as any; rerender();
+  }, rerender, 'Horizontal alignment for text.');
 
   // Guard controls
   slider(sections.Guard, 'Width', 0.2, 3.0, 0.01, state.guard.width, (v) => (state.guard.width = v), rerender);
@@ -502,6 +539,12 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Guard, 'Tip Sharpness', 0, 1, 0.01, state.guard.tipSharpness ?? 0.5, (v) => (state.guard.tipSharpness = v), rerender, 'Continuous tip shape for wing/claw.');
   slider(sections.Guard, 'Cutouts', 0, 12, 1, state.guard.cutoutCount ?? 0, (v) => (state.guard.cutoutCount = Math.round(v)), rerender, 'Tsuba (disk) radial cutouts.');
   slider(sections.Guard, 'Cutout Radius', 0.1, 0.8, 0.01, state.guard.cutoutRadius ?? 0.5, (v) => (state.guard.cutoutRadius = v), rerender, 'Cutout hole radius fraction.');
+  // Basket-specific knobs
+  slider(sections.Guard, 'Basket Rods', 4, 24, 1, (state.guard as any).basketRodCount ?? 12, (v) => ((state.guard as any).basketRodCount = Math.round(v)), rerender, 'Number of radial rods in basket.');
+  slider(sections.Guard, 'Basket Rod Thick', 0.004, 0.08, 0.001, (state.guard as any).basketRodRadius ?? 0.02, (v) => ((state.guard as any).basketRodRadius = v), rerender, 'Rod radius for basket bars.');
+  slider(sections.Guard, 'Basket Rings', 0, 2, 1, (state.guard as any).basketRingCount ?? 1, (v) => ((state.guard as any).basketRingCount = Math.round(v)), rerender, 'Number of rim rings (0..2).');
+  slider(sections.Guard, 'Ring Thickness', 0.002, 0.06, 0.001, (state.guard as any).basketRingThickness ?? 0.012, (v) => ((state.guard as any).basketRingThickness = v), rerender, 'Minor radius of rim rings.');
+  slider(sections.Guard, 'Ring Radius +', 0, 0.2, 0.001, (state.guard as any).basketRingRadiusAdd ?? 0.0, (v) => ((state.guard as any).basketRingRadiusAdd = v), rerender, 'Additional radius added to basket rim rings.');
 
   // Handle controls
   slider(sections.Handle, 'Length', 0.2, 2.0, 0.01, state.handle.length, (v) => (state.handle.length = v), rerender);
@@ -537,6 +580,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const arr = (((state.handle as any).handleLayers) || []) as any[];
     (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='wrap' && e.wrapPattern==='crisscross' ? { ...e, depth: val } : e);
   }, rerender, 'Radial height of the wrap layer.');
+  slider(sections.Handle, 'Wrap Y0 %', 0, 100, 1, 0, (val) => {
+    const arr = (((state.handle as any).handleLayers) || []) as any[];
+    (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='wrap' && e.wrapPattern==='crisscross' ? { ...e, y0Frac: (val/100) } : e);
+  }, rerender, 'Start position of wrap (percent of handle length).');
+  slider(sections.Handle, 'Wrap Len %', 1, 100, 1, 100, (val) => {
+    const arr = (((state.handle as any).handleLayers) || []) as any[];
+    (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='wrap' && e.wrapPattern==='crisscross' ? { ...e, lengthFrac: Math.max(0.01, (val/100)) } : e);
+  }, rerender, 'Length of the wrap section (percent of handle).');
   checkbox(sections.Handle, 'Handle Ring', false, (v) => {
     const arr = (((state.handle as any).handleLayers) || []) as any[];
     const rest = arr.filter((e:any) => e.kind!=='ring');
@@ -551,6 +602,19 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const arr = (((state.handle as any).handleLayers) || []) as any[];
     (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='ring' ? { ...e, radiusAdd: val } : e);
   }, rerender, 'Additional radius for ring.');
+  slider(sections.Handle, 'Rings Count', 0, 3, 1, 1, (val) => {
+    const n = Math.max(0, Math.round(val));
+    const arr = (((state.handle as any).handleLayers) || []) as any[];
+    const others = arr.filter((e:any) => e.kind!=='ring');
+    const rings: any[] = [];
+    if (n>0) {
+      for (let i=0;i<n;i++) {
+        const t = (n===1) ? 0.5 : (i/(n-1))*0.8 + 0.1; // spread 10%..90%
+        rings.push({ kind:'ring', y0Frac: t, radiusAdd: 0.0 });
+      }
+    }
+    (state.handle as any).handleLayers = [...others, ...rings];
+  }, rerender, 'Create multiple ring layers, evenly spaced.');
   checkbox(sections.Handle, 'Menuki', false, (v) => {
     (state.handle as any).menuki = v ? [{ positionFrac: 0.55, side:'left', size:0.02 }] : [];
   }, rerender, 'Add a menuki ornament on the grip.');

@@ -427,6 +427,15 @@ describe('Engravings', () => {
     // both sides should create at least two meshes
     expect(g.children.length).toBeGreaterThanOrEqual(2);
   })
+
+  it('decal engraving adds projected mesh', () => {
+    const s = make(p => {
+      (p.blade as any).engravings = [{ type:'decal', width:0.15, height:0.03, depth:0.002, offsetY: p.blade.length*0.5, offsetX:0, rotation:0, side:'right' }];
+    });
+    const g = (s as any).engravingGroup as THREE.Group;
+    expect(g).toBeTruthy();
+    expect(g.children.length).toBeGreaterThanOrEqual(1);
+  })
 })
 
 describe('Pommel knobs', () => {

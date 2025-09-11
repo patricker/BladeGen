@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
+import { DecalGeometry } from 'three/examples/jsm/geometries/DecalGeometry.js';
 
 export type BladeParams = {
   length: number; // total blade length
@@ -45,7 +46,7 @@ export type BladeParams = {
   bevel?: number; // 0..1 bevel intensity for profiles
   tipShape?: 'pointed' | 'rounded' | 'leaf';
   tipBulge?: number; // 0..1 extra mid-blade bulge for 'leaf'
-  engravings?: Array<{ type:'text'|'shape'|'decal', content?: string, fontUrl?: string, width:number, height:number, depth?: number, offsetY:number, offsetX:number, rotation?: number, side?: 'left'|'right'|'both' }>;
+  engravings?: Array<{ type:'text'|'shape'|'decal', content?: string, fontUrl?: string, width:number, height:number, depth?: number, offsetY:number, offsetX:number, rotation?: number, side?: 'left'|'right'|'both', align?: 'left'|'center'|'right' }>;
 };
 
 export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk';
@@ -70,6 +71,12 @@ export type GuardParams = {
   asymmetry?: number; // -1..1 scale left smaller, right larger (or vice versa)
   guardBlendFillet?: number; // 0..1 small fillet bridge at blade base
   extras?: Array<{ kind: 'loop'|'sideRing'|'fingerGuard'; radius: number; thickness: number; offsetY: number; offsetX?: number; tilt?: number }>;
+  // Basket-specific knobs (optional)
+  basketRodCount?: number;
+  basketRodRadius?: number;
+  basketRingCount?: number; // 0..2
+  basketRingRadiusAdd?: number; // additional radius added to ringR
+  basketRingThickness?: number; // torus minor radius
 };
 
 export type HandleParams = {
@@ -273,7 +280,7 @@ export class SwordGenerator {
       this.group.add(this.fullerGroup);
     }
 
-    // Engravings / inlays (simple box decals)
+    // Engravings / inlays
     if (this.engravingGroup) { this.group.remove(this.engravingGroup); this.disposeGroup(this.engravingGroup); this.engravingGroup = null; }
     const engr = (b as any).engravings as any[] | undefined;
     if (engr && engr.length && this.bladeMesh) {
@@ -294,6 +301,7 @@ export class SwordGenerator {
         const xPos = e.offsetX || 0;
         const rotY = e.rotation || 0;
         const sides: ('left'|'right')[] = e.side === 'both' ? ['left','right'] : [e.side || 'right'];
+        const align: 'left'|'center'|'right' = e.align || 'center';
         if (e.type === 'text' && e.content && e.fontUrl) {
           const url: string = e.fontUrl;
           const buildText = (font: any) => {
@@ -305,7 +313,12 @@ export class SwordGenerator {
               const z = (side === 'right' ? (halfTR - eps) : -(halfTL - eps));
               const mesh = new THREE.Mesh(tg.clone(), mat);
               mesh.scale.set(sx, 1, 1);
-              mesh.position.set(xPos - (textW * sx) / 2, yPos, z);
+              // alignment: left aligns to xPos, center centers on xPos, right aligns end to xPos
+              let dx = 0;
+              if (align === 'center') dx = -(textW * sx) / 2;
+              else if (align === 'right') dx = -(textW * sx);
+              else dx = 0; // left
+              mesh.position.set(xPos + dx, yPos, z);
               mesh.rotation.y = rotY;
               ggrp.add(mesh);
             });
@@ -313,6 +326,39 @@ export class SwordGenerator {
           const cached = this._fontCache!.get(url);
           if (cached) buildText(cached);
           else loader.load(url, (font: any) => { this._fontCache!.set(url, font); buildText(font); });
+        } else if (e.type === 'shape') {
+          const kind = String(e.content || 'rect').toLowerCase();
+          sides.forEach((side) => {
+            const z = (side === 'right' ? (halfTR - eps) : -(halfTL - eps));
+            let mesh: THREE.Mesh;
+            if (kind === 'circle') {
+              const cyl = new THREE.CylinderGeometry(Math.max(0.001, Math.min(width, height))/2, Math.max(0.001, Math.min(width, height))/2, depth, 24);
+              mesh = new THREE.Mesh(cyl, mat);
+              mesh.rotation.x = Math.PI/2;
+            } else {
+              const geo = new THREE.BoxGeometry(width, height, depth);
+              mesh = new THREE.Mesh(geo, mat);
+            }
+            mesh.position.set(xPos, yPos, z);
+            mesh.rotation.y = rotY;
+            ggrp.add(mesh);
+          });
+        } else if (e.type === 'decal') {
+          // Project a rectangular decal onto the blade face using DecalGeometry
+          if (this.bladeMesh) {
+            sides.forEach((side) => {
+              const sign = side === 'right' ? 1 : -1;
+              const z = sign > 0 ? (halfTR - eps * 4) : -(halfTL - eps * 4);
+              const pos = new THREE.Vector3(xPos, yPos, z);
+              const rot = new THREE.Euler(0, rotY, 0);
+              // Size: width across X, depth along Z (very thin), height along Y
+              const size = new THREE.Vector3(width, height, Math.max(0.0005, depth * 0.5));
+              const dg = new DecalGeometry(this.bladeMesh, pos, rot, size);
+              const dmat = mat.clone();
+              const decal = new THREE.Mesh(dg as any, dmat);
+              ggrp.add(decal);
+            });
+          }
         } else {
           sides.forEach((side) => {
             const z = (side === 'right' ? (halfTR - eps) : -(halfTL - eps));
@@ -476,8 +522,8 @@ export class SwordGenerator {
       const margin = 0.05 + (g.ornamentation ?? 0) * 0.02;
       const ringR = avgR + margin;
       const gmat = this.makeMaterial('guard');
-      const count = Math.max(6, Math.round(6 + (g.ornamentation ?? 0) * 6));
-      const rodR = Math.max(0.006, Math.min(0.04, g.thickness * 0.18));
+      const count = Math.max(4, Math.round((g as any).basketRodCount ?? (6 + (g.ornamentation ?? 0) * 6)));
+      const rodR = Math.max(0.004, Math.min(0.08, (g as any).basketRodRadius ?? (g.thickness * 0.18)));
       for (let i=0;i<count;i++) {
         const phi = (i / count) * Math.PI * 2;
         const xTop = Math.cos(phi) * ringR;
@@ -494,6 +540,20 @@ export class SwordGenerator {
         rod.castShadow = true;
         group.add(rod);
       }
+      // Add 0..2 rim rings for extra structure
+      const ringCount = Math.max(0, Math.min(2, Math.round((g as any).basketRingCount ?? 1)));
+      const ringAdd = Math.max(0, (g as any).basketRingRadiusAdd ?? 0);
+      const ringMinor = Math.max(0.002, Math.min(0.06, (g as any).basketRingThickness ?? Math.max(0.5*rodR, 0.008)));
+      const buildRing = (y:number) => {
+        const tor = new THREE.TorusGeometry(ringR + ringAdd, ringMinor, 10, 48);
+        const ring = new THREE.Mesh(tor, gmat);
+        ring.position.set(0, y, 0);
+        ring.rotation.x = Math.PI/2;
+        ring.castShadow = true;
+        group.add(ring);
+      };
+      if (ringCount >= 1) buildRing(yTop - 0.02);
+      if (ringCount >= 2) buildRing(yBottom + 0.02);
       group.rotation.z = g.tilt;
       this.guardGroup = group;
       this.group.add(group);

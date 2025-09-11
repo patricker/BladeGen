@@ -46,7 +46,7 @@ export type BladeParams = {
   bevel?: number; // 0..1 bevel intensity for profiles
   tipShape?: 'pointed' | 'rounded' | 'leaf';
   tipBulge?: number; // 0..1 extra mid-blade bulge for 'leaf'
-  engravings?: Array<{ type:'text'|'shape'|'decal', content?: string, fontUrl?: string, width:number, height:number, depth?: number, offsetY:number, offsetX:number, rotation?: number, side?: 'left'|'right'|'both', align?: 'left'|'center'|'right' }>;
+  engravings?: Array<{ type:'text'|'shape'|'decal', content?: string, fontUrl?: string, width:number, height:number, depth?: number, offsetY:number, offsetX:number, rotation?: number, side?: 'left'|'right'|'both', align?: 'left'|'center'|'right', letterSpacing?: number }>;
 };
 
 export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk';
@@ -305,23 +305,64 @@ export class SwordGenerator {
         if (e.type === 'text' && e.content && e.fontUrl) {
           const url: string = e.fontUrl;
           const buildText = (font: any) => {
-            const tg = new TextGeometry(e.content, { font, size: height, height: depth * 0.8, curveSegments: 6 } as any);
-            tg.computeBoundingBox();
-            const bbx = tg.boundingBox!; const textW = bbx.max.x - bbx.min.x;
-            const sx = textW > 1e-6 ? Math.min(10, width / textW) : 1;
-            sides.forEach((side) => {
-              const z = (side === 'right' ? (halfTR - eps) : -(halfTL - eps));
-              const mesh = new THREE.Mesh(tg.clone(), mat);
-              mesh.scale.set(sx, 1, 1);
-              // alignment: left aligns to xPos, center centers on xPos, right aligns end to xPos
-              let dx = 0;
-              if (align === 'center') dx = -(textW * sx) / 2;
-              else if (align === 'right') dx = -(textW * sx);
-              else dx = 0; // left
-              mesh.position.set(xPos + dx, yPos, z);
-              mesh.rotation.y = rotY;
-              ggrp.add(mesh);
-            });
+            const letterGap = Math.max(0, e.letterSpacing ?? 0);
+            if (letterGap <= 1e-6) {
+              const tg = new TextGeometry(e.content, { font, size: height, height: depth * 0.8, curveSegments: 6 } as any);
+              tg.computeBoundingBox();
+              const bbx = tg.boundingBox!; const textW = bbx.max.x - bbx.min.x;
+              const sx = textW > 1e-6 ? Math.min(10, width / textW) : 1;
+              sides.forEach((side) => {
+                const z = (side === 'right' ? (halfTR - eps) : -(halfTL - eps));
+                const mesh = new THREE.Mesh(tg.clone(), mat);
+                mesh.scale.set(sx, 1, 1);
+                let dx = 0;
+                if (align === 'center') dx = -(textW * sx) / 2;
+                else if (align === 'right') dx = -(textW * sx);
+                mesh.position.set(xPos + dx, yPos, z);
+                mesh.rotation.y = rotY;
+                ggrp.add(mesh);
+              });
+            } else {
+              // Build per-character group to apply letter spacing
+              const group = new THREE.Group();
+              let cx = 0;
+              const depthVal = depth * 0.8;
+              for (const ch of e.content) {
+                // Use font to generate shapes for each character
+                const shapes = font.generateShapes(ch, height) as any[];
+                let geo: THREE.ExtrudeGeometry | null = null;
+                if (shapes && shapes.length) {
+                  geo = new THREE.ExtrudeGeometry(shapes, { depth: depthVal, bevelEnabled: false, steps: 1, curveSegments: 6 } as any);
+                }
+                let charW = 0;
+                let mesh: THREE.Mesh | null = null;
+                if (geo) {
+                  geo.computeBoundingBox();
+                  const bbx = geo.boundingBox!; charW = Math.max(0, (bbx.max.x - bbx.min.x));
+                  mesh = new THREE.Mesh(geo, mat);
+                  // shift so left edge aligns to current cursor
+                  mesh.position.x = cx - (bbx.min.x || 0);
+                } else {
+                  // space or missing glyph: approximate width
+                  charW = height * 0.5;
+                }
+                if (mesh) group.add(mesh);
+                cx += (charW + letterGap * height);
+              }
+              const totalW = Math.max(1e-6, cx - letterGap * height);
+              const sx = Math.min(10, width / totalW);
+              sides.forEach((side) => {
+                const z = (side === 'right' ? (halfTR - eps) : -(halfTL - eps));
+                const g2 = group.clone(true);
+                g2.traverse((o)=>{ const m=o as THREE.Mesh; if (m.isMesh) m.material = (mat as any); });
+                g2.scale.set(sx, 1, 1);
+                let dx = 0; const wScaled = totalW * sx;
+                if (align === 'center') dx = -wScaled / 2; else if (align === 'right') dx = -wScaled;
+                g2.position.set(xPos + dx, yPos, z);
+                g2.rotation.y = rotY;
+                ggrp.add(g2);
+              });
+            }
           };
           const cached = this._fontCache!.get(url);
           if (cached) buildText(cached);

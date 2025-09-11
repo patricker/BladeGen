@@ -248,6 +248,12 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     checkbox(sections.Render, 'Vignette', false, (v) => { render.setVignette(v, 0.25, 0.5); }, () => {}, 'Enable vignette shading.');
     slider(sections.Render, 'Vignette Strength', 0, 1.0, 0.01, 0.25, (v) => { render.setVignette(true, v, undefined); }, () => {}, 'Strength of vignette.');
     slider(sections.Render, 'Vignette Softness', 0, 1.0, 0.01, 0.5, (v) => { render.setVignette(true, undefined, v); }, () => {}, 'Softness of vignette edge.');
+    // Blade gradient/wear overlay
+    checkbox(sections.Render, 'Blade Gradient', false, (v) => { (render as any).setBladeGradientWear?.(v, undefined, undefined, undefined, undefined); }, () => {}, 'Enable blade gradient/wear overlay.');
+    colorPicker(sections.Render, 'Gradient Base', '#b9c6ff', (hex) => { const n=parseInt(hex.replace('#','0x')); (render as any).setBladeGradientWear?.(true, n, undefined, undefined, undefined); }, () => {}, 'Lower/blade-base color.');
+    colorPicker(sections.Render, 'Gradient Edge', '#ffffff', (hex) => { const n=parseInt(hex.replace('#','0x')); (render as any).setBladeGradientWear?.(true, undefined, n, undefined, undefined); }, () => {}, 'Upper/tip color.');
+    slider(sections.Render, 'Edge Fade', 0, 1, 0.01, 0.2, (v) => { (render as any).setBladeGradientWear?.(true, undefined, undefined, v, undefined); }, () => {}, 'Fade width near side edges.');
+    slider(sections.Render, 'Wear', 0, 1, 0.01, 0.2, (v) => { (render as any).setBladeGradientWear?.(true, undefined, undefined, undefined, v); }, () => {}, 'Wear amount (noise).');
     // EnvMap + Fog
     textRow(sections.Render, 'EnvMap URL', '', (v) => { (render as any).setEnvMap?.(v, false); }, 'Equirectangular image URL.');
     select(sections.Render, 'Env Preset', ['None','Room','Royal Esplanade','Venice Sunset'], 'None', (v) => {
@@ -478,6 +484,9 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Blade, 'Engrave Depth', 0.0005, 0.02, 0.0005, 0.002, (val) => {
     const e = getEngr(); if (!e) return; e.depth = val; rerender();
   }, rerender, 'Extrusion depth of the engraving.');
+  slider(sections.Blade, 'Letter Spacing', 0, 0.3, 0.005, 0.05, (val) => {
+    const e = getEngr(); if (!e) return; (e as any).letterSpacing = val; rerender();
+  }, rerender, 'Additional spacing between characters (in letter heights).');
   slider(sections.Blade, 'Engrave OffsetY', 0, 1, 0.001, 0.5, (val) => {
     const e = getEngr(); if (!e) return; e.offsetY = state.blade.length * val; rerender();
   }, rerender, 'Position along blade length (0..1).');

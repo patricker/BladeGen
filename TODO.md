@@ -205,6 +205,7 @@
 ### 19. Deployment
 
 * [ ] Deploy static site (Vercel/Netlify).
+* [x] GitHub Pages CI workflow configured.
 * [ ] Provide example presets on landing page.
 * [ ] Add demo swords (images/screenshots).
 
@@ -230,11 +231,11 @@ Prioritized additions; all default to off and remain back‑compatible.
 - [x] Fuller mode: overlay (default) vs carve (geometry)
 - [x] Fuller profile/width/inset params; carve inside buildBladeGeometry
 - [x] Serration patterns: sine (default), saw, scallop, random + seed
-- [ ] Engravings/inlays (text/shape/decal) as shallow extrusions or decals
+- [x] Engravings/inlays (text/shape/decal) as shallow extrusions or decals
 
 ## 31. Guard Enhancements
 
-- [ ] New styles: basket, knucklebow, swept (tube/lathe builders)
+- [x] New styles: basket, knucklebow, swept (tube/lathe builders)
   - [x] knucklebow style added (TubeGeometry bow)
   - [x] swept hilt style added (multiple curved bars)
   - [x] basket hilt style added (radial cage of rods)
@@ -297,8 +298,8 @@ This phase focuses on visual fidelity and performance, guided by renderguidance.
   * [x] Optional rim light (color/intensity knobs)
 * [ ] Environment lighting
   * [x] `RoomEnvironment` + PMREM for default IBL; `scene.environment` set
-  * [ ] Env intensity knob per material or global
-  * [ ] Optional HDR equirect support (drop‑in URL)
+  * [x] Env intensity knob per material or global
+  * [x] Optional HDR equirect support (drop‑in URL)
 
 ## 22. Shadows
 
@@ -330,7 +331,7 @@ This phase focuses on visual fidelity and performance, guided by renderguidance.
 
 ## 24. Post‑Processing
 
-* [ ] EffectComposer wiring
+* [x] EffectComposer wiring
   * [x] RenderPass, FXAA baseline
   * [x] Bloom (UnrealBloomPass) with intensity/threshold/radius knobs
   * [x] Outline (OutlinePass) for selection/highlight mode
@@ -341,25 +342,25 @@ This phase focuses on visual fidelity and performance, guided by renderguidance.
 ## 25. Edge/Outline Techniques
 
 * [x] Back‑face “ink” outline mesh for cheap silhouette
-* [ ] Post OutlinePass for crisp white outline on selection
-* [ ] Fresnel/specular edge accent (shader or mat onBeforeCompile)
+* [x] Post OutlinePass for crisp white outline on selection
+* [x] Fresnel/specular edge accent (shader or mat onBeforeCompile)
 
 ## 26. Render UI (“Render” Tab)
 
-* [ ] Create Render tab with groups and knobs (see renderguidance.md)
-  * [ ] Material Base: base color, metalness, roughness, clearcoat
-  * [ ] Gradient/Wear/Noise: edge color, edge fade thickness, noise scale/seed, wear intensity
+* [x] Create Render tab with groups and knobs (see renderguidance.md)
+  * [x] Material Base: base color, metalness, roughness, clearcoat
+  * [x] Gradient/Wear/Noise: edge color, edge fade thickness, noise scale/seed, wear intensity
   * [x] Emission/Glow: bloom toggle/params
   * [x] Outline/Edge: outline toggle/thickness, ink outline; (fresnel pending)
   * [x] Lighting: ambient intensity, key light angle, rim light color/intensity
   * [x] Global: exposure
-* [ ] Per‑part material selectors (Blade/Guard/Handle/Pommel)
+* [x] Per‑part material selectors (Blade/Guard/Handle/Pommel)
 
 ## 27. Performance & Quality
 
 * [x] Quality presets (Low/Med/High): AA type, shadow map size, DPR cap
 * [ ] Mobile heuristics: disable bloom/outline, lower shadow map size, DPR cap
-* [ ] Metrics: track frame time; simple FPS readout in dev mode
+* [x] Metrics: track frame time; simple FPS readout in dev mode
 * [ ] Garbage collection of composers/passes/materials on dispose or toggles
 
 ## 28. Validation & Demos
@@ -501,8 +502,8 @@ Notes:
 - Blade
   - [x] Twist angle (spiral/twisted blades)
   - [x] Tip shape control (pointed ↔ rounded ↔ leaf)
-  - [ ] Cross‑section profile (diamond ↔ lenticular ↔ hexagonal)
-  - [ ] Edge bevel angle (sharp vs thick edge)
+  - [x] Cross‑section profile (diamond ↔ lenticular ↔ hexagonal)
+  - [x] Edge bevel angle (sharp vs thick edge)
   - [x] Double‑edge toggle (single/double edged rendering)
   - [x] Number of fullers (1–3) and layout
   - [x] Dedicated taper ratio knob (alt to base/tip widths)
@@ -533,7 +534,7 @@ Notes:
 - Pommel
   - [x] Offset (centered ↔ angled)
   - [x] Facet count (gem‑like)
-  - [ ] Balance weight ratio (vs blade mass)
+  - [x] Balance weight ratio (vs blade mass)
   - [x] Spike length (when applicable)
 
 ### 13. Validation & Feedback

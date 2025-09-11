@@ -101,7 +101,8 @@
           "offsetX": { "type":"number" },
           "rotation": { "type":"number" },
           "side": { "type":"string", "enum":["left","right","both"] },
-          "align": { "type":"string", "enum":["left","center","right"], "description":"Horizontal alignment for text engravings. Ignored for non-text types." }
+          "align": { "type":"string", "enum":["left","center","right"], "description":"Horizontal alignment for text engravings. Ignored for non-text types." },
+          "letterSpacing": { "type":"number", "minimum": 0, "maximum": 1, "description": "Extra spacing between characters in multiples of height (em-like). 0 = normal." }
         } } }
       },
       "required": ["length", "baseWidth", "tipWidth", "thickness", "curvature"]

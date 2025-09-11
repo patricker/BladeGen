@@ -12,7 +12,7 @@ const { renderer, camera, controls, scene, composer, dispose, updateFXAA, render
 let disposed = false;
 function onResize() {
   if (disposed) return;
-  const cap = (renderer.userData as any).dprCap ?? 2;
+  const cap = (renderer as any)._dprCap ?? 2;
   const dpr = Math.min(window.devicePixelRatio || 1, cap);
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;

@@ -252,6 +252,7 @@ export class SwordGenerator {
       this.guardMesh = new THREE.Mesh(geo, mat);
       this.guardMesh.castShadow = true;
       this.guardMesh.position.set(0, targetTopY, 0);
+      this.guardMesh.rotation.z = g.tilt;
       this.group.add(this.guardMesh);
     } else {
       const mat = new THREE.MeshPhysicalMaterial({ color, metalness: 0.6, roughness: 0.4, clearcoat: 0.0, clearcoatRoughness: 0.5, side: THREE.DoubleSide });

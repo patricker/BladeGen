@@ -190,6 +190,46 @@ export function setupScene(canvas: HTMLCanvasElement) {
     return group;
   };
 
+  // Fresnel/specular edge accent overlay (mesh-based ShaderMaterial)
+  let fresnelGroup: THREE.Group | null = null;
+  const FresnelShader = {
+    uniforms: { color: { value: new THREE.Color(0xffffff) }, intensity: { value: 0.6 }, power: { value: 2.0 } },
+    vertexShader: `
+      varying vec3 vNormal; varying vec3 vWorldPos;
+      void main(){ vNormal = normalize(normalMatrix * normal); vec4 wp = modelMatrix * vec4(position,1.0); vWorldPos = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }
+    `,
+    fragmentShader: `
+      uniform vec3 color; uniform float intensity; uniform float power; varying vec3 vNormal; varying vec3 vWorldPos;
+      void main(){ vec3 V = normalize(cameraPosition - vWorldPos); float f = pow(1.0 - max(0.0, dot(normalize(vNormal), V)), power) * intensity; gl_FragColor = vec4(color * f, f); }
+    `
+  } as const;
+  const buildFresnel = (col: number, intensity: number, power: number) => {
+    const group = new THREE.Group();
+    const mat = new THREE.ShaderMaterial({
+      uniforms: THREE.UniformsUtils.clone((FresnelShader as any).uniforms),
+      vertexShader: (FresnelShader as any).vertexShader,
+      fragmentShader: (FresnelShader as any).fragmentShader,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.FrontSide
+    });
+    (mat.uniforms as any).color.value = new THREE.Color(col);
+    (mat.uniforms as any).intensity.value = intensity;
+    (mat.uniforms as any).power.value = power;
+    sword.group.traverse((o)=>{
+      const m = o as THREE.Mesh;
+      if (m.isMesh && m.geometry) {
+        const mesh = new THREE.Mesh(m.geometry, mat);
+        mesh.position.copy(m.position);
+        mesh.quaternion.copy(m.quaternion);
+        mesh.scale.copy(m.scale);
+        group.add(mesh);
+      }
+    });
+    return group;
+  };
+
   const setKeyLightAngles = (azimuthDeg: number, elevationDeg: number) => {
     const az = THREE.MathUtils.degToRad(azimuthDeg);
     const el = THREE.MathUtils.degToRad(elevationDeg);
@@ -236,6 +276,13 @@ export function setupScene(canvas: HTMLCanvasElement) {
     setShadowMapSize: (size: 512|1024|2048|4096) => {
       dir1.shadow.mapSize.set(size, size);
       dir1.shadow.dispose?.();
+    },
+    setFresnel: (enabled: boolean, colorHex?: number, intensity?: number, power?: number) => {
+      if (fresnelGroup) { scene.remove(fresnelGroup); fresnelGroup = null; }
+      if (enabled) {
+        fresnelGroup = buildFresnel(colorHex ?? 0xffffff, intensity ?? 0.6, power ?? 2.0);
+        scene.add(fresnelGroup);
+      }
     },
     setOutline: (enabled: boolean, strength?: number, thickness?: number, colorHex?: number) => {
       outline.enabled = enabled;
@@ -319,7 +366,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
       if (part === 'pommel') apply(sword.pommelMesh);
     },
     setDPRCap: (cap: number) => {
-      (renderer.userData as any).dprCap = cap;
+      (renderer as any)._dprCap = cap;
       // Trigger an immediate resize update via window event would happen in main.
       // We also ensure passes get updated.
       updateFXAA();

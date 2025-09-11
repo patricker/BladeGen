@@ -164,28 +164,52 @@ export class SwordGenerator {
       this.guardGroup = null;
     }
 
+    // Compute guard Y placement between handle top and blade base
+    const GUARD_HEIGHT = 0.08;
+    let guardY = 0.0;
+    let bladeBaseY: number | undefined;
+    if (this.bladeMesh) {
+      const bb = new THREE.Box3().setFromObject(this.bladeMesh);
+      if (isFinite(bb.min.y)) bladeBaseY = bb.min.y;
+    }
+    let handleTopY: number | undefined;
+    if (this.handleMesh) {
+      const hb = new THREE.Box3().setFromObject(this.handleMesh);
+      if (isFinite(hb.max.y)) handleTopY = hb.max.y;
+    }
+
+    if (bladeBaseY !== undefined && handleTopY !== undefined) {
+      guardY = handleTopY + (bladeBaseY - handleTopY) * 0.5;
+    } else if (bladeBaseY !== undefined) {
+      guardY = bladeBaseY - GUARD_HEIGHT * 0.5;
+    } else if (handleTopY !== undefined) {
+      guardY = handleTopY + GUARD_HEIGHT * 0.5;
+    }
+
     const color = 0x8892b0;
     if (g.style === 'bar') {
-      const geo = new THREE.BoxGeometry(g.width, 0.08, g.thickness);
+      const geo = new THREE.BoxGeometry(g.width, GUARD_HEIGHT, g.thickness);
       const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.5 });
       this.guardMesh = new THREE.Mesh(geo, mat);
-      this.guardMesh.position.set(0, 0.08, 0);
+      this.guardMesh.position.set(0, guardY, 0);
       this.group.add(this.guardMesh);
     } else {
-      const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.45 });
+      const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.45, side: THREE.DoubleSide });
       const half = buildGuardHalfShape(g);
       const depth = g.thickness;
       const geoR = new THREE.ExtrudeGeometry(half, { depth, bevelEnabled: false, steps: 1 });
-      geoR.center();
+      // Do not center: keep inner edge at x=0 for correct alignment
       const meshR = new THREE.Mesh(geoR, mat);
-      meshR.rotation.y = Math.PI / 2; // orient thickness along Z
-      meshR.position.set(g.width / 2 - 0.1, 0.1, 0);
+      // Right half attached at inner edge x=0
+      meshR.position.set(0, 0, -depth / 2);
 
+      // Left half mirrored across X at inner edge
       const meshL = meshR.clone();
-      meshL.scale.x = -1; // mirror across X
+      meshL.scale.x = -1;
 
       const group = new THREE.Group();
       group.add(meshR, meshL);
+      group.position.y = guardY;
       group.rotation.z = g.tilt;
       this.guardGroup = group;
       this.group.add(group);

@@ -84,28 +84,28 @@
 
 ### 8. UI Framework & Layout
 
-* [ ] Implement sidebar with category tabs (Blade, Guard, Handle, Pommel, Other).
-* [ ] Collapsible sections for clarity.
-* [ ] Add sliders with labels + numeric inputs.
+* [x] Implement sidebar with categories (Blade, Guard, Handle, Pommel, Other).
+* [x] Collapsible/sectioned layout for clarity.
+* [x] Add sliders with labels + numeric inputs.
 * [ ] Add tooltips for advanced params.
 
 ### 9. Parameter Mapping
 
-* [ ] Connect UI sliders to state object.
-* [ ] On change → trigger `SwordGenerator.updateGeometry(params)`.
-* [ ] Ensure immediate visual feedback (<100ms).
+* [x] Connect UI sliders to state object.
+* [x] On change → trigger `SwordGenerator.updateGeometry(params)`.
+* [x] Ensure immediate visual feedback (<100ms).
 
 ### 10. Presets System
 
-* [ ] Define JSON objects for presets (Katana, Claymore, Rapier, Demon Blade).
-* [ ] Add UI dropdown or buttons for presets.
-* [ ] On select → load preset values into state & update sword.
-* [ ] Add “Save Custom Preset” (store in localStorage).
+* [x] Define JSON objects for presets (Katana, Claymore, Rapier, Demon Blade).
+* [x] Add UI dropdown or buttons for presets.
+* [x] On select → load preset values into state & update sword.
+* [x] Add “Save Custom Preset” (store in localStorage).
 
 ### 11. Randomizer
 
-* [ ] Button: randomize params within ranges.
-* [ ] Modes: full-range vs constrained realistic.
+* [x] Button: randomize params within ranges.
+* [x] Modes: full-range vs constrained realistic.
 * [ ] Optional “shuffle only this category”.
 
 ---
@@ -121,9 +121,9 @@
 
 ### 13. Validation & Feedback
 
-* [ ] Implement soft warnings for extreme ratios (e.g. guard >> blade).
+* [x] Implement soft warnings for extreme ratios (e.g. guard >> blade).
 * [ ] Non-blocking indicators (icon + tooltip).
-* [ ] Ensure geometry doesn’t break on extremes.
+* [x] Ensure geometry doesn’t break on extremes (clamps + rebuild path).
 
 ---
 
@@ -131,9 +131,9 @@
 
 ### 14. GLTF Export
 
-* [ ] Integrate `GLTFExporter`.
-* [ ] Export entire `SwordGenerator.group` as `.glb`.
-* [ ] Trigger download via Blob.
+* [x] Integrate `GLTFExporter`.
+* [x] Export entire `SwordGenerator.group` as `.glb`.
+* [x] Trigger download via Blob.
 * [ ] Test import into Blender (verify scale & orientation).
 
 ### 15. Additional Exports (optional)

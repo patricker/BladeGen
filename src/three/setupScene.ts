@@ -39,6 +39,8 @@ export function setupScene(canvas: HTMLCanvasElement) {
   // Sword generator demo
   const sword = new SwordGenerator(defaultSwordParams());
   scene.add(sword.group);
+  // expose sword instance for UI wiring
+  (scene as any).__swordInstance = sword;
 
   // Simple rotation to show life
   const clock = new THREE.Clock();

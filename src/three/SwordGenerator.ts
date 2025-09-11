@@ -65,6 +65,8 @@ export type GuardParams = {
   cutoutRadius?: number; // 0..0.8 fraction of radius for holes
   asymmetricArms?: boolean; // allow left/right to differ in scale
   asymmetry?: number; // -1..1 scale left smaller, right larger (or vice versa)
+  guardBlendFillet?: number; // 0..1 small fillet bridge at blade base
+  extras?: Array<{ kind: 'loop'|'sideRing'|'fingerGuard'; radius: number; thickness: number; offsetY: number; offsetX?: number; tilt?: number }>;
 };
 
 export type HandleParams = {
@@ -117,6 +119,7 @@ export class SwordGenerator {
   private guardGroup: THREE.Group | null = null;
   private fullerGroup: THREE.Group | null = null;
   private hamonGroup: THREE.Group | null = null;
+  private engravingGroup: THREE.Group | null = null;
   private highlighted: 'blade' | 'guard' | 'handle' | 'pommel' | null = null;
 
   private lastParams?: SwordParams;
@@ -261,6 +264,38 @@ export class SwordGenerator {
       this.group.add(this.fullerGroup);
     }
 
+    // Engravings / inlays (simple box decals)
+    if (this.engravingGroup) { this.group.remove(this.engravingGroup); this.disposeGroup(this.engravingGroup); this.engravingGroup = null; }
+    const engr = (b as any).engravings as any[] | undefined;
+    if (engr && engr.length && this.bladeMesh) {
+      const bb = new THREE.Box3().setFromObject(this.bladeMesh);
+      const yMin = bb.min.y;
+      const halfTL = Math.max(0.001, (b.thicknessLeft ?? b.thickness ?? 0.08) * 0.5);
+      const halfTR = Math.max(0.001, (b.thicknessRight ?? b.thickness ?? 0.08) * 0.5);
+      const eps = 0.0006;
+      const ggrp = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.6, metalness: 0.2, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+      engr.forEach((e) => {
+        const width = Math.max(0.005, e.width || 0.1);
+        const height = Math.max(0.005, e.height || 0.02);
+        const depth = Math.max(0.0005, e.depth || 0.002);
+        const yPos = yMin + Math.max(0, Math.min((b.length || 0), e.offsetY || 0));
+        const xPos = e.offsetX || 0;
+        const rotY = e.rotation || 0;
+        const sides: ('left'|'right')[] = e.side === 'both' ? ['left','right'] : [e.side || 'right'];
+        sides.forEach((side) => {
+          const z = (side === 'right' ? (halfTR - eps) : -(halfTL - eps));
+          const geo = new THREE.BoxGeometry(width, height, depth);
+          const m = new THREE.Mesh(geo, mat);
+          m.position.set(xPos, yPos, z);
+          m.rotation.y = rotY;
+          ggrp.add(m);
+        });
+      });
+      this.engravingGroup = ggrp;
+      this.group.add(this.engravingGroup);
+    }
+
     // Hamon visual overlay along edge
     if (this.hamonGroup) {
       this.group.remove(this.hamonGroup);
@@ -328,6 +363,68 @@ export class SwordGenerator {
       this.guardMesh.position.set(0, targetTopY, 0);
       this.guardMesh.rotation.z = g.tilt;
       this.group.add(this.guardMesh);
+    } else if (g.style === 'knucklebow') {
+      const group = new THREE.Group();
+      const yTop = targetTopY;
+      // Keep the bow close to the guard/top of the grip (under knuckles), not deep into the handle
+      let yArc = yTop - 0.15;
+      if (this.handleMesh) {
+        const hb = new THREE.Box3().setFromObject(this.handleMesh);
+        if (isFinite(hb.min.y) && isFinite(hb.max.y)) {
+          const H = Math.max(0.05, hb.max.y - hb.min.y);
+          yArc = yTop - Math.max(0.08, Math.min(0.22, H * 0.35));
+        }
+      }
+      const xHalf = Math.max(0.2, g.width * 0.5);
+      const p0 = new THREE.Vector3(+xHalf, yTop, 0);
+      const p3 = new THREE.Vector3(-xHalf, yTop, 0);
+      const p1 = new THREE.Vector3(+xHalf * 0.9, yArc, 0);
+      const p2 = new THREE.Vector3(-xHalf * 0.9, yArc, 0);
+      const curve = new THREE.CubicBezierCurve3(p0, p1, p2, p3);
+      const tubular = Math.max(24, Math.round(48 + ((g as any).ornamentation ?? 0) * 24));
+      const radius = Math.max(0.01, Math.min(0.06, g.thickness * 0.25));
+      const tube = new THREE.TubeGeometry(curve, tubular, radius, 12, false);
+      const gmat = this.makeMaterial('guard');
+      const bow = new THREE.Mesh(tube, gmat);
+      bow.castShadow = true;
+      group.add(bow);
+      group.rotation.z = g.tilt;
+      this.guardGroup = group;
+      this.group.add(group);
+    } else if ((g as any).style === 'swept') {
+      // Swept hilt: multiple curved bars (tubes) radiating from the guard
+      const group = new THREE.Group();
+      const xHalf = Math.max(0.2, g.width * 0.5);
+      const yTop = targetTopY;
+      let yEnd = yTop - 0.28;
+      if (this.handleMesh) {
+        const hb = new THREE.Box3().setFromObject(this.handleMesh);
+        if (isFinite(hb.min.y) && isFinite(hb.max.y)) {
+          const H = hb.max.y - hb.min.y;
+          yEnd = yTop - Math.max(0.18, Math.min(0.35, H * 0.5));
+        }
+      }
+      const gmat = this.makeMaterial('guard');
+      const count = Math.max(2, Math.round(3 + (g.ornamentation ?? 0) * 4));
+      const radius = Math.max(0.006, Math.min(0.04, g.thickness * 0.2));
+      for (let i = 0; i < count; i++) {
+        const t = count <= 1 ? 0 : (i / (count - 1));
+        const side = i % 2 === 0 ? 1 : -1; // alternate left/right
+        const spread = THREE.MathUtils.lerp(0.2, 0.8, t);
+        const zOff = THREE.MathUtils.lerp(0.06, 0.14, t) * side;
+        const p0 = new THREE.Vector3(xHalf * spread * side, yTop, 0);
+        const p3 = new THREE.Vector3(xHalf * (spread * 0.4) * side, yEnd, zOff);
+        const p1 = new THREE.Vector3(xHalf * spread * side, (yTop + yEnd) * 0.6, zOff * 0.3);
+        const p2 = new THREE.Vector3(xHalf * (spread * 0.6) * side, (yTop + yEnd) * 0.4, zOff * 0.8);
+        const curve = new THREE.CubicBezierCurve3(p0, p1, p2, p3);
+        const tube = new THREE.TubeGeometry(curve, 48, radius, 12, false);
+        const bar = new THREE.Mesh(tube, gmat);
+        bar.castShadow = true;
+        group.add(bar);
+      }
+      group.rotation.z = g.tilt;
+      this.guardGroup = group;
+      this.group.add(group);
     } else {
       const gmat3 = this.makeMaterial('guard'); (gmat3 as any).side = THREE.DoubleSide;
       const half = buildGuardHalfShape(g);
@@ -358,6 +455,58 @@ export class SwordGenerator {
       this.guardGroup = group;
       this.guardGroup.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = true; });
       this.group.add(group);
+    }
+
+    // Guard extras (side rings, finger guard)
+    const extras = (g as any).extras as GuardParams['extras'] | undefined;
+    if (extras && extras.length) {
+      if (!this.guardGroup) {
+        this.guardGroup = new THREE.Group();
+        this.group.add(this.guardGroup);
+      }
+      const container = this.guardGroup;
+      const gmatX = this.makeMaterial('guard');
+      extras.forEach((ex) => {
+        if (ex.kind === 'sideRing') {
+          const R = Math.max(0.01, ex.radius);
+          const r = Math.max(0.004, (ex.thickness ?? 0.03) * 0.5);
+          const tor = new THREE.TorusGeometry(R, r, 10, 28);
+          const ringL = new THREE.Mesh(tor, gmatX);
+          ringL.position.set(-Math.max(0.2, g.width*0.5) - R*0.2, targetTopY + (ex.offsetY||0), 0);
+          ringL.rotation.y = Math.PI/2;
+          container.add(ringL);
+          const ringR = ringL.clone();
+          ringR.position.x *= -1;
+          container.add(ringR);
+        } else if (ex.kind === 'fingerGuard') {
+          const xHalf = Math.max(0.2, g.width * 0.5);
+          const yTop = targetTopY;
+          const yArc = yTop - Math.max(0.06, Math.min(0.14, (ex.radius||0.12)));
+          const p0 = new THREE.Vector3(+xHalf*0.6, yTop, 0);
+          const p3 = new THREE.Vector3(-xHalf*0.6, yTop, 0);
+          const p1 = new THREE.Vector3(+xHalf*0.5, yArc, 0);
+          const p2 = new THREE.Vector3(-xHalf*0.5, yArc, 0);
+          const curve = new THREE.CubicBezierCurve3(p0, p1, p2, p3);
+          const tube = new THREE.TubeGeometry(curve, 36, Math.max(0.005, (ex.thickness??0.03)*0.5), 10, false);
+          const fg = new THREE.Mesh(tube, gmatX);
+          container.add(fg);
+        }
+      });
+    }
+
+    // Guard-blade blend fillet
+    const fillet = Math.max(0, Math.min(1, (g as any).guardBlendFillet ?? 0));
+    if (fillet > 0) {
+      const bladeW = this.lastParams?.blade.baseWidth ?? 0.25;
+      const bladeT = Math.max(this.lastParams?.blade.thicknessLeft ?? 0.08, this.lastParams?.blade.thicknessRight ?? 0.08);
+      const w = bladeW * (1.02 + fillet*0.06);
+      const h = 0.01 + fillet*0.02;
+      const d = bladeT * (0.9 + fillet*0.2);
+      const box = new THREE.BoxGeometry(w, h, d);
+      const matF = this.makeMaterial('guard');
+      const fil = new THREE.Mesh(box, matF);
+      fil.position.set(0, targetTopY + h*0.5, 0);
+      this.group.add(fil);
     }
 
     // Habaki (blade collar) above guard
@@ -619,7 +768,16 @@ export class SwordGenerator {
       ornamentation: clamp(g.ornamentation ?? 0, 0, 1),
       tipSharpness: clamp(g.tipSharpness ?? 0.5, 0, 1),
       cutoutCount: Math.round(clamp(g.cutoutCount ?? 0, 0, 12)),
-      cutoutRadius: clamp(g.cutoutRadius ?? 0.5, 0.1, 0.8)
+      cutoutRadius: clamp(g.cutoutRadius ?? 0.5, 0.1, 0.8),
+      guardBlendFillet: clamp((g as any).guardBlendFillet ?? 0, 0, 1),
+      extras: Array.isArray((g as any).extras) ? (g as any).extras.map((e: any) => ({
+        kind: (e.kind ?? 'sideRing') as any,
+        radius: clamp(e.radius ?? 0.12, 0.01, 0.6),
+        thickness: clamp(e.thickness ?? 0.03, 0.005, 0.2),
+        offsetY: clamp(e.offsetY ?? 0, -0.5, 0.5),
+        offsetX: clamp(e.offsetX ?? 0, -0.5, 0.5),
+        tilt: clamp(e.tilt ?? 0, -Math.PI/2, Math.PI/2)
+      })) : undefined
     };
 
     const h = params.handle;

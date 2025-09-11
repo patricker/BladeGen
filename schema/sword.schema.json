@@ -129,6 +129,7 @@
         "cutoutRadius": { "type": "number", "minimum": 0.1, "maximum": 0.8, "description": "For style='disk': cutout radius as a fraction of disk radius (0.1–0.8)." },
         "asymmetricArms": { "type": "boolean", "description": "Enable left/right scale asymmetry for winged/claw arms." },
         "asymmetry": { "type": "number", "minimum": -1, "maximum": 1, "description": "Wing/claw scale bias across X when asymmetricArms=true. Positive scales right larger, left smaller; negative inverses it." },
+        "guardBlendFillet": { "type": "number", "minimum": 0, "maximum": 1, "description": "Adds a small bridging piece between blade base and guard (0..1). Purely cosmetic; size scales with value." },
         "extras": { "type":"array", "items": { "type":"object", "additionalProperties": false, "properties": {
           "kind": { "type":"string", "enum":["loop","sideRing","fingerGuard"] },
           "radius": { "type":"number", "minimum":0 },
@@ -282,17 +283,21 @@
         "bloomEnabled": { "type": "boolean", "description": "Enable UnrealBloomPass." },
         "bloomStrength": { "type": "number", "minimum": 0, "maximum": 5, "description": "Bloom strength parameter." },
         "bloomThreshold": { "type": "number", "minimum": 0, "maximum": 2, "description": "Bloom luminance threshold." },
-        "bloomRadius": { "type": "number", "minimum": 0, "maximum": 2, "description": "Bloom radius/soft-kernel parameter." }
+        "bloomRadius": { "type": "number", "minimum": 0, "maximum": 2, "description": "Bloom radius/soft-kernel parameter." },
+        "envMap": { "type": "string", "description": "Environment map URL (equirectangular)." },
+        "envAsBackground": { "type": "boolean", "description": "Use environment map as scene background when true." },
+        "fogColor": { "$ref": "#/$defs/ColorHex", "description": "Fog color." },
+        "fogDensity": { "type": "number", "minimum": 0, "maximum": 0.1, "description": "Fog density for FogExp2. 0 disables fog." }
       }
     }
   },
   "examples": [
     {
       "$schema": "https://swordmaker.local/schema/sword.schema.json",
-      "version": 1,
+      "version": 2,
       "model": {
         "blade": { "length": 3.2, "baseWidth": 0.25, "tipWidth": 0.06, "thickness": 0.08, "curvature": 0.1 },
-        "guard": { "width": 1.2, "thickness": 0.2, "curve": 0.2, "tilt": 0, "style": "winged" },
+        "guard": { "width": 1.2, "thickness": 0.2, "curve": 0.2, "tilt": 0, "style": "winged", "guardBlendFillet": 0.5, "extras": [{"kind":"fingerGuard","radius":0.12,"thickness":0.03}] },
         "handle": { "length": 1.0, "radiusTop": 0.12, "radiusBottom": 0.12, "segmentation": false },
         "pommel": { "size": 0.16, "elongation": 1.0, "style": "orb", "shapeMorph": 0.2 }
       },

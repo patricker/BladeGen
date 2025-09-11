@@ -220,24 +220,29 @@ Prioritized additions; all default to off and remain back‑compatible.
 
 ## 29. Material System (centralize looks)
 
-- [ ] Add MaterialState extensions (emissive, transmission, sheen, iridescence, maps, anisotropyFake)
-- [ ] Add SwordGenerator.setMaterials() and makeMaterial(part)
-- [ ] Swap hard‑coded materials in rebuild* to use makeMaterial()
-- [ ] Optional texture loader (cached) + SRGB mapping
+- [x] Add MaterialState extensions (emissive, transmission, sheen, iridescence, maps, anisotropyFake)
+- [x] Add SwordGenerator.setMaterials() and makeMaterial(part)
+- [x] Swap hard‑coded materials in rebuild* to use makeMaterial()
+- [x] Optional texture loader (cached) + SRGB mapping (basic loader added; UI hooked up with URL fields)
 
 ## 30. Blade Upgrades
 
-- [ ] Fuller mode: overlay (default) vs carve (geometry)
-- [ ] Fuller profile/width/inset params; carve inside buildBladeGeometry
-- [ ] Serration patterns: sine (default), saw, scallop, random + seed
+- [x] Fuller mode: overlay (default) vs carve (geometry)
+- [x] Fuller profile/width/inset params; carve inside buildBladeGeometry
+- [x] Serration patterns: sine (default), saw, scallop, random + seed
 - [ ] Engravings/inlays (text/shape/decal) as shallow extrusions or decals
 
 ## 31. Guard Enhancements
 
 - [ ] New styles: basket, knucklebow, swept (tube/lathe builders)
+  - [x] knucklebow style added (TubeGeometry bow)
+  - [x] swept hilt style added (multiple curved bars)
 - [ ] Guard extras: loops, side rings, finger guard (Torus/TubeGeometry)
+  - [x] Finger guard extra (UI checkbox + TubeGeometry)
+  - [x] Side rings extra (data + geometry; UI: radius/thickness/offset)
 - [ ] Arm asymmetry beyond scale (shape bias per side)
 - [ ] Guard↔blade blend fillet
+- [x] Simple guard↔blade blend fillet box piece
 
 ## 32. Handle Layers & Details
 

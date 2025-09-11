@@ -96,7 +96,8 @@ export function setupScene(canvas: HTMLCanvasElement) {
   applyBackground();
 
   // Sword generator demo
-  const sword = new SwordGenerator(defaultSwordParams());
+  const materials: any = { blade: {}, guard: {}, handle: {}, pommel: {} };
+  const sword = new SwordGenerator(defaultSwordParams(), materials);
   // Enable shadows on sword parts
   sword.group.traverse((obj) => {
     const m = obj as THREE.Mesh;
@@ -262,7 +263,15 @@ export function setupScene(canvas: HTMLCanvasElement) {
     dir2.position.set(Math.cos(az) * Math.cos(el) * r, Math.sin(el) * r, Math.sin(az) * Math.cos(el) * r);
   };
 
+  let currentEnvTex: THREE.Texture | null = null;
+
   const renderHooks = {
+    // Materials
+    setPartMaterial: (part: 'blade'|'guard'|'handle'|'pommel', patch: any) => {
+      (materials as any)[part] = { ...(materials as any)[part], ...(patch||{}) };
+      (scene as any).__materials = materials;
+      sword.setMaterials(materials);
+    },
     setExposure: (v: number) => { renderer.toneMappingExposure = v; },
     setAmbient: (v: number) => { amb.intensity = v; },
     setKeyIntensity: (v: number) => { dir1.intensity = v; },
@@ -296,6 +305,31 @@ export function setupScene(canvas: HTMLCanvasElement) {
     setShadowMapSize: (size: 512|1024|2048|4096) => {
       dir1.shadow.mapSize.set(size, size);
       dir1.shadow.dispose?.();
+    },
+    setEnvMap: async (url?: string, asBackground?: boolean) => {
+      try {
+        if (!url) {
+          scene.environment = envTex;
+          if (asBackground) scene.background = null;
+          currentEnvTex?.dispose?.(); currentEnvTex = null as any;
+          return;
+        }
+        const loader = new THREE.TextureLoader();
+        loader.load(url, (tex) => {
+          tex.mapping = THREE.EquirectangularReflectionMapping;
+          const pm = new THREE.PMREMGenerator(renderer);
+          const rt = pm.fromEquirectangular(tex);
+          const pmtex = rt.texture;
+          scene.environment = pmtex;
+          if (asBackground) scene.background = pmtex; else scene.background = null;
+          currentEnvTex = pmtex;
+          tex.dispose(); pm.dispose();
+        });
+      } catch (e) { console.warn('EnvMap load failed', e); }
+    },
+    setFog: (colorHex?: number, density?: number) => {
+      if (!density || density <= 0) { scene.fog = null as any; return; }
+      scene.fog = new THREE.FogExp2(new THREE.Color(colorHex ?? 0xffffff), density);
     },
     // Procedural bump/noise on selected part
     setPartBump: (part: 'blade'|'guard'|'handle'|'pommel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => {

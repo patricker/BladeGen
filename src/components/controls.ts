@@ -53,7 +53,16 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     bloomRadius: 0.2,
   };
   type Part = 'blade'|'guard'|'handle'|'pommel';
-  const matState: Record<Part, { color: string; metalness: number; roughness: number; clearcoat: number; clearcoatRoughness: number; preset: string; bumpEnabled: boolean; bumpScale: number; bumpNoiseScale: number; bumpSeed: number; }>
+  type MatExt = {
+    color: string; metalness: number; roughness: number; clearcoat: number; clearcoatRoughness: number; preset: string;
+    bumpEnabled: boolean; bumpScale: number; bumpNoiseScale: number; bumpSeed: number;
+    emissiveColor?: string; emissiveIntensity?: number;
+    transmission?: number; ior?: number; thickness?: number; attenuationColor?: string; attenuationDistance?: number;
+    sheen?: number; sheenColor?: string; iridescence?: number; iridescenceIOR?: number; iridescenceThicknessMin?: number; iridescenceThicknessMax?: number;
+    envMapIntensity?: number; anisotropyFake?: boolean; anisotropyDirection?: number;
+    map?: string; normalMap?: string; roughnessMap?: string; metalnessMap?: string; aoMap?: string; bumpMap?: string; displacementMap?: string; alphaMap?: string; clearcoatNormalMap?: string;
+  };
+  const matState: Record<Part, MatExt>
     = {
       blade: { color: '#b9c6ff', metalness: 0.8, roughness: 0.25, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337 },
       guard: { color: '#8892b0', metalness: 0.6, roughness: 0.45, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337 },
@@ -237,6 +246,11 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     checkbox(sections.Render, 'Vignette', false, (v) => { render.setVignette(v, 0.25, 0.5); }, () => {}, 'Enable vignette shading.');
     slider(sections.Render, 'Vignette Strength', 0, 1.0, 0.01, 0.25, (v) => { render.setVignette(true, v, undefined); }, () => {}, 'Strength of vignette.');
     slider(sections.Render, 'Vignette Softness', 0, 1.0, 0.01, 0.5, (v) => { render.setVignette(true, undefined, v); }, () => {}, 'Softness of vignette edge.');
+    // EnvMap + Fog
+    textRow(sections.Render, 'EnvMap URL', '', (v) => { (render as any).setEnvMap?.(v, false); }, 'Equirectangular image URL.');
+    checkbox(sections.Render, 'Env as Background', false, (v) => { (render as any).setEnvMap?.(undefined, v); }, () => {}, 'Use environment as background. Load URL first, then toggle.');
+    colorPicker(sections.Render, 'Fog Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); (render as any).setFog?.(n, 0.03); }, () => {}, 'Fog base color (exp2).');
+    slider(sections.Render, 'Fog Density', 0, 0.1, 0.001, 0.03, (v) => { (render as any).setFog?.(undefined, v); }, () => {}, 'FogExp2 density (0 disables).');
     // Fresnel edge accent
     checkbox(sections.Render, 'Fresnel', false, (v) => { (render as any).setFresnel?.(v, 0xffffff, 0.6, 2.0); }, () => {}, 'Additive edge accent based on view angle.');
     slider(sections.Render, 'Fresnel Intensity', 0, 2.0, 0.01, 0.6, (v) => { (render as any).setFresnel?.(true, undefined, v, undefined); }, () => {}, 'Fresnel intensity.');
@@ -321,6 +335,32 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(sections.Render, 'Bump Scale', 0, 0.08, 0.001, matState[matPart].bumpScale, (v) => { matState[matPart].bumpScale = v; render.setPartBump(matPart, matState[matPart].bumpEnabled, v, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Bump map scale.');
     slider(sections.Render, 'Noise Scale', 1, 32, 1, matState[matPart].bumpNoiseScale, (v) => { matState[matPart].bumpNoiseScale = Math.round(v); render.setPartBump(matPart, matState[matPart].bumpEnabled, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Noise frequency.');
     slider(sections.Render, 'Noise Seed', 0, 9999, 1, matState[matPart].bumpSeed, (v) => { matState[matPart].bumpSeed = Math.round(v); render.setPartBump(matPart, matState[matPart].bumpEnabled, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Noise seed.');
+    // Advanced materials
+    colorPicker(sections.Render, 'Emissive Color', matState[matPart].emissiveColor ?? '#000000', (hex) => { matState[matPart].emissiveColor = hex; (render as any).setPartMaterial?.(matPart, { emissiveColor: hex }); }, () => {}, 'Glow color.');
+    slider(sections.Render, 'Emissive Intensity', 0, 10, 0.01, matState[matPart].emissiveIntensity ?? 0, (v) => { matState[matPart].emissiveIntensity = v; (render as any).setPartMaterial?.(matPart, { emissiveIntensity: v }); }, () => {}, 'Glow intensity.');
+    slider(sections.Render, 'Transmission', 0, 1, 0.01, matState[matPart].transmission ?? 0, (v) => { matState[matPart].transmission = v; (render as any).setPartMaterial?.(matPart, { transmission: v }); }, () => {}, 'Glass-like transmission.');
+    slider(sections.Render, 'IOR', 1, 2.5, 0.01, matState[matPart].ior ?? 1.5, (v) => { matState[matPart].ior = v; (render as any).setPartMaterial?.(matPart, { ior: v }); }, () => {}, 'Index of refraction.');
+    slider(sections.Render, 'Thickness', 0, 5, 0.01, matState[matPart].thickness ?? 0.2, (v) => { matState[matPart].thickness = v; (render as any).setPartMaterial?.(matPart, { thickness: v }); }, () => {}, 'Volume thickness.');
+    colorPicker(sections.Render, 'Atten Color', matState[matPart].attenuationColor ?? '#ffffff', (hex) => { matState[matPart].attenuationColor = hex; (render as any).setPartMaterial?.(matPart, { attenuationColor: hex }); }, () => {}, 'Transmission attenuation color.');
+    slider(sections.Render, 'Atten Dist', 0, 10, 0.01, matState[matPart].attenuationDistance ?? 0, (v) => { matState[matPart].attenuationDistance = v; (render as any).setPartMaterial?.(matPart, { attenuationDistance: v }); }, () => {}, 'Attenuation distance.');
+    slider(sections.Render, 'Sheen', 0, 1, 0.01, matState[matPart].sheen ?? 0, (v) => { matState[matPart].sheen = v; (render as any).setPartMaterial?.(matPart, { sheen: v }); }, () => {}, 'Cloth sheen.');
+    colorPicker(sections.Render, 'Sheen Color', matState[matPart].sheenColor ?? '#ffffff', (hex) => { matState[matPart].sheenColor = hex; (render as any).setPartMaterial?.(matPart, { sheenColor: hex }); }, () => {}, 'Sheen color.');
+    slider(sections.Render, 'Iridescence', 0, 1, 0.01, matState[matPart].iridescence ?? 0, (v) => { matState[matPart].iridescence = v; (render as any).setPartMaterial?.(matPart, { iridescence: v }); }, () => {}, 'Iridescence intensity.');
+    slider(sections.Render, 'Iridescence IOR', 1, 3, 0.01, matState[matPart].iridescenceIOR ?? 1.3, (v) => { matState[matPart].iridescenceIOR = v; (render as any).setPartMaterial?.(matPart, { iridescenceIOR: v }); }, () => {}, 'Iridescence IOR.');
+    slider(sections.Render, 'Iri Thick Min', 0, 2000, 1, matState[matPart].iridescenceThicknessMin ?? 100, (v) => { const iv=Math.round(v); matState[matPart].iridescenceThicknessMin = iv; (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMin: iv }); }, () => {}, 'Iridescence thickness min (nm).');
+    slider(sections.Render, 'Iri Thick Max', 0, 2000, 1, matState[matPart].iridescenceThicknessMax ?? 400, (v) => { const iv=Math.round(v); matState[matPart].iridescenceThicknessMax = iv; (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMax: iv }); }, () => {}, 'Iridescence thickness max (nm).');
+    slider(sections.Render, 'EnvMap Intensity', 0, 8, 0.01, matState[matPart].envMapIntensity ?? 1, (v) => { matState[matPart].envMapIntensity = v; (render as any).setPartMaterial?.(matPart, { envMapIntensity: v }); }, () => {}, 'Per-material env intensity.');
+    checkbox(sections.Render, 'Aniso Fake', matState[matPart].anisotropyFake ?? false, (v) => { matState[matPart].anisotropyFake = v; (render as any).setPartMaterial?.(matPart, { anisotropyFake: v }); }, () => {}, 'Enable visual anisotropy.');
+    slider(sections.Render, 'Aniso Dir', -180, 180, 1, (matState[matPart].anisotropyDirection ?? 0) * 180/Math.PI, (v) => { const rad=v*Math.PI/180; matState[matPart].anisotropyDirection = rad; (render as any).setPartMaterial?.(matPart, { anisotropyDirection: rad }); }, () => {}, 'Anisotropy direction (deg).');
+    textRow(sections.Render, 'Map URL', matState[matPart].map ?? '', (v) => { matState[matPart].map = v; (render as any).setPartMaterial?.(matPart, { map: v }); }, 'Albedo map URL (sRGB).');
+    textRow(sections.Render, 'Normal URL', matState[matPart].normalMap ?? '', (v) => { matState[matPart].normalMap = v; (render as any).setPartMaterial?.(matPart, { normalMap: v }); }, 'Normal map URL.');
+    textRow(sections.Render, 'Rough URL', matState[matPart].roughnessMap ?? '', (v) => { matState[matPart].roughnessMap = v; (render as any).setPartMaterial?.(matPart, { roughnessMap: v }); }, 'Roughness map URL.');
+    textRow(sections.Render, 'Metal URL', matState[matPart].metalnessMap ?? '', (v) => { matState[matPart].metalnessMap = v; (render as any).setPartMaterial?.(matPart, { metalnessMap: v }); }, 'Metalness map URL.');
+    textRow(sections.Render, 'AO URL', matState[matPart].aoMap ?? '', (v) => { matState[matPart].aoMap = v; (render as any).setPartMaterial?.(matPart, { aoMap: v }); }, 'AO map URL.');
+    textRow(sections.Render, 'Bump URL', matState[matPart].bumpMap ?? '', (v) => { matState[matPart].bumpMap = v; (render as any).setPartMaterial?.(matPart, { bumpMap: v }); }, 'Bump map URL.');
+    textRow(sections.Render, 'Disp URL', matState[matPart].displacementMap ?? '', (v) => { matState[matPart].displacementMap = v; (render as any).setPartMaterial?.(matPart, { displacementMap: v }); }, 'Displacement map URL.');
+    textRow(sections.Render, 'Alpha URL', matState[matPart].alphaMap ?? '', (v) => { matState[matPart].alphaMap = v; (render as any).setPartMaterial?.(matPart, { alphaMap: v }); }, 'Alpha map URL.');
+    textRow(sections.Render, 'CC Normal URL', matState[matPart].clearcoatNormalMap ?? '', (v) => { matState[matPart].clearcoatNormalMap = v; (render as any).setPartMaterial?.(matPart, { clearcoatNormalMap: v }); }, 'Clearcoat normal map URL.');
     // Blade gradient/wear overlay
     let gradEnabled = false; let gradBase = '#b9c6ff'; let gradEdge = '#ffffff'; let gradFade = 0.2; let gradWear = 0.2;
     checkbox(sections.Render, 'Blade Gradient', false, (v) => { gradEnabled = v; render.setBladeGradientWear(gradEnabled, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Enable blade gradient/wear overlay.');
@@ -378,7 +418,33 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Guard, 'Guard Thickness', 0.05, 0.6, 0.005, state.guard.thickness, (v) => (state.guard.thickness = v), rerender);
   slider(sections.Guard, 'Curve', -1, 1, 0.01, state.guard.curve, (v) => (state.guard.curve = v), rerender, 'Bends ornate guards upward/downward.');
   slider(sections.Guard, 'Tilt', -1.57, 1.57, 0.01, state.guard.tilt, (v) => (state.guard.tilt = v), rerender, 'Rotates the guard around the blade axis.');
-  select(sections.Guard, 'Style', ['bar', 'winged', 'claw', 'disk'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
+  select(sections.Guard, 'Style', ['bar', 'winged', 'claw', 'disk', 'knucklebow'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
+  slider(sections.Guard, 'Blend Fillet', 0, 1, 0.01, (state.guard as any).guardBlendFillet ?? 0, (v) => ((state.guard as any).guardBlendFillet = v), rerender, 'Small bridge piece between blade and guard.');
+  checkbox(sections.Guard, 'Finger Guard', false, (v) => {
+    const arr = (((state.guard as any).extras) || []) as any[];
+    const without = arr.filter((e) => e.kind !== 'fingerGuard');
+    if (v) without.push({ kind: 'fingerGuard', radius: 0.12, thickness: 0.03, offsetY: 0 });
+    (state.guard as any).extras = without;
+  }, rerender, 'Add a small bar under the knuckles.');
+  // Side rings controls
+  checkbox(sections.Guard, 'Side Rings', false, (v) => {
+    const arr = (((state.guard as any).extras) || []) as any[];
+    const without = arr.filter((e) => e.kind !== 'sideRing');
+    if (v) without.push({ kind: 'sideRing', radius: 0.12, thickness: 0.03, offsetY: 0 });
+    (state.guard as any).extras = without;
+  }, rerender, 'Add decorative rings at guard sides.');
+  slider(sections.Guard, 'Ring Radius', 0.01, 0.4, 0.001, 0.12, (v) => {
+    const arr = (((state.guard as any).extras) || []) as any[];
+    (state.guard as any).extras = arr.map((e:any) => e.kind==='sideRing' ? { ...e, radius: v } : e);
+  }, rerender, 'Side ring radius.');
+  slider(sections.Guard, 'Ring Thick', 0.005, 0.1, 0.001, 0.03, (v) => {
+    const arr = (((state.guard as any).extras) || []) as any[];
+    (state.guard as any).extras = arr.map((e:any) => e.kind==='sideRing' ? { ...e, thickness: v } : e);
+  }, rerender, 'Side ring thickness.');
+  slider(sections.Guard, 'Ring OffsetY', -0.2, 0.2, 0.001, 0, (v) => {
+    const arr = (((state.guard as any).extras) || []) as any[];
+    (state.guard as any).extras = arr.map((e:any) => e.kind==='sideRing' ? { ...e, offsetY: v } : e);
+  }, rerender, 'Side ring vertical offset.');
   checkbox(sections.Guard, 'Asymmetric Arms', state.guard.asymmetricArms ?? false, (v) => (state.guard.asymmetricArms = v), rerender, 'Scale left/right guard arms differently.');
   slider(sections.Guard, 'Arm Asymmetry', -1, 1, 0.01, state.guard.asymmetry ?? 0, (v) => (state.guard.asymmetry = v), rerender, 'Negative enlarges left; positive enlarges right.');
   slider(sections.Guard, 'Guard Detail', 3, 64, 1, state.guard.curveSegments ?? 12, (v) => (state.guard.curveSegments = Math.round(v)), rerender, 'Detail for guard curves.');
@@ -801,6 +867,24 @@ function colorPicker(parent: HTMLElement, label: string, value: string, onChange
   parent.appendChild(row);
 }
 
+function textRow(parent: HTMLElement, label: string, value: string, onChange: (v: string) => void, tooltip?: string) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const lab = document.createElement('label');
+  lab.textContent = label;
+  if (tooltip) lab.title = tooltip;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = value || '';
+  input.placeholder = 'http(s):// or relative path';
+  input.addEventListener('change', () => { onChange(input.value); });
+  row.appendChild(lab);
+  const span = document.createElement('span');
+  span.appendChild(input);
+  row.appendChild(span);
+  parent.appendChild(row);
+}
+
 function refreshInputs(root: HTMLElement, params: SwordParams) {
   // Sync number/range/select values to current state
   const map: Record<string, number | string | boolean> = {
@@ -965,7 +1049,8 @@ function randomizeGuard(p: SwordParams, safe: boolean) {
   p.guard.thickness = safe ? r(0.1, 0.25) : r(0.08, 0.5);
   p.guard.curve = safe ? r(-0.3, 0.6) : r(-1, 1);
   p.guard.tilt = safe ? r(-0.2, 0.2) : r(-0.6, 0.6);
-  p.guard.style = (['bar', 'winged', 'claw', 'disk'] as const)[Math.floor(r(0, 4))] as any;
+  const styles = ['bar', 'winged', 'claw', 'disk', 'knucklebow'] as const;
+  p.guard.style = (styles as any)[Math.floor(r(0, styles.length))] as any;
 }
 
 function randomizeHandle(p: SwordParams, safe: boolean) {

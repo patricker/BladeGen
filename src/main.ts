@@ -7,18 +7,21 @@ if (!canvas) {
   throw new Error('Canvas element #scene not found');
 }
 
-const { renderer, camera, controls, scene, dispose } = setupScene(canvas);
+const { renderer, camera, controls, scene, composer, dispose, updateFXAA, renderHooks } = setupScene(canvas) as any;
 
 let disposed = false;
 function onResize() {
   if (disposed) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const cap = (renderer.userData as any).dprCap ?? 2;
+  const dpr = Math.min(window.devicePixelRatio || 1, cap);
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
   renderer.setPixelRatio(dpr);
   renderer.setSize(width, height, false);
+  if (composer) composer.setSize(width, height);
+  if (updateFXAA) updateFXAA();
 }
 
 window.addEventListener('resize', onResize);
@@ -30,7 +33,11 @@ function animate(t: number) {
   const dt = (t - last) / 1000;
   last = t;
   controls.update();
-  renderer.render(scene, camera);
+  if (composer) {
+    composer.render();
+  } else {
+    renderer.render(scene, camera);
+  }
   requestAnimationFrame(animate);
 }
 requestAnimationFrame(animate);
@@ -50,7 +57,9 @@ if (!sword) {
 
 const sidebar = document.getElementById('sidebar');
 if (sidebar && sword) {
-  createSidebar(sidebar, sword, defaultSwordParams());
+  // @ts-ignore
+  const hooks = (scene as any).__renderHooks || renderHooks;
+  createSidebar(sidebar, sword, defaultSwordParams(), hooks);
 }
 
 // Hot module cleanup

@@ -31,6 +31,10 @@ export type BladeParams = {
   hamonFrequency?: number; // waves along blade
   hamonSide?: 'auto' | 'left' | 'right' | 'both';
   twistAngle?: number; // radians of total twist from base to tip
+  crossSection?: 'flat' | 'lenticular' | 'diamond' | 'hexagonal';
+  bevel?: number; // 0..1 bevel intensity for profiles
+  tipShape?: 'pointed' | 'rounded' | 'leaf';
+  tipBulge?: number; // 0..1 extra mid-blade bulge for 'leaf'
 };
 
 export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk';
@@ -45,6 +49,14 @@ export type GuardParams = {
   habakiHeight?: number;
   habakiMargin?: number;
   heightOffset?: number; // vertical offset from blade base for guard placement
+  quillonCount?: number; // 0, 2, or 4
+  quillonLength?: number; // length along X
+  ornamentation?: number; // 0..1
+  tipSharpness?: number; // 0..1 continuous tip style
+  cutoutCount?: number; // for disk style: number of holes
+  cutoutRadius?: number; // 0..0.8 fraction of radius for holes
+  asymmetricArms?: boolean; // allow left/right to differ in scale
+  asymmetry?: number; // -1..1 scale left smaller, right larger (or vice versa)
 };
 
 export type HandleParams = {
@@ -78,6 +90,7 @@ export type PommelParams = {
   offsetY?: number;
   facetCount?: number;
   spikeLength?: number;
+  balance?: number; // 0..1 interpolate size toward balance target
 };
 
 export type SwordParams = {
@@ -155,10 +168,11 @@ export class SwordGenerator {
 
     const geo = buildBladeGeometry(b);
 
-    const mat = new THREE.MeshStandardMaterial({ color: 0xb9c6ff, metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide });
+    const mat = new THREE.MeshPhysicalMaterial({ color: 0xb9c6ff, metalness: 0.8, roughness: 0.25, clearcoat: 0.0, clearcoatRoughness: 0.5, side: THREE.DoubleSide });
     this.bladeMesh = new THREE.Mesh(geo, mat);
     // Align blade base exactly at y=0 (no extra offset)
     this.bladeMesh.position.y = 0.0;
+    this.bladeMesh.castShadow = true;
     this.group.add(this.bladeMesh);
 
     // Fuller grooves (visual overlay): two thin insets on both faces
@@ -211,21 +225,36 @@ export class SwordGenerator {
     const color = 0x8892b0;
     if (g.style === 'bar') {
       const geo = new THREE.BoxGeometry(g.width, GUARD_HEIGHT, g.thickness);
-      const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.5 });
+      const mat = new THREE.MeshPhysicalMaterial({ color, metalness: 0.6, roughness: 0.45, clearcoat: 0.0, clearcoatRoughness: 0.5 });
       this.guardMesh = new THREE.Mesh(geo, mat);
+      this.guardMesh.castShadow = true;
       // Center so that top of the bar meets blade base
       this.guardMesh.position.set(0, targetTopY - GUARD_HEIGHT * 0.5, 0);
       this.group.add(this.guardMesh);
     } else if (g.style === 'disk') {
       const radius = Math.max(0.05, g.width * 0.5);
       const heightY = Math.max(0.04, Math.min(0.2, g.thickness));
-      const geo = new THREE.CylinderGeometry(radius, radius, heightY, 48);
-      const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.45 });
+      const shape = new THREE.Shape();
+      shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+      const holes = Math.max(0, Math.min(24, Math.round(g.cutoutCount ?? 0)));
+      const rHole = radius * Math.max(0.1, Math.min(0.8, g.cutoutRadius ?? 0.5));
+      for (let i = 0; i < holes; i++) {
+        const a = (i / holes) * Math.PI * 2;
+        const cx = Math.cos(a) * (radius * 0.55);
+        const cy = Math.sin(a) * (radius * 0.55);
+        const path = new THREE.Path();
+        path.absarc(cx, cy, rHole * 0.2, 0, Math.PI * 2, false);
+        shape.holes.push(path);
+      }
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: heightY, bevelEnabled: false, steps: 1, curveSegments: Math.max(12, Math.round(g.curveSegments ?? 24)) });
+      geo.center();
+      const mat = new THREE.MeshPhysicalMaterial({ color, metalness: 0.6, roughness: 0.4, clearcoat: 0.0, clearcoatRoughness: 0.5, side: THREE.DoubleSide });
       this.guardMesh = new THREE.Mesh(geo, mat);
+      this.guardMesh.castShadow = true;
       this.guardMesh.position.set(0, targetTopY, 0);
       this.group.add(this.guardMesh);
     } else {
-      const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.45, side: THREE.DoubleSide });
+      const mat = new THREE.MeshPhysicalMaterial({ color, metalness: 0.6, roughness: 0.4, clearcoat: 0.0, clearcoatRoughness: 0.5, side: THREE.DoubleSide });
       const half = buildGuardHalfShape(g);
       const depth = g.thickness;
       const geoR = new THREE.ExtrudeGeometry(half, { depth, bevelEnabled: false, steps: 1, curveSegments: Math.max(3, Math.min(64, Math.round(g.curveSegments ?? 12))) });
@@ -239,11 +268,20 @@ export class SwordGenerator {
       meshL.scale.x = -1;
 
       const group = new THREE.Group();
+      // Optional asymmetry: scale halves differently along X
+      if (g.asymmetricArms) {
+        const a = THREE.MathUtils.clamp(g.asymmetry ?? 0, -1, 1);
+        const rightScale = 1 + 0.4 * a;
+        const leftScale = 1 - 0.4 * a;
+        meshR.scale.x *= Math.max(0.4, rightScale);
+        meshL.scale.x *= Math.max(0.4, leftScale);
+      }
       group.add(meshR, meshL);
       // Align inner edge (y=0 at x=0) to the blade base
       group.position.y = targetTopY;
       group.rotation.z = g.tilt;
       this.guardGroup = group;
+      this.guardGroup.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = true; });
       this.group.add(group);
     }
 
@@ -259,6 +297,33 @@ export class SwordGenerator {
       const habaki = new THREE.Mesh(geo, mat);
       habaki.position.set(0, (bladeBaseY ?? 0) + hbHeight * 0.5, 0);
       this.group.add(habaki);
+    }
+
+    // Quillons
+    const qc = Math.max(0, Math.min(4, Math.round(g.quillonCount ?? 0)));
+    if (qc > 0) {
+      const qLen = Math.max(0.05, g.quillonLength ?? 0.25);
+      const qRad = Math.max(0.01, 0.025 + (g.ornamentation ?? 0) * 0.02);
+      const qMat = new THREE.MeshPhysicalMaterial({ color, metalness: 0.6, roughness: 0.35, clearcoat: 0.0, clearcoatRoughness: 0.5 });
+      const cyl = new THREE.CylinderGeometry(qRad, qRad, qLen, Math.max(8, Math.round(12 + (g.ornamentation ?? 0) * 12)));
+      const tipSharp = Math.max(0, Math.min(1, g.tipSharpness ?? 0.5));
+      const cone = new THREE.ConeGeometry(qRad * (0.8 + 0.4 * tipSharp), qLen * 0.25 * tipSharp, 12);
+      const addQuillon = (xSign: number, yOffset: number) => {
+        const q = new THREE.Mesh(cyl, qMat);
+        q.rotation.z = Math.PI / 2;
+        q.position.set((g.width * 0.5 + qLen * 0.5) * xSign, targetTopY + yOffset, 0);
+        this.group.add(q);
+        const t = new THREE.Mesh(cone, qMat);
+        t.rotation.z = Math.PI / 2;
+        t.position.set((g.width * 0.5 + qLen) * xSign, targetTopY + yOffset, 0);
+        this.group.add(t);
+      };
+      addQuillon(+1, 0);
+      addQuillon(-1, 0);
+      if (qc >= 4) {
+        addQuillon(+1, 0.08);
+        addQuillon(-1, -0.08);
+      }
     }
   }
 
@@ -315,13 +380,14 @@ export class SwordGenerator {
       pos.needsUpdate = true;
       geo.computeVertexNormals();
     }
-    const mat = new THREE.MeshStandardMaterial({ color: 0x5a6b78, metalness: 0.2, roughness: 0.8 });
+    const mat = new THREE.MeshPhysicalMaterial({ color: 0x5a6b78, metalness: 0.1, roughness: 0.85, clearcoat: 0.0, clearcoatRoughness: 0.6 });
     if (h.wrapTexture) {
       const tex = makeWrapTexture(h.wrapTexScale ?? 10, h.wrapTexAngle ?? (Math.PI / 4));
       mat.map = tex;
       mat.needsUpdate = true;
     }
     this.handleMesh = new THREE.Mesh(geo, mat);
+    this.handleMesh.castShadow = true;
     // Slight curvature bend along x
     if (Math.abs(h.curvature ?? 0) > 1e-4) {
       const pos = geo.getAttribute('position') as THREE.BufferAttribute;
@@ -367,26 +433,41 @@ export class SwordGenerator {
       this.disposeMesh(this.pommelMesh);
       this.pommelMesh = null;
     }
-    const mat = new THREE.MeshStandardMaterial({ color: 0x9aa4b2, metalness: 0.6, roughness: 0.4 });
+    const mat = new THREE.MeshPhysicalMaterial({ color: 0x9aa4b2, metalness: 0.75, roughness: 0.35, clearcoat: 0.0, clearcoatRoughness: 0.5 });
     let mesh: THREE.Mesh;
     const facets = Math.max(6, Math.round(p.facetCount ?? 32));
+
+    // Size auto-balance based on crude blade mass estimate
+    const bal = THREE.MathUtils.clamp(p.balance ?? 0, 0, 1);
+    const b = this.lastParams?.blade;
+    const mass = b ? (b.length * ((b.baseWidth + b.tipWidth) * 0.5) * (((b.thicknessLeft ?? b.thickness ?? 0.08) + (b.thicknessRight ?? b.thickness ?? 0.08)) * 0.5)) : 1.0;
+    const sizeAuto = Math.cbrt(Math.max(1e-6, mass)) * 0.35; // calibrated factor
+    const sizeEff = THREE.MathUtils.clamp(THREE.MathUtils.lerp(p.size, sizeAuto, bal), 0.05, 1.0);
+
     if (p.style === 'disk') {
-      const geo = new THREE.CylinderGeometry(p.size * (1.0 + p.shapeMorph), p.size * (1.0 + p.shapeMorph), p.size * 0.5, facets);
+      const heightY = Math.max(0.02, sizeEff * 0.15);
+      const geo = new THREE.CylinderGeometry(sizeEff * (1.0 + p.shapeMorph), sizeEff * (1.0 + p.shapeMorph), heightY, facets);
       mesh = new THREE.Mesh(geo, mat);
+      // Disk should lie flat with its faces perpendicular to the handle axis (Y).
+      // CylinderGeometry is oriented along Y by default — no extra rotation needed.
+      mesh.rotation.set(0, 0, 0);
     } else if (p.style === 'spike') {
-      const height = p.size * (1.2 + p.shapeMorph) * (p.spikeLength ?? 1);
-      const geo = new THREE.ConeGeometry(p.size * (0.8 + 0.4 * p.shapeMorph), height, facets);
+      const height = sizeEff * (1.2 + p.shapeMorph) * (p.spikeLength ?? 1);
+      const geo = new THREE.ConeGeometry(sizeEff * (0.8 + 0.4 * p.shapeMorph), height, facets);
       mesh = new THREE.Mesh(geo, mat);
       mesh.rotation.z = Math.PI; // point down
     } else {
-      const geo = new THREE.SphereGeometry(p.size, facets, Math.max(8, Math.round(facets/2)));
+      const geo = new THREE.SphereGeometry(sizeEff, facets, Math.max(8, Math.round(facets/2)));
       mesh = new THREE.Mesh(geo, mat);
       // morph: squash/stretch horizontally
       const s = 1.0 + (p.shapeMorph - 0.5) * 0.6;
       mesh.scale.set(1.0 * s, 1.0, 1.0 * s);
     }
-    mesh.scale.y *= THREE.MathUtils.clamp(p.elongation, 0.5, 2);
+    if (p.style !== 'disk') {
+      mesh.scale.y *= THREE.MathUtils.clamp(p.elongation, 0.5, 2);
+    }
     this.pommelMesh = mesh;
+    this.pommelMesh.castShadow = true;
     // Place pommel just below handle bottom if handle exists
     let y = -1.0;
     if (this.handleMesh) {
@@ -394,7 +475,7 @@ export class SwordGenerator {
       const box = new THREE.Box3().setFromObject(this.handleMesh);
       if (isFinite(box.min.y)) y = box.min.y;
     }
-    this.pommelMesh.position.y = y - p.size * 0.3 * p.elongation + (p.offsetY ?? 0);
+    this.pommelMesh.position.y = y - sizeEff * 0.3 * p.elongation + (p.offsetY ?? 0);
     this.pommelMesh.position.x = (p.offsetX ?? 0);
     this.group.add(this.pommelMesh);
   }
@@ -433,7 +514,11 @@ export class SwordGenerator {
       hamonAmplitude: clamp(b.hamonAmplitude ?? 0, 0, Math.max(0.005, (b.baseWidth || 0.25) * 0.2)),
       hamonFrequency: clamp(b.hamonFrequency ?? 0, 0, 30),
       hamonSide: (b.hamonSide ?? 'auto') as any,
-      twistAngle: clamp(b.twistAngle ?? 0, -Math.PI * 2, Math.PI * 2)
+      twistAngle: clamp(b.twistAngle ?? 0, -Math.PI * 2, Math.PI * 2),
+      crossSection: (b.crossSection ?? 'flat') as any,
+      bevel: clamp(b.bevel ?? 0.5, 0, 1),
+      tipShape: (b.tipShape ?? 'pointed') as any,
+      tipBulge: clamp(b.tipBulge ?? 0.2, 0, 1)
     };
 
     const g = params.guard;
@@ -446,7 +531,14 @@ export class SwordGenerator {
       curveSegments: Math.round(clamp(g.curveSegments ?? 12, 3, 64)),
       habakiEnabled: !!g.habakiEnabled,
       habakiHeight: clamp(g.habakiHeight ?? 0.06, 0.02, 0.2),
-      habakiMargin: clamp(g.habakiMargin ?? 0.01, 0.002, 0.08)
+      habakiMargin: clamp(g.habakiMargin ?? 0.01, 0.002, 0.08),
+      heightOffset: clamp(g.heightOffset ?? 0, -0.5, 0.5),
+      quillonCount: Math.round(clamp(g.quillonCount ?? 0, 0, 4)),
+      quillonLength: clamp(g.quillonLength ?? 0.25, 0.05, 1.5),
+      ornamentation: clamp(g.ornamentation ?? 0, 0, 1),
+      tipSharpness: clamp(g.tipSharpness ?? 0.5, 0, 1),
+      cutoutCount: Math.round(clamp(g.cutoutCount ?? 0, 0, 12)),
+      cutoutRadius: clamp(g.cutoutRadius ?? 0.5, 0.1, 0.8)
     };
 
     const h = params.handle;
@@ -476,7 +568,12 @@ export class SwordGenerator {
       size: clamp(pm.size, 0.05, 1),
       elongation: clamp(pm.elongation, 0.5, 2),
       style: (pm.style ?? 'orb') as PommelStyle,
-      shapeMorph: clamp(pm.shapeMorph, 0, 1)
+      shapeMorph: clamp(pm.shapeMorph, 0, 1),
+      offsetX: clamp(pm.offsetX ?? 0, -0.5, 0.5),
+      offsetY: clamp(pm.offsetY ?? 0, -0.5, 0.5),
+      facetCount: Math.round(clamp(pm.facetCount ?? 32, 6, 64)),
+      spikeLength: clamp(pm.spikeLength ?? 1.0, 0.5, 2.0),
+      balance: clamp(pm.balance ?? 0, 0, 1)
     };
 
     // Stylization: exaggerate proportions globally
@@ -645,45 +742,83 @@ function bendOffsetX(b: BladeParams, y: number, L: number): number {
 
 function tipWidthWithKissaki(b: BladeParams, t: number, baseW: number, tipW: number): number {
   const kf = THREE.MathUtils.clamp(b.kissakiLength ?? 0, 0, 0.35);
-  if (kf <= 1e-6) return baseW + (tipW - baseW) * t;
-  const split = 1 - kf;
-  const midW = baseW + (tipW - baseW) * split;
-  if (t <= split) {
-    return baseW + (midW - baseW) * (t / Math.max(1e-6, split));
+  let w: number;
+  if (kf <= 1e-6) {
+    // No explicit kissaki segment — linear taper
+    w = baseW + (tipW - baseW) * t;
   } else {
-    const u = (t - split) / Math.max(1e-6, kf);
-    const r = THREE.MathUtils.clamp(b.kissakiRoundness ?? 0.5, 0, 1);
-    const expo = THREE.MathUtils.lerp(0.5, 3.0, 1 - r);
-    const eased = Math.pow(u, expo);
-    return midW + (tipW - midW) * eased;
+    const split = 1 - kf;
+    const midW = baseW + (tipW - baseW) * split;
+    if (t <= split) {
+      w = baseW + (midW - baseW) * (t / Math.max(1e-6, split));
+    } else {
+      const u = (t - split) / Math.max(1e-6, kf);
+      let r = THREE.MathUtils.clamp(b.kissakiRoundness ?? 0.5, 0, 1);
+      if (b.tipShape === 'rounded') r = 1; // force rounder tip falloff
+      const expo = THREE.MathUtils.lerp(0.5, 3.0, 1 - r);
+      const eased = Math.pow(u, expo);
+      w = midW + (tipW - midW) * eased;
+    }
   }
+  // Optional leaf bulge profile across the blade (symmetric around mid)
+  if (b.tipShape === 'leaf') {
+    const bulge = THREE.MathUtils.clamp(b.tipBulge ?? 0.2, 0, 1);
+    const bell = 4 * t * (1 - t); // 0 at ends, 1 at t=0.5
+    w *= 1 + bulge * bell;
+  }
+  return w;
 }
 
 function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   const L = Math.max(0.01, b.length);
   const TL = Math.max(0.001, b.thicknessLeft ?? b.thickness ?? 0.08);
   const TR = Math.max(0.001, b.thicknessRight ?? b.thickness ?? 0.08);
-  const halfTL = TL * 0.5;
-  const halfTR = TR * 0.5;
   const baseW = Math.max(0.002, b.baseWidth);
   const tipW = Math.max(0, b.tipWidth);
   const segs = Math.max(16, Math.min(512, Math.round(b.sweepSegments ?? 128))); // longitudinal resolution
+  const cols = 12; // cross-section samples across width
   const serrAmp = b.serrationAmplitude ?? 0;
   const serrAmpL = b.serrationAmplitudeLeft ?? serrAmp;
   const serrAmpR = b.serrationAmplitudeRight ?? serrAmp;
   const serrFreq = b.serrationFrequency ?? 0;
   const chaos = b.chaos ?? 0;
 
-  // Positions: per row we store 4 vertices: FL, FR, BL, BR
-  const positions = new Float32Array((segs + 1) * 4 * 3);
+  // Positions layout: per row we store (cols+1) cross-samples, each with 2 vertices (front/back)
+  const rowStride = (cols + 1) * 2;
+  const positions = new Float32Array((segs + 1) * rowStride * 3);
   const indices: number[] = [];
 
-  const rowIndex = (i: number, j: number) => (i * 4 + j);
-  const setV = (i: number, j: number, x: number, y: number, z: number) => {
-    const idx = rowIndex(i, j) * 3;
+  const vIndex = (i: number, j: number, side: 0 | 1) => (i * rowStride + j * 2 + side);
+  const setV = (i: number, j: number, side: 0 | 1, x: number, y: number, z: number) => {
+    const idx = vIndex(i, j, side) * 3;
     positions[idx + 0] = x;
     positions[idx + 1] = y;
     positions[idx + 2] = z;
+  };
+
+  const halfEdgeL = TL * 0.5;
+  const halfEdgeR = TR * 0.5;
+  const edgeMidHalf = 0.5 * (halfEdgeL + halfEdgeR);
+  const bevel = THREE.MathUtils.clamp(b.bevel ?? 0.5, 0, 1);
+
+  const shapeFactor = (u: number) => {
+    // u ∈ [-1, 1], 0 at center
+    const cs = b.crossSection ?? 'flat';
+    const au = Math.abs(u);
+    if (cs === 'diamond') {
+      const pow = THREE.MathUtils.lerp(1.0, 2.5, bevel);
+      return 1 - Math.pow(au, pow);
+    } else if (cs === 'lenticular') {
+      const g = THREE.MathUtils.lerp(1.4, 0.8, bevel);
+      const base = Math.max(0, 1 - au * au);
+      return Math.pow(base, 0.5 * g);
+    } else if (cs === 'hexagonal') {
+      // flatter top (plateau) toward center when bevel small
+      const p = THREE.MathUtils.lerp(0.4, 1.0, bevel);
+      return Math.pow(1 - au, Math.max(0.2, p));
+    } else {
+      return 0; // flat
+    }
   };
 
   for (let i = 0; i <= segs; i++) {
@@ -704,48 +839,61 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     const xl = -leftHalf + bend;
     const xr = +rightHalf + bend;
 
-    // FL/BL use left thickness; FR/BR use right thickness, then twist around Y
+    // Cross-section center target thickness (spine) rises with bevel
+    const centerHalf = edgeMidHalf * (1 + 2.0 * bevel);
+
     const twist = (b.twistAngle ?? 0) * t;
     const cosT = Math.cos(twist), sinT = Math.sin(twist);
     const rot = (x: number, z: number) => ({ x: x * cosT - z * sinT, z: x * sinT + z * cosT });
-    const p0 = rot(xl, -halfTL);
-    const p1 = rot(xr, -halfTR);
-    const p2 = rot(xl, +halfTL);
-    const p3 = rot(xr, +halfTR);
-    setV(i, 0, p0.x, y, p0.z);
-    setV(i, 1, p1.x, y, p1.z);
-    setV(i, 2, p2.x, y, p2.z);
-    setV(i, 3, p3.x, y, p3.z);
+
+    for (let j = 0; j <= cols; j++) {
+      const s = j / cols; // 0..1 across width
+      const u = s * 2 - 1; // -1..1
+      const xRaw = THREE.MathUtils.lerp(xl, xr, s);
+      const edgeHalf = THREE.MathUtils.lerp(halfEdgeL, halfEdgeR, s);
+      const f = shapeFactor(u);
+      const zHalf = edgeHalf + (centerHalf - edgeMidHalf) * f;
+      const front = rot(xRaw, -zHalf);
+      const back = rot(xRaw, +zHalf);
+      setV(i, j, 0, front.x, y, front.z);
+      setV(i, j, 1, back.x, y, back.z);
+    }
   }
 
-  // Faces along length for front and back
+  // Faces along length for front and back, and side edges
   for (let i = 0; i < segs; i++) {
-    const a = rowIndex(i, 0);
-    const bR = rowIndex(i, 1);
-    const c = rowIndex(i + 1, 0);
-    const dR = rowIndex(i + 1, 1);
-    const aB = rowIndex(i, 2);
-    const bRB = rowIndex(i, 3);
-    const cB = rowIndex(i + 1, 2);
-    const dRB = rowIndex(i + 1, 3);
-
-    // Front face (z = -halfT)
-    indices.push(a, bR, dR, a, dR, c);
-    // Back face (z = +halfT)
-    indices.push(aB, dRB, bRB, aB, cB, dRB);
-
-    // Left side (connect FL<->BL)
-    indices.push(a, aB, cB, a, cB, c);
-    // Right side (connect FR<->BR)
-    indices.push(bR, dR, dRB, bR, dRB, bRB);
+    // front/back surfaces across width
+    for (let j = 0; j < cols; j++) {
+      const f00 = vIndex(i, j, 0), f01 = vIndex(i, j + 1, 0);
+      const f10 = vIndex(i + 1, j, 0), f11 = vIndex(i + 1, j + 1, 0);
+      const b00 = vIndex(i, j, 1), b01 = vIndex(i, j + 1, 1);
+      const b10 = vIndex(i + 1, j, 1), b11 = vIndex(i + 1, j + 1, 1);
+      // Front
+      indices.push(f00, f01, f11, f00, f11, f10);
+      // Back (reverse winding)
+      indices.push(b00, b11, b01, b00, b10, b11);
+    }
+    // Left side (thickness wall at j=0)
+    const lf0 = vIndex(i, 0, 0), lb0 = vIndex(i, 0, 1);
+    const lf1 = vIndex(i + 1, 0, 0), lb1 = vIndex(i + 1, 0, 1);
+    indices.push(lf0, lb0, lb1, lf0, lb1, lf1);
+    // Right side (thickness wall at j=cols)
+    const rf0 = vIndex(i, cols, 0), rb0 = vIndex(i, cols, 1);
+    const rf1 = vIndex(i + 1, cols, 0), rb1 = vIndex(i + 1, cols, 1);
+    indices.push(rf0, rb1, rb0, rf0, rf1, rb1);
   }
 
-  // Base cap at y=0
-  const fL0 = rowIndex(0, 0), fR0 = rowIndex(0, 1), bL0 = rowIndex(0, 2), bR0 = rowIndex(0, 3);
-  indices.push(fL0, fR0, bR0, fL0, bR0, bL0);
-  // Tip cap at y=L
-  const fLn = rowIndex(segs, 0), fRn = rowIndex(segs, 1), bLn = rowIndex(segs, 2), bRn = rowIndex(segs, 3);
-  indices.push(fLn, bRn, fRn, fLn, bLn, bRn);
+  // Base cap at y=0 and tip cap at y=L
+  for (let j = 0; j < cols; j++) {
+    const f0 = vIndex(0, j, 0), b0 = vIndex(0, j, 1);
+    const f1 = vIndex(0, j + 1, 0), b1 = vIndex(0, j + 1, 1);
+    // Base cap (normal ~ -Y)
+    indices.push(f0, b1, b0, f0, f1, b1);
+    const fn0 = vIndex(segs, j, 0), bn0 = vIndex(segs, j, 1);
+    const fn1 = vIndex(segs, j + 1, 0), bn1 = vIndex(segs, j + 1, 1);
+    // Tip cap (normal ~ +Y)
+    indices.push(fn0, bn0, bn1, fn0, bn1, fn1);
+  }
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -775,7 +923,9 @@ export function defaultSwordParams(): SwordParams {
       edgeType: 'double',
       thicknessLeft: 0.08,
       thicknessRight: 0.08,
-      baseAngle: 0.0
+      baseAngle: 0.0,
+      tipShape: 'pointed',
+      tipBulge: 0.2
     },
     guard: {
       width: 1.2,
@@ -785,7 +935,9 @@ export function defaultSwordParams(): SwordParams {
       style: 'winged',
       habakiEnabled: false,
       habakiHeight: 0.06,
-      habakiMargin: 0.01
+      habakiMargin: 0.01,
+      asymmetricArms: false,
+      asymmetry: 0
     },
     handle: {
       length: 0.9,
@@ -805,7 +957,12 @@ export function defaultSwordParams(): SwordParams {
       size: 0.16,
       elongation: 1.0,
       style: 'orb',
-      shapeMorph: 0.2
+      shapeMorph: 0.2,
+      offsetX: 0,
+      offsetY: 0,
+      facetCount: 32,
+      spikeLength: 1.0,
+      balance: 0
     }
   };
 }
@@ -972,21 +1129,22 @@ function buildHamonOverlays(b: BladeParams): THREE.Group {
 
 function buildGuardHalfShape(g: GuardParams): THREE.Shape {
   const w = Math.max(0.2, g.width * 0.5);
-  const h = 0.15 + Math.abs(g.curve) * 0.3;
+  const sharp = Math.max(0, Math.min(1, g.tipSharpness ?? 0.5));
+  const h = 0.12 + Math.abs(g.curve) * 0.25 + sharp * 0.15;
   const shape = new THREE.Shape();
   if (g.style === 'winged') {
     // Curved, broad wing
     shape.moveTo(0, 0);
-    shape.quadraticCurveTo(w * 0.45, g.curve * h, w, 0.02);
-    shape.lineTo(w * 0.85, -0.06);
+    shape.quadraticCurveTo(w * (0.4 + 0.2 * sharp), g.curve * h, w, 0.02 + 0.02 * sharp);
+    shape.lineTo(w * (0.8 + 0.1 * sharp), -0.06 - 0.03 * sharp);
     shape.lineTo(0, -0.02);
     shape.closePath();
   } else if (g.style === 'claw') {
     // Narrower, pointy prong
-    const tipY = 0.06 + g.curve * h;
+    const tipY = (0.06 + 0.06 * sharp) + g.curve * h;
     shape.moveTo(0, 0);
-    shape.lineTo(w * 0.8, tipY);
-    shape.lineTo(w * 0.7, -0.07);
+    shape.lineTo(w * (0.7 + 0.2 * sharp), tipY);
+    shape.lineTo(w * (0.6 + 0.2 * sharp), -0.07 - 0.03 * sharp);
     shape.lineTo(0, -0.02);
     shape.closePath();
   } else {

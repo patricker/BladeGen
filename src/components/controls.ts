@@ -3,10 +3,53 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 
-type Category = 'Blade' | 'Guard' | 'Handle' | 'Pommel' | 'Other';
+type Category = 'Blade' | 'Guard' | 'Handle' | 'Pommel' | 'Other' | 'Render';
 
-export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: SwordParams) {
+type RenderHooks = {
+  setExposure: (v: number) => void;
+  setAmbient: (v: number) => void;
+  setKeyIntensity: (v: number) => void;
+  setKeyAngles: (az: number, el: number) => void;
+  setRimIntensity: (v: number) => void;
+  setRimColor: (hex: number) => void;
+  setRimAngles: (az: number, el: number) => void;
+  setBloom: (enabled: boolean, strength?: number, threshold?: number, radius?: number) => void;
+  setOutline: (enabled: boolean, strength?: number, thickness?: number, colorHex?: number) => void;
+  setEnvIntensity: (v: number) => void;
+  setBackgroundColor: (hex: number) => void;
+  setBackgroundBrightness: (v: number) => void;
+  setVignette: (enabled: boolean, strength?: number, softness?: number) => void;
+  setInkOutline: (enabled: boolean, thickness?: number, colorHex?: number) => void;
+  setAAMode: (mode: 'none'|'fxaa'|'smaa') => void;
+  setShadowBias: (bias: number, normalBias?: number) => void;
+  setShadowMapSize: (size: 512|1024|2048|4096) => void;
+  setDPRCap: (cap: number) => void;
+  setPartColor: (part: 'blade'|'guard'|'handle'|'pommel', hex: number) => void;
+  setPartMetalness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
+  setPartRoughness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
+  setPartClearcoat: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
+  setPartClearcoatRoughness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
+};
+
+export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: SwordParams, render?: RenderHooks) {
   const state: SwordParams = JSON.parse(JSON.stringify(params));
+  const rstate = {
+    exposure: 1.0,
+    bgColor: '#0f1115',
+    bgBrightness: 0.0,
+    ambient: 0.4,
+    keyIntensity: 2.0,
+    keyAz: 40,
+    keyEl: 40,
+    rimIntensity: 0.5,
+    rimAz: -135,
+    rimEl: 20,
+    rimColor: '#ffffff',
+    bloomEnabled: false,
+    bloomStrength: 0.6,
+    bloomThreshold: 0.85,
+    bloomRadius: 0.2,
+  };
   let raf = 0; let needs = false;
   const flush = () => { raf = 0; if (!needs) return; needs = false; sword.updateGeometry(state); updateWarnings(); };
   const rerender = () => { needs = true; if (!raf) raf = requestAnimationFrame(flush); };
@@ -15,6 +58,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   const title = document.createElement('h2');
   title.textContent = 'Controls';
   el.appendChild(title);
+
+  // Tabs: Model vs Render
+  const tabs = document.createElement('div');
+  tabs.className = 'tabs';
+  const tabModel = document.createElement('button'); tabModel.className = 'tab-btn active'; tabModel.textContent = 'Model';
+  const tabRender = document.createElement('button'); tabRender.className = 'tab-btn'; tabRender.textContent = 'Render';
+  tabs.appendChild(tabModel); tabs.appendChild(tabRender);
+  el.appendChild(tabs);
 
   const toolbar = document.createElement('div');
   toolbar.className = 'toolbar';
@@ -65,8 +116,25 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     Guard: addSection(el, 'Guard'),
     Handle: addSection(el, 'Handle'),
     Pommel: addSection(el, 'Pommel'),
-    Other: addSection(el, 'Other')
+    Other: addSection(el, 'Other'),
+    Render: addSection(el, 'Render')
   };
+
+  const showTab = (name: 'Model' | 'Render') => {
+    const isRender = name === 'Render';
+    tabModel.classList.toggle('active', !isRender);
+    tabRender.classList.toggle('active', isRender);
+    // Toggle section visibility
+    sections.Blade.style.display = isRender ? 'none' : '';
+    sections.Guard.style.display = isRender ? 'none' : '';
+    sections.Handle.style.display = isRender ? 'none' : '';
+    sections.Pommel.style.display = isRender ? 'none' : '';
+    sections.Other.style.display = isRender ? 'none' : '';
+    sections.Render.style.display = isRender ? '' : 'none';
+  };
+  tabModel.addEventListener('click', () => showTab('Model'));
+  tabRender.addEventListener('click', () => showTab('Render'));
+  showTab('Model');
 
   // Per-section shuffle buttons
   addShuffleButton(sections.Blade, () => { randomizeBlade(state, true); rerender(); refreshInputs(el, state); });
@@ -86,6 +154,8 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   sections.Handle.addEventListener('mouseleave', () => highlight(null));
   sections.Pommel.addEventListener('mouseenter', () => highlight('pommel'));
   sections.Pommel.addEventListener('mouseleave', () => highlight(null));
+  sections.Render.addEventListener('mouseenter', () => highlight(null));
+  sections.Render.addEventListener('mouseleave', () => {});
 
   const warningsBox = document.createElement('div');
   warningsBox.style.fontSize = '12px';
@@ -93,10 +163,74 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   warningsBox.style.marginTop = '4px';
   sections.Other.appendChild(warningsBox);
 
+  // Render controls (if hooks available)
+  if (render) {
+    // Quality & AA
+    select(sections.Render, 'AA Mode', ['none','fxaa','smaa'], 'fxaa', (v) => { render.setAAMode(v as any); }, () => {}, 'Anti-aliasing mode.');
+    select(sections.Render, 'Quality', ['Low','Medium','High'], 'Medium', (v) => {
+      if (v === 'Low') {
+        render.setAAMode('none'); render.setShadowMapSize(1024); render.setBloom(false); render.setOutline(false); render.setDPRCap(1.0);
+      } else if (v === 'Medium') {
+        render.setAAMode('fxaa'); render.setShadowMapSize(2048); render.setBloom(false); render.setOutline(false); render.setDPRCap(1.5);
+      } else {
+        render.setAAMode('smaa'); render.setShadowMapSize(2048); render.setBloom(false); render.setOutline(false); render.setDPRCap(2.0);
+      }
+    }, () => {}, 'Quality preset (affects AA, shadows, DPR).');
+    select(sections.Render, 'Shadow Map', ['1024','2048','4096'], '2048', (v) => { render.setShadowMapSize(parseInt(v,10) as any); }, () => {}, 'Shadow map resolution.');
+    slider(sections.Render, 'Shadow Bias', -0.01, 0.01, 0.0001, -0.0005, (v) => { render.setShadowBias(v); }, () => {}, 'Shadow acne/peter-panning tweak.');
+    slider(sections.Render, 'Exposure', 0.5, 2.0, 0.01, rstate.exposure, (v) => { rstate.exposure = v; render.setExposure(v); }, () => {} , 'Tone mapping exposure.');
+    slider(sections.Render, 'Env Intensity', 0, 3.0, 0.01, 1.0, (v) => { render.setEnvIntensity(v); }, () => {}, 'Environment map intensity (reflections).');
+    colorPicker(sections.Render, 'Background Color', rstate.bgColor, (hex) => { rstate.bgColor = hex; const n = parseInt(hex.replace('#','0x')); render.setBackgroundColor(n); }, () => {}, 'Renderer clear color.');
+    slider(sections.Render, 'Background Bright', 0, 1.0, 0.01, rstate.bgBrightness, (v) => { rstate.bgBrightness = v; render.setBackgroundBrightness(v); }, () => {}, 'Lighten/darken the background.');
+    slider(sections.Render, 'Ambient Intensity', 0, 2.0, 0.01, rstate.ambient, (v) => { rstate.ambient = v; render.setAmbient(v); }, () => {}, 'Hemisphere ambient light.');
+    slider(sections.Render, 'Key Intensity', 0, 4.0, 0.01, rstate.keyIntensity, (v) => { rstate.keyIntensity = v; render.setKeyIntensity(v); }, () => {}, 'Directional key light intensity.');
+    slider(sections.Render, 'Key Azimuth', -180, 180, 1, rstate.keyAz, (v) => { rstate.keyAz = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light horizontal angle (deg).');
+    slider(sections.Render, 'Key Elevation', -10, 85, 1, rstate.keyEl, (v) => { rstate.keyEl = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light elevation (deg).');
+    slider(sections.Render, 'Rim Intensity', 0, 3.0, 0.01, rstate.rimIntensity, (v) => { rstate.rimIntensity = v; render.setRimIntensity(v); }, () => {}, 'Back/rim light intensity.');
+    slider(sections.Render, 'Rim Azimuth', -180, 180, 1, rstate.rimAz, (v) => { rstate.rimAz = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light horizontal angle (deg).');
+    slider(sections.Render, 'Rim Elevation', -10, 85, 1, rstate.rimEl, (v) => { rstate.rimEl = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light elevation (deg).');
+    colorPicker(sections.Render, 'Rim Color', rstate.rimColor, (hex) => { rstate.rimColor = hex; const n = parseInt(hex.replace('#','0x')); render.setRimColor(n); }, () => {}, 'Rim light color.');
+    checkbox(sections.Render, 'Bloom Enabled', rstate.bloomEnabled, (v) => { rstate.bloomEnabled = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Enable bloom post-process.');
+    slider(sections.Render, 'Bloom Strength', 0, 3.0, 0.01, rstate.bloomStrength, (v) => { rstate.bloomStrength = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom intensity.');
+    slider(sections.Render, 'Bloom Threshold', 0, 1.5, 0.01, rstate.bloomThreshold, (v) => { rstate.bloomThreshold = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom threshold.');
+    slider(sections.Render, 'Bloom Radius', 0, 1.0, 0.01, rstate.bloomRadius, (v) => { rstate.bloomRadius = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom radius.');
+    // Outline
+    checkbox(sections.Render, 'Outline Enabled', false, (v) => { render.setOutline(v); }, () => {}, 'Enable Outline pass.');
+    slider(sections.Render, 'Outline Strength', 0.0, 10.0, 0.1, 2.5, (v) => { render.setOutline(true, v); }, () => {}, 'OutlinePass edgeStrength.');
+    slider(sections.Render, 'Outline Thickness', 0.0, 4.0, 0.05, 1.0, (v) => { render.setOutline(true, undefined, v); }, () => {}, 'OutlinePass edgeThickness.');
+    colorPicker(sections.Render, 'Outline Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); render.setOutline(true, undefined, undefined, n); }, () => {}, 'Outline visible edge color.');
+    // Ink outline (mesh based)
+    checkbox(sections.Render, 'Ink Outline', false, (v) => { render.setInkOutline(v, 0.02, 0x000000); }, () => {}, 'Back-face mesh outline.');
+    slider(sections.Render, 'Ink Thickness', 0, 0.2, 0.005, 0.02, (v) => { render.setInkOutline(true, v, undefined); }, () => {}, 'Scale factor for ink outline.');
+    colorPicker(sections.Render, 'Ink Color', '#000000', (hex) => { const n = parseInt(hex.replace('#','0x')); render.setInkOutline(true, undefined, n); }, () => {}, 'Ink outline color.');
+    // Vignette
+    checkbox(sections.Render, 'Vignette', false, (v) => { render.setVignette(v, 0.25, 0.5); }, () => {}, 'Enable vignette shading.');
+    slider(sections.Render, 'Vignette Strength', 0, 1.0, 0.01, 0.25, (v) => { render.setVignette(true, v, undefined); }, () => {}, 'Strength of vignette.');
+    slider(sections.Render, 'Vignette Softness', 0, 1.0, 0.01, 0.5, (v) => { render.setVignette(true, undefined, v); }, () => {}, 'Softness of vignette edge.');
+  } else {
+    sections.Render.style.display = 'none';
+  }
+
+  // Material Base (Render tab)
+  if (render) {
+    const matPartOpts = ['blade','guard','handle','pommel'] as const;
+    let matPart: 'blade'|'guard'|'handle'|'pommel' = 'blade';
+    select(sections.Render, 'Material Part', [...matPartOpts] as unknown as string[], 'blade', (v) => { matPart = v as any; }, () => {});
+    colorPicker(sections.Render, 'Base Color', '#b9c6ff', (hex) => { const n = parseInt(hex.replace('#','0x')); render.setPartColor(matPart, n); }, () => {}, 'Albedo color.');
+    slider(sections.Render, 'Metalness', 0, 1, 0.01, 0.7, (v) => { render.setPartMetalness(matPart, v); }, () => {}, 'PBR metalness.');
+    slider(sections.Render, 'Roughness', 0, 1, 0.01, 0.3, (v) => { render.setPartRoughness(matPart, v); }, () => {}, 'PBR roughness.');
+    slider(sections.Render, 'Clearcoat', 0, 1, 0.01, 0.0, (v) => { render.setPartClearcoat(matPart, v); }, () => {}, 'Clearcoat layer (if supported).');
+    slider(sections.Render, 'Clearcoat Rough', 0, 1, 0.01, 0.5, (v) => { render.setPartClearcoatRoughness(matPart, v); }, () => {}, 'Clearcoat roughness (if supported).');
+  }
+
   // Blade controls
   slider(sections.Blade, 'Length', 0.5, 6, 0.01, state.blade.length, (v) => (state.blade.length = v), rerender);
   slider(sections.Blade, 'Base Width', 0.05, 1.0, 0.005, state.blade.baseWidth, (v) => (state.blade.baseWidth = v), rerender);
   slider(sections.Blade, 'Tip Width', 0, 0.5, 0.005, state.blade.tipWidth, (v) => (state.blade.tipWidth = v), rerender);
+  select(sections.Blade, 'Tip Shape', ['pointed', 'rounded', 'leaf'], (state.blade.tipShape ?? 'pointed') as string, (v) => (state.blade.tipShape = v as any), rerender, 'Pointed (default), Rounded (softer kissaki), Leaf (mid-bulge).');
+  slider(sections.Blade, 'Leaf Bulge', 0, 1, 0.01, state.blade.tipBulge ?? 0.2, (v) => (state.blade.tipBulge = v), rerender, 'Mid-blade bulge for Leaf tip shape.');
+  select(sections.Blade, 'Cross Section', ['flat', 'diamond', 'lenticular', 'hexagonal'], (state.blade.crossSection ?? 'flat') as string, (v) => (state.blade.crossSection = v as any), rerender, 'Blade cross-section profile.');
+  slider(sections.Blade, 'Edge Bevel', 0, 1, 0.01, state.blade.bevel ?? 0.5, (v) => (state.blade.bevel = v), rerender, '0 sharp (thin spine), 1 thickened spine/facets.');
   slider(sections.Blade, 'Blade Thickness', 0.02, 0.2, 0.001, state.blade.thickness, (v) => (state.blade.thickness = v), rerender);
   slider(sections.Blade, 'Left Thickness', 0.003, 0.2, 0.001, state.blade.thicknessLeft ?? state.blade.thickness, (v) => (state.blade.thicknessLeft = v), rerender, 'Z thickness at left edge (−X).');
   slider(sections.Blade, 'Right Thickness', 0.003, 0.2, 0.001, state.blade.thicknessRight ?? state.blade.thickness, (v) => (state.blade.thicknessRight = v), rerender, 'Z thickness at right edge (+X).');
@@ -130,17 +264,26 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Guard, 'Curve', -1, 1, 0.01, state.guard.curve, (v) => (state.guard.curve = v), rerender, 'Bends ornate guards upward/downward.');
   slider(sections.Guard, 'Tilt', -1.57, 1.57, 0.01, state.guard.tilt, (v) => (state.guard.tilt = v), rerender, 'Rotates the guard around the blade axis.');
   select(sections.Guard, 'Style', ['bar', 'winged', 'claw', 'disk'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
+  checkbox(sections.Guard, 'Asymmetric Arms', state.guard.asymmetricArms ?? false, (v) => (state.guard.asymmetricArms = v), rerender, 'Scale left/right guard arms differently.');
+  slider(sections.Guard, 'Arm Asymmetry', -1, 1, 0.01, state.guard.asymmetry ?? 0, (v) => (state.guard.asymmetry = v), rerender, 'Negative enlarges left; positive enlarges right.');
   slider(sections.Guard, 'Guard Detail', 3, 64, 1, state.guard.curveSegments ?? 12, (v) => (state.guard.curveSegments = Math.round(v)), rerender, 'Detail for guard curves.');
   checkbox(sections.Guard, 'Habaki', state.guard.habakiEnabled ?? false, (v) => (state.guard.habakiEnabled = v), rerender, 'Blade collar above the guard.');
   slider(sections.Guard, 'Habaki Height', 0.02, 0.2, 0.001, state.guard.habakiHeight ?? 0.06, (v) => (state.guard.habakiHeight = v), rerender, 'Height of the habaki collar.');
   slider(sections.Guard, 'Habaki Margin', 0.002, 0.08, 0.001, state.guard.habakiMargin ?? 0.01, (v) => (state.guard.habakiMargin = v), rerender, 'Clearance added to blade width/thickness.');
   slider(sections.Guard, 'Guard Height', -0.15, 0.15, 0.001, state.guard.heightOffset ?? 0, (v) => (state.guard.heightOffset = v), rerender, 'Vertical offset: top of guard vs blade base.');
+  slider(sections.Guard, 'Quillon Count', 0, 4, 2, state.guard.quillonCount ?? 0, (v) => (state.guard.quillonCount = Math.round(v)), rerender, 'Number of quillons (0, 2, 4).');
+  slider(sections.Guard, 'Quillon Length', 0.05, 1.5, 0.01, state.guard.quillonLength ?? 0.25, (v) => (state.guard.quillonLength = v), rerender, 'Length of each quillon.');
+  slider(sections.Guard, 'Ornamentation', 0, 1, 0.01, state.guard.ornamentation ?? 0, (v) => (state.guard.ornamentation = v), rerender, 'Richer ends and facets.');
+  slider(sections.Guard, 'Tip Sharpness', 0, 1, 0.01, state.guard.tipSharpness ?? 0.5, (v) => (state.guard.tipSharpness = v), rerender, 'Continuous tip shape for wing/claw.');
+  slider(sections.Guard, 'Cutouts', 0, 12, 1, state.guard.cutoutCount ?? 0, (v) => (state.guard.cutoutCount = Math.round(v)), rerender, 'Tsuba (disk) radial cutouts.');
+  slider(sections.Guard, 'Cutout Radius', 0.1, 0.8, 0.01, state.guard.cutoutRadius ?? 0.5, (v) => (state.guard.cutoutRadius = v), rerender, 'Cutout hole radius fraction.');
 
   // Handle controls
   slider(sections.Handle, 'Length', 0.2, 2.0, 0.01, state.handle.length, (v) => (state.handle.length = v), rerender);
   slider(sections.Handle, 'Radius Top', 0.05, 0.3, 0.001, state.handle.radiusTop, (v) => (state.handle.radiusTop = v), rerender);
   slider(sections.Handle, 'Radius Bottom', 0.05, 0.3, 0.001, state.handle.radiusBottom, (v) => (state.handle.radiusBottom = v), rerender);
   checkbox(sections.Handle, 'Ridges', state.handle.segmentation, (v) => (state.handle.segmentation = v), rerender, 'Adds axial ridges along the grip.');
+  slider(sections.Handle, 'Ridge Count', 0, 64, 1, state.handle.segmentationCount ?? 8, (v) => (state.handle.segmentationCount = Math.round(v)), rerender, 'Number of ridge cycles when Ridges enabled.');
   checkbox(sections.Handle, 'Wrap Enabled', state.handle.wrapEnabled ?? false, (v) => (state.handle.wrapEnabled = v), rerender, 'Enable helical wrap deformation for the grip.');
   slider(sections.Handle, 'Wrap Turns', 0, 20, 1, state.handle.wrapTurns ?? 6, (v) => (state.handle.wrapTurns = v), rerender, 'Number of helical cycles along the grip.');
   slider(sections.Handle, 'Wrap Depth', 0, 0.05, 0.001, state.handle.wrapDepth ?? 0.015, (v) => (state.handle.wrapDepth = v), rerender, 'Radial amplitude of the wrap pattern.');
@@ -149,12 +292,22 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Handle, 'Wrap Tex Scale', 1, 32, 1, state.handle.wrapTexScale ?? 10, (v) => (state.handle.wrapTexScale = Math.round(v)), rerender, 'Texture repeat scale.');
   slider(sections.Handle, 'Wrap Tex Angle', -90, 90, 1, (state.handle.wrapTexAngle ?? (Math.PI/4)) * 180/Math.PI, (v) => (state.handle.wrapTexAngle = (v*Math.PI/180)), rerender, 'Stripe angle (degrees).');
   slider(sections.Handle, 'Oval Ratio', 1, 1.8, 0.01, state.handle.ovalRatio ?? 1, (v) => (state.handle.ovalRatio = v), rerender, 'Wider X vs Z for an oval tsuka.');
+  slider(sections.Handle, 'Flare', 0, 0.2, 0.001, state.handle.flare ?? 0, (v) => (state.handle.flare = v), rerender, 'Extra radius near the pommel.');
+  slider(sections.Handle, 'Handle Curvature', -0.2, 0.2, 0.001, state.handle.curvature ?? 0, (v) => (state.handle.curvature = v), rerender, 'Slight bend in handle along length.');
+  checkbox(sections.Handle, 'Tang Visible', state.handle.tangVisible ?? false, (v) => (state.handle.tangVisible = v), rerender, 'Show a rectangular tang through the handle.');
+  slider(sections.Handle, 'Tang Width', 0.005, 0.2, 0.001, state.handle.tangWidth ?? 0.05, (v) => (state.handle.tangWidth = v), rerender, 'Visible tang width.');
+  slider(sections.Handle, 'Tang Thickness', 0.003, 0.1, 0.001, state.handle.tangThickness ?? 0.02, (v) => (state.handle.tangThickness = v), rerender, 'Visible tang thickness.');
 
   // Pommel controls
   select(sections.Pommel, 'Style', ['orb', 'disk', 'spike'], state.pommel.style, (v) => (state.pommel.style = v as any), rerender);
   slider(sections.Pommel, 'Size', 0.05, 0.5, 0.001, state.pommel.size, (v) => (state.pommel.size = v), rerender);
   slider(sections.Pommel, 'Elongation', 0.5, 2.0, 0.01, state.pommel.elongation, (v) => (state.pommel.elongation = v), rerender);
   slider(sections.Pommel, 'Morph', 0, 1, 0.01, state.pommel.shapeMorph, (v) => (state.pommel.shapeMorph = v), rerender);
+  slider(sections.Pommel, 'Offset X', -0.3, 0.3, 0.001, state.pommel.offsetX ?? 0, (v) => (state.pommel.offsetX = v), rerender, 'Offset pommel sideways.');
+  slider(sections.Pommel, 'Offset Y', -0.3, 0.3, 0.001, state.pommel.offsetY ?? 0, (v) => (state.pommel.offsetY = v), rerender, 'Offset pommel up/down.');
+  slider(sections.Pommel, 'Facet Count', 6, 64, 1, state.pommel.facetCount ?? 32, (v) => (state.pommel.facetCount = Math.round(v)), rerender, 'Radial facets (lower is more gem-like).');
+  slider(sections.Pommel, 'Spike Length', 0.5, 2.0, 0.01, state.pommel.spikeLength ?? 1.0, (v) => (state.pommel.spikeLength = v), rerender, 'Spike length for spike style.');
+  slider(sections.Pommel, 'Balance', 0, 1, 0.01, (state.pommel as any).balance ?? 0, (v) => ((state.pommel as any).balance = v), rerender, 'Interpolate pommel size toward blade-balanced target.');
 
   // Other controls
   // Taper ratio helper: 0 => tip equals base; 1 => tip tapers to 0
@@ -426,12 +579,36 @@ function checkbox(parent: HTMLElement, label: string, value: boolean, onChange: 
   parent.appendChild(row);
 }
 
+function colorPicker(parent: HTMLElement, label: string, value: string, onChange: (hex: string) => void, rerender: () => void, tooltip?: string) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const lab = document.createElement('label');
+  lab.textContent = label;
+  if (tooltip) lab.title = tooltip;
+  const input = document.createElement('input');
+  input.type = 'color';
+  input.value = value;
+  input.addEventListener('input', () => {
+    onChange(input.value);
+    rerender();
+  });
+  row.appendChild(lab);
+  const span = document.createElement('span');
+  span.appendChild(input);
+  row.appendChild(span);
+  parent.appendChild(row);
+}
+
 function refreshInputs(root: HTMLElement, params: SwordParams) {
   // Sync number/range/select values to current state
   const map: Record<string, number | string | boolean> = {
     'Length': params.blade.length,
     'Base Width': params.blade.baseWidth,
     'Tip Width': params.blade.tipWidth,
+    'Tip Shape': (params.blade.tipShape ?? 'pointed'),
+    'Leaf Bulge': (params.blade.tipBulge ?? 0.2),
+    'Cross Section': (params.blade.crossSection ?? 'flat'),
+    'Edge Bevel': (params.blade.bevel ?? 0.5),
     'Blade Thickness': params.blade.thickness,
     'Left Thickness': params.blade.thicknessLeft ?? params.blade.thickness,
     'Right Thickness': params.blade.thicknessRight ?? params.blade.thickness,
@@ -464,20 +641,34 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Curve': params.guard.curve,
     'Tilt': params.guard.tilt,
     'Style_g': params.guard.style,
+    'Asymmetric Arms': params.guard.asymmetricArms ?? false,
+    'Arm Asymmetry': params.guard.asymmetry ?? 0,
     'Guard Detail': params.guard.curveSegments ?? 12,
     'Habaki': params.guard.habakiEnabled ?? false,
     'Habaki Height': params.guard.habakiHeight ?? 0.06,
     'Habaki Margin': params.guard.habakiMargin ?? 0.01,
     'Guard Height': params.guard.heightOffset ?? 0,
+    'Quillon Count': params.guard.quillonCount ?? 0,
+    'Quillon Length': params.guard.quillonLength ?? 0.25,
+    'Ornamentation': params.guard.ornamentation ?? 0,
+    'Tip Sharpness': params.guard.tipSharpness ?? 0.5,
+    'Cutouts': params.guard.cutoutCount ?? 0,
+    'Cutout Radius': params.guard.cutoutRadius ?? 0.5,
     'Length_h': params.handle.length,
     'Radius Top': params.handle.radiusTop,
     'Radius Bottom': params.handle.radiusBottom,
     'Ridges': params.handle.segmentation,
+    'Ridge Count': params.handle.segmentationCount ?? 8,
     'Wrap Enabled': params.handle.wrapEnabled ?? false,
     'Wrap Turns': params.handle.wrapTurns ?? 6,
     'Wrap Depth': params.handle.wrapDepth ?? 0.015,
     'Handle Sides': params.handle.phiSegments ?? 64,
     'Oval Ratio': params.handle.ovalRatio ?? 1,
+    'Flare': params.handle.flare ?? 0,
+    'Handle Curvature': params.handle.curvature ?? 0,
+    'Tang Visible': params.handle.tangVisible ?? false,
+    'Tang Width': params.handle.tangWidth ?? 0.05,
+    'Tang Thickness': params.handle.tangThickness ?? 0.02,
     'Wrap Texture': params.handle.wrapTexture ?? false,
     'Wrap Tex Scale': params.handle.wrapTexScale ?? 10,
     'Wrap Tex Angle': ((params.handle.wrapTexAngle ?? (Math.PI/4)) * 180/Math.PI),
@@ -485,6 +676,12 @@ function refreshInputs(root: HTMLElement, params: SwordParams) {
     'Size': params.pommel.size,
     'Elongation': params.pommel.elongation,
     'Morph': params.pommel.shapeMorph
+    ,
+    'Offset X': params.pommel.offsetX ?? 0,
+    'Offset Y': params.pommel.offsetY ?? 0,
+    'Facet Count': params.pommel.facetCount ?? 32,
+    'Spike Length': params.pommel.spikeLength ?? 1.0,
+    'Balance': (params.pommel as any).balance ?? 0
   } as any;
   // This is a simple best-effort refresher; in a larger app we’d bind per-field ids.
   const inputs = root.querySelectorAll('input, select');
@@ -589,6 +786,7 @@ function presetKatana(): SwordParams {
   const p = defaultSwordParams();
   // Katana: curved, single-edged look, slender blade, tsuba disk guard, long wrapped handle
   p.blade.length = 3.3; p.blade.baseWidth = 0.22; p.blade.tipWidth = 0.06; p.blade.curvature = 0.25; p.blade.thickness = 0.08;
+  (p.blade as any).crossSection = 'lenticular'; (p.blade as any).bevel = 0.6;
   p.blade.fullerEnabled = false; p.blade.fullerDepth = 0; p.blade.fullerLength = 0; (p.blade as any).asymmetry = 0.2; p.blade.chaos = 0.05;
   (p.blade as any).edgeType = 'single'; p.blade.thicknessLeft = 0.10; p.blade.thicknessRight = 0.02; (p.blade as any).hamonEnabled = true; (p.blade as any).hamonWidth = 0.018; (p.blade as any).hamonAmplitude = 0.007; (p.blade as any).hamonFrequency = 6; (p.blade as any).hamonSide = 'right';
   p.guard.style = 'disk'; p.guard.width = 0.36; p.guard.thickness = 0.1; p.guard.curve = 0; p.guard.tilt = 0; (p.blade as any).baseAngle = 0.05; (p.blade as any).soriProfile = 'koshi'; (p.blade as any).soriBias = 0.7; (p.blade as any).kissakiLength = 0.12; (p.blade as any).kissakiRoundness = 0.6; (p.guard as any).habakiEnabled = true; (p.guard as any).habakiHeight = 0.06; (p.guard as any).habakiMargin = 0.012;
@@ -599,7 +797,7 @@ function presetKatana(): SwordParams {
 
 function presetClaymore(): SwordParams {
   const p = defaultSwordParams();
-  p.blade.length = 2.8; p.blade.baseWidth = 0.32; p.blade.tipWidth = 0.08; p.blade.curvature = 0.0; p.blade.fullerEnabled = true; p.blade.fullerDepth = 0.03; p.blade.fullerLength = 0.6;
+  p.blade.length = 2.8; p.blade.baseWidth = 0.32; p.blade.tipWidth = 0.08; p.blade.curvature = 0.0; (p.blade as any).crossSection = 'diamond'; (p.blade as any).bevel = 0.5; p.blade.fullerEnabled = true; p.blade.fullerDepth = 0.03; p.blade.fullerLength = 0.6;
   p.guard.style = 'winged'; p.guard.width = 1.6; p.guard.thickness = 0.24; p.guard.curve = 0.15;
   p.handle.length = 0.9; p.handle.radiusTop = 0.13; p.handle.radiusBottom = 0.13; p.handle.segmentation = false;
   p.pommel.style = 'orb'; p.pommel.size = 0.18; p.pommel.elongation = 1.0; p.pommel.shapeMorph = 0.1;
@@ -608,7 +806,7 @@ function presetClaymore(): SwordParams {
 
 function presetRapier(): SwordParams {
   const p = defaultSwordParams();
-  p.blade.length = 3.2; p.blade.baseWidth = 0.18; p.blade.tipWidth = 0.05; p.blade.curvature = 0.0; p.blade.fullerEnabled = false; p.blade.fullerDepth = 0.0; p.blade.fullerLength = 0.0;
+  p.blade.length = 3.2; p.blade.baseWidth = 0.18; p.blade.tipWidth = 0.05; p.blade.curvature = 0.0; (p.blade as any).crossSection = 'diamond'; (p.blade as any).bevel = 0.3; p.blade.fullerEnabled = false; p.blade.fullerDepth = 0.0; p.blade.fullerLength = 0.0;
   p.guard.style = 'claw'; p.guard.width = 1.2; p.guard.thickness = 0.18; p.guard.curve = 0.3; p.guard.tilt = 0.1;
   p.handle.length = 1.0; p.handle.radiusTop = 0.11; p.handle.radiusBottom = 0.11; p.handle.segmentation = false;
   p.pommel.style = 'disk'; p.pommel.size = 0.16; p.pommel.elongation = 1.0; p.pommel.shapeMorph = 0.3;

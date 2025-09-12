@@ -535,6 +535,25 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const arr = (((state.guard as any).extras) || []) as any[];
     (state.guard as any).extras = arr.map((e:any) => e.kind==='sideRing' ? { ...e, offsetY: v } : e);
   }, rerender, 'Side ring vertical offset.');
+  // Loops controls
+  checkbox(sections.Guard, 'Loops', false, (v) => {
+    const arr = (((state.guard as any).extras) || []) as any[];
+    const without = arr.filter((e) => e.kind !== 'loop');
+    if (v) without.push({ kind: 'loop', radius: 0.12, thickness: 0.02, offsetY: 0 });
+    (state.guard as any).extras = without;
+  }, rerender, 'Add decorative loops near quillon ends.');
+  slider(sections.Guard, 'Loop Radius', 0.01, 0.4, 0.001, 0.12, (v) => {
+    const arr = (((state.guard as any).extras) || []) as any[];
+    (state.guard as any).extras = arr.map((e:any) => e.kind==='loop' ? { ...e, radius: v } : e);
+  }, rerender, 'Loop radius.');
+  slider(sections.Guard, 'Loop Thick', 0.005, 0.1, 0.001, 0.02, (v) => {
+    const arr = (((state.guard as any).extras) || []) as any[];
+    (state.guard as any).extras = arr.map((e:any) => e.kind==='loop' ? { ...e, thickness: v } : e);
+  }, rerender, 'Loop thickness.');
+  slider(sections.Guard, 'Loop OffsetY', -0.2, 0.2, 0.001, 0, (v) => {
+    const arr = (((state.guard as any).extras) || []) as any[];
+    (state.guard as any).extras = arr.map((e:any) => e.kind==='loop' ? { ...e, offsetY: v } : e);
+  }, rerender, 'Loop vertical offset.');
   checkbox(sections.Guard, 'Asymmetric Arms', state.guard.asymmetricArms ?? false, (v) => (state.guard.asymmetricArms = v), rerender, 'Scale left/right guard arms differently.');
   slider(sections.Guard, 'Arm Asymmetry', -1, 1, 0.01, state.guard.asymmetry ?? 0, (v) => (state.guard.asymmetry = v), rerender, 'Negative enlarges left; positive enlarges right.');
   slider(sections.Guard, 'Guard Detail', 3, 64, 1, state.guard.curveSegments ?? 12, (v) => (state.guard.curveSegments = Math.round(v)), rerender, 'Detail for guard curves.');
@@ -645,7 +664,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   }, rerender, 'Rivet sphere radius.');
 
   // Pommel controls
-  select(sections.Pommel, 'Style', ['orb', 'disk', 'spike'], state.pommel.style, (v) => (state.pommel.style = v as any), rerender);
+  select(sections.Pommel, 'Style', ['orb', 'disk', 'spike', 'wheel', 'scentStopper', 'ring', 'crown'], state.pommel.style, (v) => (state.pommel.style = v as any), rerender);
   slider(sections.Pommel, 'Size', 0.05, 0.5, 0.001, state.pommel.size, (v) => (state.pommel.size = v), rerender);
   slider(sections.Pommel, 'Elongation', 0.5, 2.0, 0.01, state.pommel.elongation, (v) => (state.pommel.elongation = v), rerender);
   slider(sections.Pommel, 'Morph', 0, 1, 0.01, state.pommel.shapeMorph, (v) => (state.pommel.shapeMorph = v), rerender);
@@ -654,6 +673,10 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Pommel, 'Facet Count', 6, 64, 1, state.pommel.facetCount ?? 32, (v) => (state.pommel.facetCount = Math.round(v)), rerender, 'Radial facets (lower is more gem-like).');
   slider(sections.Pommel, 'Spike Length', 0.5, 2.0, 0.01, state.pommel.spikeLength ?? 1.0, (v) => (state.pommel.spikeLength = v), rerender, 'Spike length for spike style.');
   slider(sections.Pommel, 'Balance', 0, 1, 0.01, (state.pommel as any).balance ?? 0, (v) => ((state.pommel as any).balance = v), rerender, 'Interpolate pommel size toward blade-balanced target.');
+  // Style-specific
+  slider(sections.Pommel, 'Ring Inner R', 0.01, 0.6, 0.001, (state.pommel as any).ringInnerRadius ?? 0.08, (v) => ((state.pommel as any).ringInnerRadius = v), rerender, 'Inner radius for ring style.');
+  slider(sections.Pommel, 'Crown Spikes', 5, 24, 1, (state.pommel as any).crownSpikes ?? 8, (v) => ((state.pommel as any).crownSpikes = Math.round(v)), rerender, 'Number of spikes for crown style.');
+  slider(sections.Pommel, 'Crown Sharp', 0, 1, 0.01, (state.pommel as any).crownSharpness ?? 0.6, (v) => ((state.pommel as any).crownSharpness = v), rerender, 'Sharpness for crown style.');
 
   // Other controls
   // Taper ratio helper: 0 => tip equals base; 1 => tip tapers to 0
@@ -668,6 +691,17 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   );
   slider(sections.Other, 'Stylization', 0, 1, 0.01, (state as any).styleFactor ?? 0, (v) => ((state as any).styleFactor = v), rerender, 'Exaggerates proportions (guard width, curvature, pommel size).');
   slider(sections.Other, 'Blade Detail', 16, 512, 1, state.blade.sweepSegments ?? 128, (v) => (state.blade.sweepSegments = Math.round(v)), rerender, 'Controls blade tessellation along its length.');
+  // Proportional ratios (see newfeatures.md §6)
+  checkbox(sections.Other, 'Use Ratios', (state as any).useRatios ?? false, (v) => ((state as any).useRatios = v), rerender, 'Drive key sizes from blade length.');
+  slider(sections.Other, 'Guard:Blade', 0.1, 0.8, 0.01, ((state as any).ratios?.guardWidthToBlade ?? 0.35), (v) => {
+    (state as any).ratios = { ...(state as any).ratios, guardWidthToBlade: v };
+  }, rerender, 'Guard width = v * blade.length');
+  slider(sections.Other, 'Handle:Blade', 0.1, 0.6, 0.01, ((state as any).ratios?.handleLengthToBlade ?? 0.3), (v) => {
+    (state as any).ratios = { ...(state as any).ratios, handleLengthToBlade: v };
+  }, rerender, 'Handle length = v * blade.length');
+  slider(sections.Other, 'Pommel:Blade', 0.01, 0.2, 0.001, ((state as any).ratios?.pommelSizeToBlade ?? 0.05), (v) => {
+    (state as any).ratios = { ...(state as any).ratios, pommelSizeToBlade: v };
+  }, rerender, 'Pommel size = v * blade.length');
 
   // Presets handling
   presetSel.addEventListener('change', () => {

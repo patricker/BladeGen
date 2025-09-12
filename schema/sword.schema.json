@@ -203,13 +203,17 @@
       "properties": {
         "size": { "type": "number", "minimum": 0.05, "maximum": 1, "description": "Base size radius for orb/disk/spike styles (scene units)." },
         "elongation": { "type": "number", "minimum": 0.5, "maximum": 2, "description": "Scale factor along Y for non-disk styles (orb/spike). Disk style remains flat regardless." },
-        "style": { "type": "string", "enum": ["orb", "disk", "spike"], "description": "Pommel style: spherical-ish orb, flat disk coin, or tapered spike." },
+        "style": { "type": "string", "enum": ["orb", "disk", "spike", "wheel", "scentStopper", "ring", "crown"], "description": "Pommel style: spherical-ish orb, flat disk coin, tapered spike, wheel, scent-stopper, lanyard ring, or crown." },
         "shapeMorph": { "type": "number", "minimum": 0, "maximum": 1, "description": "Style-dependent morph factor (e.g., squash/stretch for orb; rim flare for disk; slenderness for spike)." },
         "offsetX": { "type": "number", "minimum": -0.5, "maximum": 0.5, "description": "Lateral offset along X from handle axis (for stylized balance)." },
         "offsetY": { "type": "number", "minimum": -0.5, "maximum": 0.5, "description": "Offset along Y relative to handle bottom." },
         "facetCount": { "type": "integer", "minimum": 6, "maximum": 64, "description": "Radial facets (subdivisions). Higher → smoother." },
         "spikeLength": { "type": "number", "minimum": 0.5, "maximum": 2, "description": "Multiplier for spike height when style='spike'." },
-        "balance": { "type": "number", "minimum": 0, "maximum": 1, "description": "Auto-balance toward blade mass (0 = exact size, 1 = fully auto-sized by crude mass estimate)." }
+        "balance": { "type": "number", "minimum": 0, "maximum": 1, "description": "Auto-balance toward blade mass (0 = exact size, 1 = fully auto-sized by crude mass estimate)." },
+        "ringInnerRadius": { "type": "number", "minimum": 0.001, "maximum": 1, "description": "Inner radius for ring-style pommel." },
+        "wheelFaceBevel": { "type": "number", "minimum": 0, "maximum": 1, "description": "Visual bevel amount for wheel-style pommel (currently cosmetic)." },
+        "crownSpikes": { "type": "integer", "minimum": 5, "maximum": 64, "description": "Number of spikes for crown-style pommel." },
+        "crownSharpness": { "type": "number", "minimum": 0, "maximum": 1, "description": "Sharpness factor for crown-style spike height." }
       },
       "required": ["size", "elongation", "style", "shapeMorph"]
     },
@@ -222,7 +226,13 @@
         "blade": { "$ref": "#/$defs/BladeParams", "description": "Blade geometry parameters." },
         "guard": { "$ref": "#/$defs/GuardParams", "description": "Guard geometry parameters." },
         "handle": { "$ref": "#/$defs/HandleParams", "description": "Handle geometry parameters." },
-        "pommel": { "$ref": "#/$defs/PommelParams", "description": "Pommel geometry parameters." }
+        "pommel": { "$ref": "#/$defs/PommelParams", "description": "Pommel geometry parameters." },
+        "useRatios": { "type": "boolean", "description": "When true, derive guard/handle/pommel sizes from blade length using ratios." },
+        "ratios": { "type": "object", "additionalProperties": false, "properties": {
+          "guardWidthToBlade": { "type": "number", "minimum": 0.1, "maximum": 0.8 },
+          "handleLengthToBlade": { "type": "number", "minimum": 0.1, "maximum": 0.6 },
+          "pommelSizeToBlade": { "type": "number", "minimum": 0.01, "maximum": 0.2 }
+        } }
       },
       "required": ["blade", "guard", "handle", "pommel"]
     },
@@ -293,6 +303,7 @@
         "bloomRadius": { "type": "number", "minimum": 0, "maximum": 2, "description": "Bloom radius/soft-kernel parameter." },
         "envMap": { "type": "string", "description": "Environment map URL (equirectangular)." },
         "envAsBackground": { "type": "boolean", "description": "Use environment map as scene background when true." },
+        "envMapIntensity": { "type": "number", "minimum": 0, "maximum": 8, "description": "Global environment map intensity multiplier applied to materials that support it." },
         "fogColor": { "$ref": "#/$defs/ColorHex", "description": "Fog color." },
         "fogDensity": { "type": "number", "minimum": 0, "maximum": 0.1, "description": "Fog density for FogExp2. 0 disables fog." }
       }

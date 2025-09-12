@@ -49,7 +49,7 @@ export type BladeParams = {
   engravings?: Array<{ type:'text'|'shape'|'decal', content?: string, fontUrl?: string, width:number, height:number, depth?: number, offsetY:number, offsetX:number, rotation?: number, side?: 'left'|'right'|'both', align?: 'left'|'center'|'right', letterSpacing?: number }>;
 };
 
-export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk';
+export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk' | 'basket' | 'knucklebow' | 'swept';
 export type GuardParams = {
   width: number;
   thickness: number;
@@ -103,7 +103,7 @@ export type HandleParams = {
   rivets?: Array<{ count:number, ringFrac:number, radius:number }>;
 };
 
-export type PommelStyle = 'orb' | 'disk' | 'spike';
+export type PommelStyle = 'orb' | 'disk' | 'spike' | 'wheel' | 'scentStopper' | 'ring' | 'crown';
 export type PommelParams = {
   size: number;
   elongation: number; // 0.5..2 scale on Y
@@ -114,6 +114,11 @@ export type PommelParams = {
   facetCount?: number;
   spikeLength?: number;
   balance?: number; // 0..1 interpolate size toward balance target
+  // New style-specific fields
+  ringInnerRadius?: number;
+  wheelFaceBevel?: number;
+  crownSpikes?: number;
+  crownSharpness?: number;
 };
 
 export type SwordParams = {
@@ -121,6 +126,9 @@ export type SwordParams = {
   guard: GuardParams;
   handle: HandleParams;
   pommel: PommelParams;
+  // Optional ratio-based sizing
+  useRatios?: boolean;
+  ratios?: { guardWidthToBlade?: number; handleLengthToBlade?: number; pommelSizeToBlade?: number };
 };
 
 export class SwordGenerator {
@@ -143,6 +151,17 @@ export class SwordGenerator {
   constructor(initial: SwordParams, materials?: Record<'blade'|'guard'|'handle'|'pommel', any>) {
     this.mats = materials;
     this.updateGeometry(initial);
+  }
+  private resolveDerivedParams(params: SwordParams): SwordParams {
+    const copy: SwordParams = JSON.parse(JSON.stringify(params));
+    if ((params as any).useRatios) {
+      const r = (params as any).ratios || {};
+      const L = params.blade?.length ?? 3.0;
+      if (typeof r.guardWidthToBlade === 'number') copy.guard.width = Math.max(0.2, r.guardWidthToBlade * L);
+      if (typeof r.handleLengthToBlade === 'number') copy.handle.length = Math.max(0.2, r.handleLengthToBlade * L);
+      if (typeof r.pommelSizeToBlade === 'number') copy.pommel.size = Math.max(0.05, r.pommelSizeToBlade * L);
+    }
+    return copy;
   }
   public setMaterials(mats: Record<'blade'|'guard'|'handle'|'pommel', any>) {
     this.mats = mats; this.reapplyMaterials();
@@ -209,7 +228,7 @@ export class SwordGenerator {
   }
 
   updateGeometry(params: SwordParams) {
-    const p = this.validate(params);
+    const p = this.validate(this.resolveDerivedParams(params));
     const prev = this.lastParams;
     this.lastParams = p;
 
@@ -651,6 +670,20 @@ export class SwordGenerator {
           const ringR = ringL.clone();
           ringR.position.x *= -1;
           container.add(ringR);
+        } else if (ex.kind === 'loop') {
+          // Decorative loops facing forward/backward near quillon ends
+          const R = Math.max(0.01, ex.radius);
+          const r = Math.max(0.004, (ex.thickness ?? 0.02) * 0.5);
+          const tor = new THREE.TorusGeometry(R, r, 10, 28);
+          const xHalf = Math.max(0.2, g.width * 0.5);
+          const loopL = new THREE.Mesh(tor, gmatX);
+          loopL.position.set(-xHalf, targetTopY + (ex.offsetY||0), 0);
+          loopL.rotation.x = Math.PI/2;
+          if (ex.tilt) loopL.rotation.z = ex.tilt;
+          container.add(loopL);
+          const loopR = loopL.clone();
+          loopR.position.x = +xHalf;
+          container.add(loopR);
         } else if (ex.kind === 'fingerGuard') {
           const xHalf = Math.max(0.2, g.width * 0.5);
           const yTop = targetTopY;
@@ -946,6 +979,28 @@ export class SwordGenerator {
       const geo = new THREE.ConeGeometry(sizeEff * (0.8 + 0.4 * p.shapeMorph), height, facets);
       mesh = new THREE.Mesh(geo, mat);
       mesh.rotation.z = Math.PI; // point down
+    } else if (p.style === 'wheel') {
+      const height = Math.max(0.02, sizeEff * 0.18);
+      const radius = sizeEff * (1.0 + 0.2 * (p.shapeMorph ?? 0));
+      const geo = new THREE.CylinderGeometry(radius, radius, height, facets);
+      mesh = new THREE.Mesh(geo, mat);
+    } else if (p.style === 'scentStopper') {
+      const geo = new THREE.OctahedronGeometry(sizeEff * (0.9 + 0.2 * (p.shapeMorph ?? 0)), Math.max(0, Math.round((p.shapeMorph ?? 0) * 2)));
+      mesh = new THREE.Mesh(geo, mat);
+      mesh.scale.y *= THREE.MathUtils.clamp(p.elongation, 0.5, 2);
+    } else if (p.style === 'ring') {
+      const inner = Math.max(0.01, p.ringInnerRadius ?? (sizeEff * 0.4));
+      const tube = Math.max(0.004, sizeEff * 0.12);
+      const geo = new THREE.TorusGeometry(inner + tube, tube, 12, Math.max(12, Math.round(facets)));
+      mesh = new THREE.Mesh(geo, mat);
+      mesh.rotation.x = Math.PI / 2;
+    } else if (p.style === 'crown') {
+      const spikes = Math.max(5, Math.round(p.crownSpikes ?? 8));
+      const sharp = THREE.MathUtils.clamp(p.crownSharpness ?? 0.6, 0, 1);
+      const height = sizeEff * (0.18 + 0.3 * sharp);
+      const geo = new THREE.ConeGeometry(sizeEff * (0.9 + 0.2 * (p.shapeMorph ?? 0)), height, spikes, 1, false);
+      mesh = new THREE.Mesh(geo, mat);
+      mesh.rotation.z = Math.PI; // point down for crown-like silhouette
     } else {
       const geo = new THREE.SphereGeometry(sizeEff, facets, Math.max(8, Math.round(facets/2)));
       mesh = new THREE.Mesh(geo, mat);
@@ -953,7 +1008,7 @@ export class SwordGenerator {
       const s = 1.0 + (p.shapeMorph - 0.5) * 0.6;
       mesh.scale.set(1.0 * s, 1.0, 1.0 * s);
     }
-    if (p.style !== 'disk') {
+    if (p.style !== 'disk' && p.style !== 'wheel' && p.style !== 'ring' && p.style !== 'crown' && p.style !== 'scentStopper') {
       mesh.scale.y *= THREE.MathUtils.clamp(p.elongation, 0.5, 2);
     }
     this.pommelMesh = mesh;

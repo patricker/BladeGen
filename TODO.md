@@ -217,7 +217,7 @@
 
 # Phase 8: SwordMaker+ (from newfeatures.md)
 
-Prioritized additions; all default to off and remain back‑compatible.
+Prioritized additions; all default to off and remain back‑compatible. See newfeatures.md for specs and rationale.
 
 ## 29. Material System (centralize looks)
 
@@ -239,33 +239,60 @@ Prioritized additions; all default to off and remain back‑compatible.
   - [x] knucklebow style added (TubeGeometry bow)
   - [x] swept hilt style added (multiple curved bars)
   - [x] basket hilt style added (radial cage of rods)
-- [ ] Guard extras: loops, side rings, finger guard (Torus/TubeGeometry)
-  - [x] Finger guard extra (UI checkbox + TubeGeometry)
-  - [x] Side rings extra (data + geometry; UI: radius/thickness/offset)
+- Guard extras (Torus/TubeGeometry)
+  - [x] Loops
+  - [x] Side rings (data + geometry; UI: radius/thickness/offset)
+  - [x] Finger guard (UI checkbox + TubeGeometry)
 - [ ] Arm asymmetry beyond scale (shape bias per side)
-- [ ] Guard↔blade blend fillet
 - [x] Simple guard↔blade blend fillet box piece
+- [ ] Advanced guard↔blade fillet (smooth profile)
 
 ## 32. Handle Layers & Details
 
-- [ ] handleLayers: core/wrap/ring/inlay (criss‑cross wrap variant)
-- [ ] menuki and rivets placement along grip
-- [ ] Migrate to handleGroup for highlighting + disposal
+- [x] handleLayers: core/wrap/ring/inlay (criss‑cross wrap variant)
+- [x] menuki and rivets placement along grip
+- [x] Migrate to handleGroup for highlighting + disposal
 
 ## 33. Pommel Variants
 
-- [ ] New styles: wheel, scentStopper, ring, crown
-- [ ] Ring inner radius; crown spike count/sharpness; wheel bevel
+- [x] New styles: wheel, scentStopper, ring, crown
+- [x] Ring inner radius; crown spike count/sharpness; wheel bevel (cosmetic)
 
 ## 34. Proportional Ratios
 
-- [ ] useRatios + ratios: auto‑derive guard width, handle length, pommel size
-- [ ] resolveDerivedParams() pre‑validation fill‑in
+- [x] useRatios + ratios: auto‑derive guard width, handle length, pommel size
+- [x] resolveDerivedParams() pre‑validation fill‑in
 
 ## 35. Render/FX
 
-- [ ] RenderState additions: envMap URL + intensity, fog, optional flares/SSR flags
-- [ ] EnvMap loader + assignment (optional HDR equirect)
+- RenderState & hooks
+  - [x] EnvMap URL (RenderState.envMap) and background toggle
+  - [x] Fog (color + density)
+  - [ ] Global envMapIntensity flag (keep per‑material for now)
+  - [ ] Optional lens flares / SSR flags
+- Environment
+  - [x] EnvMap loader + assignment (HDR equirect support)
+  - [x] Env presets (Room, Royal Esplanade, Venice Sunset)
+- Tone mapping & overlays
+  - [x] Tone mapping selector (ACES/Reinhard/Cineon/Linear/None)
+  - [x] Blade Gradient/Wear overlay controls
+
+## 36. Engravings UI (see newfeatures.md §2.3)
+
+- [x] Manage multiple entries (add/remove/reorder)
+- [x] Text alignment (left/center/right) and letterSpacing
+- [x] Decal engraving projection (DecalGeometry)
+
+## 37. Material Presets (see newfeatures.md §1)
+
+- [x] Glass and Gem presets (transmission/ior/thickness/attenuation/iridescence)
+- [x] Reset Material button per part
+
+## 38. Schema & Tests
+
+- [x] Schema v2 sync for new fields (materials, blade carve, engravings.align/letterSpacing, guard extras)
+- [x] Ajv 2020 validation test for example payloads
+- [x] Geometry tests for new guard styles, handle layers, and engravings
 
 Notes:
 - Implement in the order: Materials → Blade (carve/serration) → Guard (knucklebow) → Handle layers → Pommel → Engravings.

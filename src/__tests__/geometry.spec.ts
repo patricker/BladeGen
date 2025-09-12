@@ -317,6 +317,15 @@ describe('Guard knobs', () => {
     expect(grp).toBeTruthy();
     expect(grp.children.length).toBeGreaterThan(4);
   })
+
+  it('guard extras: loops add torus meshes', () => {
+    const s = make(p => { (p.guard as any).extras = [{ kind:'loop', radius:0.1, thickness:0.02, offsetY:0 }]; });
+    const grp = (s as any).guardGroup as THREE.Group;
+    expect(grp).toBeTruthy();
+    let torusCount = 0;
+    grp.traverse(o => { const m = o as any; if (m.isMesh && (m.geometry as any)?.type === 'TorusGeometry') torusCount++; });
+    expect(torusCount).toBeGreaterThanOrEqual(2);
+  })
 })
 
 describe('Handle knobs', () => {
@@ -435,6 +444,44 @@ describe('Engravings', () => {
     const g = (s as any).engravingGroup as THREE.Group;
     expect(g).toBeTruthy();
     expect(g.children.length).toBeGreaterThanOrEqual(1);
+  })
+})
+
+describe('Pommel variants', () => {
+  it('wheel uses CylinderGeometry', () => {
+    const s = make(p => { p.pommel.style = 'wheel'; p.pommel.size = 0.18; });
+    expect(((s.pommelMesh as any).geometry as any).type).toBe('CylinderGeometry');
+  })
+  it('ring uses TorusGeometry', () => {
+    const s = make(p => { (p.pommel as any).style = 'ring'; (p.pommel as any).ringInnerRadius = 0.08; });
+    expect(((s.pommelMesh as any).geometry as any).type).toBe('TorusGeometry');
+  })
+  it('scentStopper uses OctahedronGeometry', () => {
+    const s = make(p => { (p.pommel as any).style = 'scentStopper'; });
+    expect(((s.pommelMesh as any).geometry as any).type).toBe('OctahedronGeometry');
+  })
+  it('crown uses ConeGeometry', () => {
+    const s = make(p => { (p.pommel as any).style = 'crown'; (p.pommel as any).crownSpikes = 9; (p.pommel as any).crownSharpness = 0.8; });
+    expect(((s.pommelMesh as any).geometry as any).type).toBe('ConeGeometry');
+  })
+})
+
+describe('Proportional ratios', () => {
+  it('useRatios sets guard width/handle length/pommel size from blade length', () => {
+    const L = 3.0;
+    const ratios = { guardWidthToBlade: 0.4, handleLengthToBlade: 0.3, pommelSizeToBlade: 0.06 };
+    const s = make(p => {
+      p.blade.length = L;
+      (p as any).useRatios = true;
+      (p as any).ratios = ratios;
+      p.guard.style = 'bar';
+    });
+    const gbb = bboxOf(s.guardMesh);
+    expect(approx(span(gbb,'x'), L * ratios.guardWidthToBlade, 1e-2)).toBe(true);
+    const hbb = bboxOf(s.handleMesh);
+    expect(approx(span(hbb,'y'), L * ratios.handleLengthToBlade, 1e-2)).toBe(true);
+    const pbb = bboxOf(s.pommelMesh);
+    expect(span(pbb,'x')).toBeGreaterThan(0);
   })
 })
 

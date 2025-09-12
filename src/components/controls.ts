@@ -71,7 +71,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     };
   const matDefaults: Record<Part, MatExt> = JSON.parse(JSON.stringify(matState));
   let raf = 0; let needs = false;
-  const flush = () => { raf = 0; if (!needs) return; needs = false; sword.updateGeometry(state); updateWarnings(); };
+  const flush = () => { raf = 0; if (!needs) return; needs = false; sword.updateGeometry(state); updateWarnings(); updateDynamics(); };
   const rerender = () => { needs = true; if (!raf) raf = requestAnimationFrame(flush); };
 
   el.innerHTML = '';
@@ -172,8 +172,8 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const modelOnly = toolbar.querySelectorAll('.model-only');
     modelOnly.forEach((b) => { (b as HTMLElement).style.display = isRender ? 'none' : ''; });
   };
-  tabModel.addEventListener('click', () => showTab('Model'));
-  tabRender.addEventListener('click', () => showTab('Render'));
+  tabModel.addEventListener('click', () => { try{ localStorage.setItem('swordmaker.ui.tab','Model'); }catch{} try { const t = localStorage.getItem('swordmaker.ui.tab'); showTab(t==='Render'?'Render':'Model'); } catch { showTab('Model'); } });
+  tabRender.addEventListener('click', () => { try{ localStorage.setItem('swordmaker.ui.tab','Render'); }catch{} showTab('Render'); });
   showTab('Model');
 
   // Per-section shuffle buttons
@@ -202,6 +202,11 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   warningsBox.style.color = '#eab308';
   warningsBox.style.marginTop = '4px';
   sections.Other.appendChild(warningsBox);
+  const dynamicsBox = document.createElement('div');
+  dynamicsBox.style.fontSize = '12px';
+  dynamicsBox.style.color = '#93c5fd';
+  dynamicsBox.style.marginTop = '6px';
+  sections.Other.appendChild(dynamicsBox);
 
   // Render controls (if hooks available)
   if (render) {
@@ -421,13 +426,30 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Blade, 'Length', 0.5, 6, 0.01, state.blade.length, (v) => (state.blade.length = v), rerender);
   slider(sections.Blade, 'Base Width', 0.05, 1.0, 0.005, state.blade.baseWidth, (v) => (state.blade.baseWidth = v), rerender);
   slider(sections.Blade, 'Tip Width', 0, 0.5, 0.005, state.blade.tipWidth, (v) => (state.blade.tipWidth = v), rerender);
-  select(sections.Blade, 'Tip Shape', ['pointed', 'rounded', 'leaf'], (state.blade.tipShape ?? 'pointed') as string, (v) => (state.blade.tipShape = v as any), rerender, 'Pointed (default), Rounded (softer kissaki), Leaf (mid-bulge).');
+  select(sections.Blade, 'Tip Shape', ['pointed', 'rounded', 'leaf', 'clip', 'tanto', 'spear', 'sheepsfoot'], (state.blade.tipShape ?? 'pointed') as string, (v) => (state.blade.tipShape = v as any), rerender, 'Tip family: Pointed, Rounded, Leaf, Clip, Tanto, Spear, Sheepsfoot.');
   slider(sections.Blade, 'Leaf Bulge', 0, 1, 0.01, state.blade.tipBulge ?? 0.2, (v) => (state.blade.tipBulge = v), rerender, 'Mid-blade bulge for Leaf tip shape.');
   select(sections.Blade, 'Cross Section', ['flat', 'diamond', 'lenticular', 'hexagonal'], (state.blade.crossSection ?? 'flat') as string, (v) => (state.blade.crossSection = v as any), rerender, 'Blade cross-section profile.');
   slider(sections.Blade, 'Edge Bevel', 0, 1, 0.01, state.blade.bevel ?? 0.5, (v) => (state.blade.bevel = v), rerender, '0 sharp (thin spine), 1 thickened spine/facets.');
   slider(sections.Blade, 'Blade Thickness', 0.02, 0.2, 0.001, state.blade.thickness, (v) => (state.blade.thickness = v), rerender);
   slider(sections.Blade, 'Left Thickness', 0.003, 0.2, 0.001, state.blade.thicknessLeft ?? state.blade.thickness, (v) => (state.blade.thicknessLeft = v), rerender, 'Z thickness at left edge (−X).');
   slider(sections.Blade, 'Right Thickness', 0.003, 0.2, 0.001, state.blade.thicknessRight ?? state.blade.thickness, (v) => (state.blade.thicknessRight = v), rerender, 'Z thickness at right edge (+X).');
+
+  // Distal taper profile (Base/Mid/Tip %)
+  const getTaper = (): [number, number, number] => {
+    const pts = (state.blade as any).thicknessProfile?.points as Array<[number,number]> | undefined;
+    if (!pts || pts.length < 2) return [100, 100, 100];
+    const base = Math.round((pts[0]?.[1] ?? 1) * 100);
+    const tip  = Math.round((pts[pts.length-1]?.[1] ?? 1) * 100);
+    let mid = 100; for (const [t,s] of pts) { if (t >= 0.5 && t <= 0.7) { mid = Math.round(s*100); break; } }
+    return [base, mid, tip];
+  };
+  const setTaper = (b:number,m:number,t:number) => {
+    (state.blade as any).thicknessProfile = { points: [[0, b/100], [0.6, m/100], [1, t/100]] } as any;
+  };
+  let [tb, tm, tt] = getTaper();
+  slider(sections.Blade, 'Taper Base %', 50, 120, 1, tb, (v) => { tb = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at base (100% = no change).');
+  slider(sections.Blade, 'Taper Mid %', 30, 110, 1, tm, (v) => { tm = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at mid-blade (t≈0.6).');
+  slider(sections.Blade, 'Taper Tip %', 10, 100, 1, tt, (v) => { tt = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at tip (lower = thinner tip).');
   slider(sections.Blade, 'Curvature', -1, 1, 0.01, state.blade.curvature, (v) => (state.blade.curvature = v), rerender, 'Bends the blade along its length (negative curves opposite).');
   slider(sections.Blade, 'Base Angle', -10, 10, 0.1, (state.blade.baseAngle ?? 0) * 180/Math.PI, (v) => (state.blade.baseAngle = v * Math.PI/180), rerender, 'Angle (deg) that the blade departs from the handle.');
   slider(sections.Blade, 'Twist Angle', -720, 720, 1, (state.blade.twistAngle ?? 0) * 180/Math.PI, (v) => (state.blade.twistAngle = v * Math.PI/180), rerender, 'Total twist along blade (deg).');
@@ -868,6 +890,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   });
 
   const updateWarnings = () => {
+
     const w: string[] = [];
     const blade = state.blade;
     const guard = state.guard;
@@ -895,6 +918,15 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       setWarn(el, 'Serration Right', serrR > blade.baseWidth * 0.2, 'Right serration amplitude is high');
     }
     warningsBox.innerHTML = w.length ? ('Warnings:\n- ' + w.join('\n- ')).replace(/\n/g, '<br/>') : 'No warnings';
+  }
+  const updateDynamics = () => {
+    const d = (sword as any)?.getDerived?.();
+    if (!d) { dynamicsBox.textContent = ''; return; }
+    const L = state.blade.length || 1;
+    const fmt = (x:number)=> (Math.round(x*100)/100).toFixed(2);
+    const pct = (x:number)=> Math.round((x/L)*100);
+    const text = 'Dynamics: PoB ' + fmt(d.cmY) + ' (' + pct(d.cmY) + '%), CoP ' + fmt(d.copY) + ' (' + pct(d.copY) + '%), Ibase ' + fmt(d.Ibase) + ', Icm ' + fmt(d.Icm);
+    dynamicsBox.textContent = text;
   };
 
   rerender();

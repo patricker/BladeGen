@@ -322,7 +322,11 @@
           "enum": [
             "pointed",
             "rounded",
-            "leaf"
+            "leaf",
+            "clip",
+            "tanto",
+            "spear",
+            "sheepsfoot"
           ],
           "description": "High-level tip shaping. 'leaf' can add a mid-blade bulge via tipBulge."
         },
@@ -422,6 +426,24 @@
               }
             }
           }
+        },
+        "ricassoLength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.3,
+          "description": "Unsharpened base length fraction (0..0.3)"
+        },
+        "falseEdgeLength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "False edge length fraction from tip (0..1)"
+        },
+        "falseEdgeDepth": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.2,
+          "description": "Spine bevel reduction amount (scene units)"
         }
       },
       "required": [
@@ -618,6 +640,14 @@
           "minimum": 0.001,
           "maximum": 0.2,
           "description": "For style='basket': minor radius of the torus used for rim rings."
+        },
+        "guardBlendFilletStyle": {
+          "type": "string",
+          "enum": [
+            "box",
+            "smooth"
+          ],
+          "description": "Fillet style for guard-blade bridge"
         }
       },
       "required": [

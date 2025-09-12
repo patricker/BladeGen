@@ -304,28 +304,18 @@ describe('Guard knobs', () => {
   })
 
   it('swept style creates multiple guard bars', () => {
-    const s = make(p => { (p.guard as any).style = 'swept'; p.guard.width = 1.2; p.guard.thickness = 0.2; (p.guard as any).ornamentation = 0.8; });
-    const grp = (s as any).guardGroup as THREE.Group;
-    expect(grp).toBeTruthy();
-    // should have several children (bars)
-    expect(grp.children.length).toBeGreaterThan(2);
-  })
+    const s = make(p => { (p.guard as any).style = 'swept'; p.guard.width = 1.2; p.guard.thickness = 0.2; (p.guard as any).ornamentation = 0.8; });    const grp = (s as any).guardGroup as THREE.Group;
+    expect(grp).toBeTruthy();    // should have several children (bars)
+    expect(grp.children.length).toBeGreaterThan(2);  })
 
   it('basket style creates a radial cage', () => {
-    const s = make(p => { (p.guard as any).style = 'basket'; p.guard.width = 1.2; p.guard.thickness = 0.2; (p.guard as any).ornamentation = 0.5; });
-    const grp = (s as any).guardGroup as THREE.Group;
-    expect(grp).toBeTruthy();
-    expect(grp.children.length).toBeGreaterThan(4);
-  })
+    const s = make(p => { (p.guard as any).style = 'basket'; p.guard.width = 1.2; p.guard.thickness = 0.2; (p.guard as any).ornamentation = 0.5; });    const grp = (s as any).guardGroup as THREE.Group;
+    expect(grp).toBeTruthy();    expect(grp.children.length).toBeGreaterThan(4);  })
 
   it('guard extras: loops add torus meshes', () => {
-    const s = make(p => { (p.guard as any).extras = [{ kind:'loop', radius:0.1, thickness:0.02, offsetY:0 }]; });
-    const grp = (s as any).guardGroup as THREE.Group;
-    expect(grp).toBeTruthy();
-    let torusCount = 0;
-    grp.traverse(o => { const m = o as any; if (m.isMesh && (m.geometry as any)?.type === 'TorusGeometry') torusCount++; });
-    expect(torusCount).toBeGreaterThanOrEqual(2);
-  })
+    const s = make(p => { (p.guard as any).extras = [{ kind:'loop', radius:0.1, thickness:0.02, offsetY:0 }]; });    const grp = (s as any).guardGroup as THREE.Group;
+    expect(grp).toBeTruthy();    let torusCount = 0;
+    grp.traverse(o => { const m = o as any; if (m.isMesh && (m.geometry as any)?.type === 'TorusGeometry') torusCount++; });    expect(torusCount).toBeGreaterThanOrEqual(2);  })
 })
 
 describe('Handle knobs', () => {
@@ -400,70 +390,47 @@ describe('Handle knobs', () => {
   it('crisscross wrap adds layer meshes', () => {
     const s = make(p => {
       (p.handle as any).handleLayers = [{ kind:'wrap', wrapPattern:'crisscross', y0Frac:0, lengthFrac:1, turns:5, depth:0.01 }];
-    });
-    const grp = (s as any).handleGroup as THREE.Group;
-    expect(grp).toBeTruthy();
-    // extra meshes added besides base handle
-    expect(grp.children.length).toBeGreaterThan(1);
-  })
+    });    const grp = (s as any).handleGroup as THREE.Group;
+    expect(grp).toBeTruthy();    // extra meshes added besides base handle
+    expect(grp.children.length).toBeGreaterThan(1);  })
 
   it('ring layer adds a torus', () => {
     const s = make(p => {
       (p.handle as any).handleLayers = [{ kind:'ring', y0Frac:0.5, radiusAdd:0.02 }];
-    });
-    const grp = (s as any).handleGroup as THREE.Group;
-    expect(grp).toBeTruthy();
-    expect(grp.children.length).toBeGreaterThan(1);
-  })
+    });    const grp = (s as any).handleGroup as THREE.Group;
+    expect(grp).toBeTruthy();    expect(grp.children.length).toBeGreaterThan(1);  })
 
   it('rivets ring adds multiple meshes', () => {
     const s = make(p => {
       (p.handle as any).rivets = [{ count: 10, ringFrac: 0.3, radius: 0.01 }];
-    });
-    const grp = (s as any).handleGroup as THREE.Group;
-    expect(grp).toBeTruthy();
-    expect(grp.children.length).toBeGreaterThan(1);
-  })
+    });    const grp = (s as any).handleGroup as THREE.Group;
+    expect(grp).toBeTruthy();    expect(grp.children.length).toBeGreaterThan(1);  })
 })
 
 describe('Engravings', () => {
   it('box fallback engraving appears without font', () => {
     const s = make(p => {
       (p.blade as any).engravings = [{ type:'text', content:'TEST', width:0.2, height:0.03, depth:0.002, offsetY: p.blade.length*0.4, offsetX:0, rotation:0, side:'both' }];
-    });
-    const g = (s as any).engravingGroup as THREE.Group;
-    expect(g).toBeTruthy();
-    // both sides should create at least two meshes
-    expect(g.children.length).toBeGreaterThanOrEqual(2);
-  })
+    });    const g = (s as any).engravingGroup as THREE.Group;
+    expect(g).toBeTruthy();    // both sides should create at least two meshes
+    expect(g.children.length).toBeGreaterThanOrEqual(2);  })
 
   it('decal engraving adds projected mesh', () => {
     const s = make(p => {
       (p.blade as any).engravings = [{ type:'decal', width:0.15, height:0.03, depth:0.002, offsetY: p.blade.length*0.5, offsetX:0, rotation:0, side:'right' }];
-    });
-    const g = (s as any).engravingGroup as THREE.Group;
-    expect(g).toBeTruthy();
-    expect(g.children.length).toBeGreaterThanOrEqual(1);
-  })
+    });    const g = (s as any).engravingGroup as THREE.Group;
+    expect(g).toBeTruthy();    expect(g.children.length).toBeGreaterThanOrEqual(1);  })
 })
 
 describe('Pommel variants', () => {
   it('wheel uses CylinderGeometry', () => {
-    const s = make(p => { p.pommel.style = 'wheel'; p.pommel.size = 0.18; });
-    expect(((s.pommelMesh as any).geometry as any).type).toBe('CylinderGeometry');
-  })
+    const s = make(p => { p.pommel.style = 'wheel'; p.pommel.size = 0.18; });    expect(((s.pommelMesh as any).geometry as any).type).toBe('CylinderGeometry');  })
   it('ring uses TorusGeometry', () => {
-    const s = make(p => { (p.pommel as any).style = 'ring'; (p.pommel as any).ringInnerRadius = 0.08; });
-    expect(((s.pommelMesh as any).geometry as any).type).toBe('TorusGeometry');
-  })
+    const s = make(p => { (p.pommel as any).style = 'ring'; (p.pommel as any).ringInnerRadius = 0.08; });    expect(((s.pommelMesh as any).geometry as any).type).toBe('TorusGeometry');  })
   it('scentStopper uses OctahedronGeometry', () => {
-    const s = make(p => { (p.pommel as any).style = 'scentStopper'; });
-    expect(((s.pommelMesh as any).geometry as any).type).toBe('OctahedronGeometry');
-  })
+    const s = make(p => { (p.pommel as any).style = 'scentStopper'; });    expect(((s.pommelMesh as any).geometry as any).type).toBe('OctahedronGeometry');  })
   it('crown uses ConeGeometry', () => {
-    const s = make(p => { (p.pommel as any).style = 'crown'; (p.pommel as any).crownSpikes = 9; (p.pommel as any).crownSharpness = 0.8; });
-    expect(((s.pommelMesh as any).geometry as any).type).toBe('ConeGeometry');
-  })
+    const s = make(p => { (p.pommel as any).style = 'crown'; (p.pommel as any).crownSpikes = 9; (p.pommel as any).crownSharpness = 0.8; });    expect(((s.pommelMesh as any).geometry as any).type).toBe('ConeGeometry');  })
 })
 
 describe('Proportional ratios', () => {
@@ -475,14 +442,7 @@ describe('Proportional ratios', () => {
       (p as any).useRatios = true;
       (p as any).ratios = ratios;
       p.guard.style = 'bar';
-    });
-    const gbb = bboxOf(s.guardMesh);
-    expect(approx(span(gbb,'x'), L * ratios.guardWidthToBlade, 1e-2)).toBe(true);
-    const hbb = bboxOf(s.handleMesh);
-    expect(approx(span(hbb,'y'), L * ratios.handleLengthToBlade, 1e-2)).toBe(true);
-    const pbb = bboxOf(s.pommelMesh);
-    expect(span(pbb,'x')).toBeGreaterThan(0);
-  })
+    });    const gbb = bboxOf(s.guardMesh);    expect(approx(span(gbb,'x'), L * ratios.guardWidthToBlade, 1e-2)).toBe(true);    const hbb = bboxOf(s.handleMesh);    expect(approx(span(hbb,'y'), L * ratios.handleLengthToBlade, 1e-2)).toBe(true);    const pbb = bboxOf(s.pommelMesh);    expect(span(pbb,'x')).toBeGreaterThan(0);  })
 })
 
 describe('Pommel knobs', () => {
@@ -540,3 +500,19 @@ describe('Dependent knobs', () => {
     expect(gAuto.children.length).toBe(2)
   })
 })
+
+
+
+describe('Dynamics', () => {
+  it('exposes derived metrics in reasonable ranges', () => {
+    const s = make(p => {
+      p.blade.length = 3;
+      (p.blade as any).thicknessProfile = { points: [[0,1],[1,1]] } as any;
+    });
+    const d: any = (s as any).getDerived?.();
+    expect(!!d).toBe(true);
+    expect(d.cmY).toBeGreaterThan(0);
+    expect(d.cmY).toBeLessThanOrEqual(3);
+    expect(d.copY).toBeGreaterThan(d.cmY);
+  });
+});

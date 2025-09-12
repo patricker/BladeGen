@@ -44,7 +44,7 @@ export type BladeParams = {
   twistAngle?: number; // radians of total twist from base to tip
   crossSection?: 'flat' | 'lenticular' | 'diamond' | 'hexagonal';
   bevel?: number; // 0..1 bevel intensity for profiles
-  tipShape?: 'pointed' | 'rounded' | 'leaf';
+  tipShape?: 'pointed' | 'rounded' | 'leaf' | 'clip' | 'tanto' | 'spear' | 'sheepsfoot';
   tipBulge?: number; // 0..1 extra mid-blade bulge for 'leaf'
   engravings?: Array<{ type:'text'|'shape'|'decal', content?: string, fontUrl?: string, width:number, height:number, depth?: number, offsetY:number, offsetX:number, rotation?: number, side?: 'left'|'right'|'both', align?: 'left'|'center'|'right', letterSpacing?: number }>;
   // Distal taper along blade length: piecewise linear [t, scale] points (t in 0..1)
@@ -72,6 +72,7 @@ export type GuardParams = {
   asymmetricArms?: boolean; // allow left/right to differ in scale
   asymmetry?: number; // -1..1 scale left smaller, right larger (or vice versa)
   guardBlendFillet?: number; // 0..1 small fillet bridge at blade base
+  guardBlendFilletStyle?: 'box'|'smooth';
   extras?: Array<{ kind: 'loop'|'sideRing'|'fingerGuard'; radius: number; thickness: number; offsetY: number; offsetX?: number; tilt?: number }>;
   // Basket-specific knobs (optional)
   basketRodCount?: number;
@@ -1350,10 +1351,21 @@ function tipWidthWithKissaki(b: BladeParams, t: number, baseW: number, tipW: num
   return w;
 }
 
+function thicknessScaleAt(b: BladeParams, t: number): number {
+  const pts = (b.thicknessProfile?.points && b.thicknessProfile.points.length >= 2) ? b.thicknessProfile.points.slice().sort((a, c) => a[0] - c[0]) : [[0, 1], [1, 1]] as Array<[number, number]>;
+  const tt = (THREE as any).MathUtils.clamp(t, 0, 1);
+  let i = 0; while (i < pts.length - 1 && !(tt >= pts[i][0] && tt <= pts[i + 1][0])) i++;
+  const [t0, s0] = pts[Math.max(0, Math.min(i, pts.length - 2))];
+  const [t1, s1] = pts[Math.min(i + 1, pts.length - 1)];
+  if (t1 === t0) return s0;
+  const a = (tt - t0) / (t1 - t0);
+  return (THREE as any).MathUtils.lerp(s0, s1, a);
+}
+
 function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   const L = Math.max(0.01, b.length);
-  const TL = Math.max(0.001, b.thicknessLeft ?? b.thickness ?? 0.08);
-  const TR = Math.max(0.001, b.thicknessRight ?? b.thickness ?? 0.08);
+  const TL0 = Math.max(0.001, b.thicknessLeft ?? b.thickness ?? 0.08);
+  const TR0 = Math.max(0.001, b.thicknessRight ?? b.thickness ?? 0.08);
   const baseW = Math.max(0.002, b.baseWidth);
   const tipW = Math.max(0, b.tipWidth);
   const segs = Math.max(16, Math.min(512, Math.round(b.sweepSegments ?? 128))); // longitudinal resolution
@@ -1376,10 +1388,7 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     positions[idx + 1] = y;
     positions[idx + 2] = z;
   };
-
-  const halfEdgeL = TL * 0.5;
-  const halfEdgeR = TR * 0.5;
-  const edgeMidHalf = 0.5 * (halfEdgeL + halfEdgeR);
+  // Edge thickness computed per row based on thicknessProfile (see below).
   const bevel = THREE.MathUtils.clamp(b.bevel ?? 0.5, 0, 1);
 
   const shapeFactor = (u: number) => {
@@ -1441,8 +1450,11 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     const bend = bendOffsetX(b, y, L);
     const xl = -leftHalf + bend;
     const xr = +rightHalf + bend;
-
-    // Cross-section center target thickness (spine) rises with bevel
+    // Distal taper: recompute edge thickness per row, then center thickness
+    const tScale = thicknessScaleAt(b, t);
+    const halfEdgeL = (TL0 * tScale) * 0.5;
+    const halfEdgeR = (TR0 * tScale) * 0.5;
+    const edgeMidHalf = 0.5 * (halfEdgeL + halfEdgeR);
     const centerHalf = edgeMidHalf * (1 + 2.0 * bevel);
 
     const twist = (b.twistAngle ?? 0) * t;

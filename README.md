@@ -2,7 +2,7 @@
 
 Parametric sword generator and renderer for the web.
 
-- GitHub: https://github.com/patricker/SwordMaker
+- Website: https://patricker.github.io/SwordMaker/
 
 ## Quick start
 

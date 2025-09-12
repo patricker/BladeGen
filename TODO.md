@@ -5,12 +5,12 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 ## Near‑Term Priorities
 - Distal taper + dynamics readouts: thicknessProfile along blade; compute PoB, CoP, inertia; show in UI/export.
 - Guard↔blade smooth fillet: replace box bridge with a small shaped profile.
-- Edge/tip taxonomy: ricasso and false edge; add tip families (clip, tanto, spear, sheepsfoot).
+- Edge/tip taxonomy: ricasso and false edge (implemented); tip families expanded (clip, tanto, spear, sheepsfoot) with asymmetric shaping; further refinement pending.
 - Render polish: MSAA (WebGL2), contact shadow plane, composer toggle, mobile heuristics, global envMapIntensity hook.
 
 ## Geometry & Dynamics
-- [ ] Distal taper thicknessProfile (Bezier/points) varying Z thickness along Y.
-- [ ] Derived metrics: PoB (cmY), CoP, polar moment; expose in UI/JSON.
+- [x] Distal taper thicknessProfile (Bezier/points) varying Z thickness along Y.
+- [x] Derived metrics: PoB (cmY), CoP, polar moment; expose in UI (readout).
 - [ ] Blade families: wavy/flamberge; kris with odd wave counts.
 - [ ] Cross‑section upgrades: hollow grind (radius/depth), compound grinds; triangular and T‑spine.
 - [ ] Fuller v2: per‑face array with width/offsetFromSpine/taper (1–3 per side).
@@ -19,7 +19,7 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [ ] Shell guards (simple lathed/extruded shells).
 - [ ] Langets along blade flats (length, thickness).
 - [ ] Asymmetry beyond scale (shape/profile bias per side).
-- [ ] Advanced guard↔blade fillet (smooth profile).
+- [x] Advanced guard↔blade fillet (smooth profile).
 
 ## Handle & Grip
 - [ ] Wrap style presets: hineri‑maki, katate‑maki, wire wrap.

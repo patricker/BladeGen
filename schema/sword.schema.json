@@ -406,7 +406,7 @@
         "thicknessProfile": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Distal taper profile along blade length: piecewise linear [t, scale] points (t in 0..1, scale multiplies thicknessLeft/Right).",
+          "description": "Distal taper profile along blade length. Uses piecewise-linear [t, scale] pairs with t in [0..1] (base2192tip) and scale multiplying thicknessLeft/Right at that row. Defaults to a flat 1.0 profile if omitted.1, scale multiplies thicknessLeft/Right).",
           "properties": {
             "points": {
               "type": "array",
@@ -431,19 +431,19 @@
           "type": "number",
           "minimum": 0,
           "maximum": 0.3,
-          "description": "Unsharpened base length fraction (0..0.3)"
+          "description": "Unsharpened base length fraction (0..0.3). Within this region the blade keeps parallel sides (base width) and suppresses serrations."
         },
         "falseEdgeLength": {
           "type": "number",
           "minimum": 0,
           "maximum": 1,
-          "description": "False edge length fraction from tip (0..1)"
+          "description": "False edge (swedge) length fraction from the tip (0..1). Applied on the spine side toward the point."
         },
         "falseEdgeDepth": {
           "type": "number",
           "minimum": 0,
           "maximum": 0.2,
-          "description": "Spine bevel reduction amount (scene units)"
+          "description": "Spine bevel reduction amount (scene units) when false edge is active; fades in along the specified length."
         }
       },
       "required": [
@@ -647,7 +647,7 @@
             "box",
             "smooth"
           ],
-          "description": "Fillet style for guard-blade bridge"
+          "description": "Fillet style for guard↔blade bridge: 'box' = rectangular block; 'smooth' = rounded collar (elliptical cylinder)."
         }
       },
       "required": [

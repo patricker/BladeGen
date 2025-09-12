@@ -450,6 +450,10 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Blade, 'Taper Base %', 50, 120, 1, tb, (v) => { tb = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at base (100% = no change).');
   slider(sections.Blade, 'Taper Mid %', 30, 110, 1, tm, (v) => { tm = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at mid-blade (t≈0.6).');
   slider(sections.Blade, 'Taper Tip %', 10, 100, 1, tt, (v) => { tt = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at tip (lower = thinner tip).');
+  // Ricasso and False Edge (edge/tip taxonomy)
+  slider(sections.Blade, 'Ricasso %', 0, 30, 1, Math.round(((state.blade as any).ricassoLength ?? 0) * 100), (v) => { (state.blade as any).ricassoLength = (v as number)/100; }, rerender, 'Unsharpened base length (0–30%).');
+  slider(sections.Blade, 'False Edge %', 0, 100, 1, Math.round(((state.blade as any).falseEdgeLength ?? 0) * 100), (v) => { (state.blade as any).falseEdgeLength = (v as number)/100; }, rerender, 'False edge length from tip (0–100%).');
+  slider(sections.Blade, 'False Edge Depth', 0, 0.2, 0.001, ((state.blade as any).falseEdgeDepth ?? 0), (v) => { (state.blade as any).falseEdgeDepth = v as number; }, rerender, 'Spine bevel reduction amount.');
   slider(sections.Blade, 'Curvature', -1, 1, 0.01, state.blade.curvature, (v) => (state.blade.curvature = v), rerender, 'Bends the blade along its length (negative curves opposite).');
   slider(sections.Blade, 'Base Angle', -10, 10, 0.1, (state.blade.baseAngle ?? 0) * 180/Math.PI, (v) => (state.blade.baseAngle = v * Math.PI/180), rerender, 'Angle (deg) that the blade departs from the handle.');
   slider(sections.Blade, 'Twist Angle', -720, 720, 1, (state.blade.twistAngle ?? 0) * 180/Math.PI, (v) => (state.blade.twistAngle = v * Math.PI/180), rerender, 'Total twist along blade (deg).');
@@ -532,6 +536,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Guard, 'Tilt', -1.57, 1.57, 0.01, state.guard.tilt, (v) => (state.guard.tilt = v), rerender, 'Rotates the guard around the blade axis.');
   select(sections.Guard, 'Style', ['bar', 'winged', 'claw', 'disk', 'knucklebow', 'swept', 'basket'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
   slider(sections.Guard, 'Blend Fillet', 0, 1, 0.01, (state.guard as any).guardBlendFillet ?? 0, (v) => ((state.guard as any).guardBlendFillet = v), rerender, 'Small bridge piece between blade and guard.');
+  select(sections.Guard, 'Fillet Style', ['box','smooth'], ((state.guard as any).guardBlendFilletStyle ?? 'box') as string, (v) => { (state.guard as any).guardBlendFilletStyle = v as any; }, rerender, 'Fillet style between guard and blade.');
   checkbox(sections.Guard, 'Finger Guard', false, (v) => {
     const arr = (((state.guard as any).extras) || []) as any[];
     const without = arr.filter((e) => e.kind !== 'fingerGuard');

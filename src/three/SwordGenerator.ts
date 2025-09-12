@@ -714,10 +714,21 @@ export class SwordGenerator {
       const w = bladeW * (1.02 + fillet*0.06);
       const h = 0.01 + fillet*0.02;
       const d = bladeT * (0.9 + fillet*0.2);
-      const box = new THREE.BoxGeometry(w, h, d);
       const matF = this.makeMaterial('guard');
-      const fil = new THREE.Mesh(box, matF);
-      fil.position.set(0, targetTopY + h*0.5, 0);
+      const style = ((g as any).guardBlendFilletStyle ?? 'box') as 'box'|'smooth';
+      let fil: THREE.Mesh;
+      if (style === 'smooth') {
+        // Elliptical collar using a scaled cylinder (rounder visual bridge)
+        const baseR = 0.5; // unit radius; scale X/Z to target dimensions
+        const cyl = new THREE.CylinderGeometry(baseR, baseR, h, 32);
+        fil = new THREE.Mesh(cyl, matF);
+        fil.scale.set(w, 1, d); // scale X/Z to match blade width/thickness
+        fil.position.set(0, targetTopY + h*0.5, 0);
+      } else {
+        const box = new THREE.BoxGeometry(w, h, d);
+        fil = new THREE.Mesh(box, matF);
+        fil.position.set(0, targetTopY + h*0.5, 0);
+      }
       this.group.add(fil);
     }
 
@@ -1240,7 +1251,7 @@ export function buildBladeOutlinePoints(b: BladeParams): THREE.Vector2[] {
     const serrR = serr(t, serrFreq, serrAmpR) * (1 - t);
     const half = Math.max(0.001, w * 0.5);
     const asym = (b.asymmetry ?? 0);
-    const rightHalf = Math.max(0.0005, (half + serrR) * (1 + 0.5 * asym));
+    let rightHalf = Math.max(0.0005, (half + serrR) * (1 + 0.5 * asym));
     const bend = bendOffsetX(b, y, length);
     pts.push(new THREE.Vector2(+rightHalf + bend, y));
   }
@@ -1251,7 +1262,7 @@ export function buildBladeOutlinePoints(b: BladeParams): THREE.Vector2[] {
     const serrL = serr(t, serrFreq, serrAmpL) * (1 - t);
     const half = Math.max(0.001, w * 0.5);
     const asym = (b.asymmetry ?? 0);
-    const leftHalf = Math.max(0.0005, (half + serrL) * (1 - 0.5 * asym));
+    let leftHalf = Math.max(0.0005, (half + serrL) * (1 - 0.5 * asym));
     const bend = bendOffsetX(b, y, length);
     pts.push(new THREE.Vector2(-leftHalf + bend, y));
   }
@@ -1337,7 +1348,22 @@ function tipWidthWithKissaki(b: BladeParams, t: number, baseW: number, tipW: num
       const u = (t - split) / Math.max(1e-6, kf);
       let r = THREE.MathUtils.clamp(b.kissakiRoundness ?? 0.5, 0, 1);
       if (b.tipShape === 'rounded') r = 1; // force rounder tip falloff
-      const expo = THREE.MathUtils.lerp(0.5, 3.0, 1 - r);
+      // Tip families: adjust exponent shaping per family for distinct silhouettes
+      let expo = THREE.MathUtils.lerp(0.5, 3.0, 1 - r);
+      switch (b.tipShape) {
+        case 'tanto':
+          expo = 2.2; // crisper, straight-ish wedge
+          break;
+        case 'clip':
+          expo = 0.8; // faster early narrowing (clip-like)
+          break;
+        case 'spear':
+          expo = 1.4; // gentle spear-like taper
+          break;
+        case 'sheepsfoot':
+          expo = 3.0; // late drop for blunt arc
+          break;
+      }
       const eased = Math.pow(u, expo);
       w = midW + (tipW - midW) * eased;
     }
@@ -1432,13 +1458,21 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   const carveWidth = (b.fullerWidth && b.fullerWidth > 0) ? b.fullerWidth : (b.baseWidth || 0.25) * 0.3;
   const insetBase = Math.min(Math.max(0, b.fullerInset ?? b.fullerDepth ?? 0), 0.2);
   const prof = b.fullerProfile ?? 'u';
+  // Edge/tip taxonomy helpers
+  const ricassoFrac = THREE.MathUtils.clamp((b as any).ricassoLength ?? 0, 0, 0.3);
+  const feLen = THREE.MathUtils.clamp((b as any).falseEdgeLength ?? 0, 0, 1);
+  const feDepth = THREE.MathUtils.clamp((b as any).falseEdgeDepth ?? 0, 0, 0.2);
+  // Determine which side is the spine for single-edged blades (thicker side)
+  const isSingle = (b.edgeType ?? 'double') === 'single';
+  const spineSign: 1 | -1 = isSingle ? ((TR0 >= TL0) ? +1 : -1) : +1; // default to right on double edge
 
   for (let i = 0; i <= segs; i++) {
     const t = i / segs;
     const y = t * L;
-    const w = tipWidthWithKissaki(b, t, baseW, tipW);
-    const serrL = serr(t, serrFreq, serrAmpL, serPat, serSeed) * (1 - t);
-    const serrR = serr(t, serrFreq, serrAmpR, serPat, serSeed) * (1 - t);
+    let w = tipWidthWithKissaki(b, t, baseW, tipW);
+    if (ricassoFrac > 0 && t <= ricassoFrac) w = baseW;
+    const serrL = (ricassoFrac > 0 && t <= ricassoFrac) ? 0 : (serr(t, serrFreq, serrAmpL, serPat, serSeed) * (1 - t));
+    const serrR = (ricassoFrac > 0 && t <= ricassoFrac) ? 0 : (serr(t, serrFreq, serrAmpR, serPat, serSeed) * (1 - t));
     // Chaos profile: bounded, smooth pseudo-noise (two sines)
     const c1 = Math.sin(t * Math.PI * 16.0 + 1.3);
     const c2 = Math.sin(t * Math.PI * 9.7 + 0.6);
@@ -1446,6 +1480,27 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     const baseHalf = Math.max(0.001, w * 0.5 + chaosOffset);
     const asym = (b.asymmetry ?? 0);
     const leftHalf = Math.max(0.0005, (baseHalf + serrL) * (1 - 0.5 * asym));
+    // Tip family asymmetry (clip/tanto/sheepsfoot): bias spine/edge side near tip
+    if (b.tipShape === "clip" || b.tipShape === "tanto" || b.tipShape === "sheepsfoot") {
+      const tipLen = Math.max(0.05, (b.kissakiLength ?? 0.2) || 0.2);
+      const t0 = Math.max(0, 1 - tipLen);
+      const tipU = THREE.MathUtils.clamp((t - t0) / Math.max(1e-6, tipLen), 0, 1);
+      const spineIsRight = spineSign > 0;
+      if (b.tipShape === "clip") {
+        const delta = baseHalf * 0.40 * Math.pow(tipU, 0.7);
+        if (spineIsRight) rightHalf = Math.max(0.0005, rightHalf - delta);
+        else leftHalf = Math.max(0.0005, leftHalf - delta);
+      } else if (b.tipShape === "sheepsfoot") {
+        const delta = baseHalf * 0.50 * Math.pow(tipU, 2.0);
+        if (spineIsRight) rightHalf = Math.max(0.0005, rightHalf - delta);
+        else leftHalf = Math.max(0.0005, leftHalf - delta);
+      } else if (b.tipShape === "tanto") {
+        const delta = baseHalf * 0.25 * tipU;
+        const edgeIsRight = !spineIsRight;
+        if (edgeIsRight) rightHalf = Math.max(0.0005, rightHalf - delta);
+        else leftHalf = Math.max(0.0005, leftHalf - delta);
+      }
+    }
     const rightHalf = Math.max(0.0005, (baseHalf + serrR) * (1 + 0.5 * asym));
     const bend = bendOffsetX(b, y, L);
     const xl = -leftHalf + bend;
@@ -1485,6 +1540,14 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
             zHalf = Math.max(0.0006, zHalf - inset);
           }
         }
+      }
+      // False edge (spine-side bevel near tip)
+      if (feLen > 0 && feDepth > 0 && t >= (1 - feLen)) {
+        const along = THREE.MathUtils.clamp((t - (1 - feLen)) / Math.max(1e-6, feLen), 0, 1);
+        const toSpine = spineSign > 0 ? s : (1 - s);
+        const across = Math.pow(THREE.MathUtils.clamp(toSpine, 0, 1), 2.0);
+        const carve = feDepth * along * across;
+        zHalf = Math.max(0.0006, zHalf - carve);
       }
       const front = rot(xRaw, -zHalf);
       const back = rot(xRaw, +zHalf);

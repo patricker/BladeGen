@@ -3,11 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SwordMaker Demo</title>
+    <title>SwordMaker — Parametric Sword Generator</title>
     <style>
       html, body, #app { height: 100%; margin: 0; }
       #app { display: grid; grid-template-rows: auto 1fr; }
-      header { padding: 8px 12px; background: #121212; color: #ddd; font-family: system-ui, sans-serif; }
+      header { padding: 8px 12px; background: #121212; color: #ddd; font-family: system-ui, sans-serif; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+      header .tag { opacity: 0.85; font-size: 12px; }
+      header a { color: #90cdf4; text-decoration: none; font-size: 12px; }
+      header a:hover { text-decoration: underline; }
       canvas { display: block; width: 100%; height: 100%; }
       #sidebar {
         position: absolute;
@@ -50,7 +53,13 @@
   <body>
     <div id="app">
       <header>
-        <strong>SwordMaker</strong> · Three.js Demo Scene
+        <div>
+          <strong>SwordMaker</strong>
+          <span class="tag">· Parametric sword generator and renderer for the web</span>
+        </div>
+        <div class="links">
+          <a href="https://github.com/patricker/SwordMaker" target="_blank" rel="noopener">GitHub</a>
+        </div>
       </header>
       <div id="sidebar"></div>
       <canvas id="scene"></canvas>

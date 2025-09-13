@@ -505,6 +505,8 @@ export class SwordGenerator {
       this.guardMesh = new THREE.Mesh(geo, gmat2);
       this.guardMesh.castShadow = true;
       this.guardMesh.position.set(0, targetTopY, 0);
+      // Orient the disk so its plane is XZ (thickness along Y)
+      this.guardMesh.rotation.x = Math.PI / 2;
       this.guardMesh.rotation.z = g.tilt;
       this.group.add(this.guardMesh);
     } else if (g.style === 'knucklebow') {

@@ -224,14 +224,14 @@ describe('Guard knobs', () => {
     expect(approx(group.rotation.z, tilt, 1e-6)).toBe(true)
   })
 
-  it('disk thickness affects Z span (clamped)', () => {
+  it('disk thickness affects Y span (clamped)', () => {
     const sThin = make(p => { p.guard.style = 'disk'; p.guard.thickness = 0.01; p.guard.width = 0.4 })
     const sThick = make(p => { p.guard.style = 'disk'; p.guard.thickness = 0.5; p.guard.width = 0.4 })
-    const zThin = span(bboxOf(sThin.guardMesh), 'z')
-    const zThick = span(bboxOf(sThick.guardMesh), 'z')
+    const yThin = span(bboxOf(sThin.guardMesh), 'y')
+    const yThick = span(bboxOf(sThick.guardMesh), 'y')
     // clamp range is [0.04, 0.2]
-    expect(zThin).toBeLessThanOrEqual(0.2)
-    expect(zThick).toBeGreaterThan(zThin)
+    expect(yThin).toBeLessThanOrEqual(0.2)
+    expect(yThick).toBeGreaterThan(yThin)
   })
 
   it('winged curveSegments increases polygon count', () => {

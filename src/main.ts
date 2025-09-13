@@ -7,7 +7,7 @@ if (!canvas) {
   throw new Error('Canvas element #scene not found');
 }
 
-const { renderer, camera, controls, scene, composer, dispose, updateFXAA, renderHooks } = setupScene(canvas) as any;
+const { renderer, camera, controls, scene, composer, dispose, updateFXAA, renderHooks, preFX } = setupScene(canvas) as any;
 
 // Simple FPS overlay
 const fpsEl = document.getElementById('fps');
@@ -39,6 +39,8 @@ function animate(t: number) {
   last = t;
   controls.update();
   if (composer) {
+    // Run pre-passes (selective bloom, heat haze mask), then render
+    try { (preFX as any)?.(); } catch {}
     composer.render();
   } else {
     renderer.render(scene, camera);

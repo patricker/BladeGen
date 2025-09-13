@@ -26,6 +26,14 @@ type RenderHooks = {
   setDPRCap: (cap: number) => void;
   setPartBump: (part: 'blade'|'guard'|'handle'|'pommel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => void;
   setBladeGradientWear: (enabled: boolean, base?: number, edge?: number, edgeFade?: number, wear?: number) => void;
+  setBladeMistAdvanced?: (cfg: { occlude?: boolean; lifeRate?: number; noiseAmp?: number; noiseFreqX?: number; noiseFreqZ?: number; windX?: number; windZ?: number; emission?: 'base'|'edge'|'tip'|'full'; sizeMinRatio?: number }) => void;
+  setSelectiveBloom?: (enabled: boolean, strength?: number, threshold?: number, radius?: number, intensity?: number) => void;
+  markForBloom?: (obj: any, enable?: boolean) => void;
+  setHeatHaze?: (enabled: boolean, distortion?: number) => void;
+  markForHeat?: (obj: any, enable?: boolean) => void;
+  setFlameAura?: (enabled: boolean, opts?: { scale?: number; color1?: number; color2?: number; noiseScale?: number; speed?: number; intensity?: number }) => void;
+  setEmbers?: (enabled: boolean, opts?: { count?: number; size?: number; color?: number }) => void;
+  setMistTurbulence?: (v: number) => void;
   setPartColor: (part: 'blade'|'guard'|'handle'|'pommel', hex: number) => void;
   setPartMetalness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
   setPartRoughness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
@@ -228,6 +236,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const rPost = addSection(sections.Render, 'Render: Post');
     const rAtmos = addSection(sections.Render, 'Render: Atmospherics');
     const rGrad = addSection(sections.Render, 'Render: Blade Gradient');
+    const rFX = addSection(sections.Render, 'Render: FX');
     const rMat = addSection(sections.Render, 'Render: Materials');
     rMatSec = rMat;
     rGradSec = rGrad;
@@ -302,6 +311,53 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(rAtmos, 'Fresnel Intensity', 0, 2.0, 0.01, 0.6, (v) => { (render as any).setFresnel?.(true, undefined, v, undefined); }, () => {}, 'Fresnel intensity.');
     slider(rAtmos, 'Fresnel Power', 0.5, 6.0, 0.1, 2.0, (v) => { (render as any).setFresnel?.(true, undefined, undefined, v); }, () => {}, 'Fresnel power exponent.');
     colorPicker(rAtmos, 'Fresnel Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); (render as any).setFresnel?.(true, n, undefined, undefined); }, () => {}, 'Fresnel color.');
+
+    // FX: Inner Glow (pulsing)
+    checkbox(rFX, 'Inner Glow', false, (v) => { (render as any).setInnerGlow?.(v, undefined, undefined, undefined, undefined); }, () => {}, 'Pulsing fresnel-like inner glow overlay.');
+    colorPicker(rFX, 'Glow Color', '#88ccff', (hex) => { const n=parseInt(hex.replace('#','0x')); (render as any).setInnerGlow?.(true, n, undefined, undefined, undefined); }, () => {}, 'Inner glow color.');
+    slider(rFX, 'Glow Min', 0, 2.0, 0.01, 0.2, (v) => { (render as any).setInnerGlow?.(true, undefined, v, undefined, undefined); }, () => {}, 'Minimum intensity.');
+    slider(rFX, 'Glow Max', 0, 2.0, 0.01, 0.9, (v) => { (render as any).setInnerGlow?.(true, undefined, undefined, v, undefined); }, () => {}, 'Maximum intensity.');
+    slider(rFX, 'Glow Speed', 0, 10.0, 0.01, 1.5, (v) => { (render as any).setInnerGlow?.(true, undefined, undefined, undefined, v); }, () => {}, 'Pulse speed.');
+
+    // FX: Blade Mist
+    checkbox(rFX, 'Blade Mist', false, (v) => { (render as any).setBladeMist?.(v, undefined, undefined, undefined, undefined, undefined); }, () => {}, 'Subtle mist particles rising from blade.');
+    colorPicker(rFX, 'Mist Color', '#88aadd', (hex) => { const n=parseInt(hex.replace('#','0x')); (render as any).setBladeMist?.(true, n, undefined, undefined, undefined, undefined); }, () => {}, 'Mist color.');
+    slider(rFX, 'Mist Density', 0, 1.0, 0.01, 0.4, (v) => { (render as any).setBladeMist?.(true, undefined, v, undefined, undefined, undefined); }, () => {}, 'Particle count factor.');
+    slider(rFX, 'Mist Speed', 0, 2.0, 0.01, 0.6, (v) => { (render as any).setBladeMist?.(true, undefined, undefined, v, undefined, undefined); }, () => {}, 'Rise speed.');
+    slider(rFX, 'Mist Spread', 0, 0.2, 0.001, 0.08, (v) => { (render as any).setBladeMist?.(true, undefined, undefined, undefined, v, undefined); }, () => {}, 'Horizontal drift factor.');
+    slider(rFX, 'Mist Size', 1, 16, 0.1, 6.0, (v) => { (render as any).setBladeMist?.(true, undefined, undefined, undefined, undefined, v); }, () => {}, 'Sprite size (px-scaled).');
+    // Advanced mist shaping
+    slider(rFX, 'Mist Life Rate', 0.05, 1.0, 0.01, 0.25, (v) => { (render as any).setBladeMistAdvanced?.({ lifeRate: v }); }, () => {}, 'How fast particles age (fade in/out).');
+    slider(rFX, 'Mist Turbulence', 0.0, 0.3, 0.005, 0.08, (v) => { (render as any).setBladeMistAdvanced?.({ noiseAmp: v }); }, () => {}, 'Wavy drift amplitude.');
+    slider(rFX, 'Wind X', -0.5, 0.5, 0.01, 0.0, (v) => { (render as any).setBladeMistAdvanced?.({ windX: v }); }, () => {}, 'Constant push along X.');
+    slider(rFX, 'Wind Z', -0.5, 0.5, 0.01, 0.0, (v) => { (render as any).setBladeMistAdvanced?.({ windZ: v }); }, () => {}, 'Constant push along Z.');
+    select(rFX, 'Emit Region', ['base','edge','tip','full'], 'base', (v) => { (render as any).setBladeMistAdvanced?.({ emission: v as any }); }, () => {}, 'Where to spawn mist.');
+    slider(rFX, 'Size Min Ratio', 0.0, 1.0, 0.01, 0.5, (v) => { (render as any).setBladeMistAdvanced?.({ sizeMinRatio: v }); }, () => {}, 'Min size as ratio of mist size.');
+    checkbox(rFX, 'Occlude by Blade', true, (v) => { (render as any).setBladeMistAdvanced?.({ occlude: v }); }, () => {}, 'When on, mist hides behind geometry.');
+
+    // FX: Flame Aura & Selective Bloom & Heat Haze & Embers
+    let flameEnabled = false;
+    const flame = { scale: 1.05, color1: '#ff5a00', color2: '#fff18a', noiseScale: 2.2, speed: 1.6, intensity: 1.0 };
+    const applyFlame = () => {
+      const opts = { scale: flame.scale, color1: parseInt(flame.color1.replace('#','0x')), color2: parseInt(flame.color2.replace('#','0x')), noiseScale: flame.noiseScale, speed: flame.speed, intensity: flame.intensity } as any;
+      (render as any).setFlameAura?.(flameEnabled, opts);
+    };
+    checkbox(rFX, 'Flame Aura', false, (v) => { flameEnabled = v; applyFlame(); if (v) { (render as any).markForHeat?.(((sword as any).bladeMesh), true); (render as any).markForBloom?.(((sword as any).bladeMesh), true); } }, () => {}, 'Animated aura overlay around blade.');
+    colorPicker(rFX, 'Flame Color A', flame.color1, (hex) => { flame.color1 = hex; applyFlame(); }, () => {}, 'Inner flame color.');
+    colorPicker(rFX, 'Flame Color B', flame.color2, (hex) => { flame.color2 = hex; applyFlame(); }, () => {}, 'Outer flame color.');
+    slider(rFX, 'Flame Intensity', 0.0, 3.0, 0.01, flame.intensity, (v) => { flame.intensity = v; applyFlame(); }, () => {}, 'Brightness scaling for aura.');
+    slider(rFX, 'Flame Speed', 0.0, 8.0, 0.01, flame.speed, (v) => { flame.speed = v; applyFlame(); }, () => {}, 'Noise scroll speed.');
+    slider(rFX, 'Flame NoiseScale', 0.2, 8.0, 0.01, flame.noiseScale, (v) => { flame.noiseScale = v; applyFlame(); }, () => {}, 'Spatial scale of flame noise.');
+    slider(rFX, 'Flame Scale', 1.0, 1.2, 0.001, flame.scale, (v) => { flame.scale = v; applyFlame(); }, () => {}, 'Mesh scale factor for aura shell.');
+    checkbox(rFX, 'Selective Bloom', false, (v) => { (render as any).setSelectiveBloom?.(v, 1.1, 0.8, 0.35, 1.0); if (v) { (render as any).markForBloom?.(((sword as any).bladeMesh), true); } }, () => {}, 'Use bloom only on marked objects.');
+    checkbox(rFX, 'Heat Haze', false, (v) => { (render as any).setHeatHaze?.(v, 0.004); if (v) { (render as any).markForHeat?.(((sword as any).bladeMesh), true); } }, () => {}, 'Mask-based refractive shimmer.');
+    let embersEnabled = false;
+    const emb = { count: 120, size: 3, color: '#ffaa55' };
+    const applyEmbers = () => { (render as any).setEmbers?.(embersEnabled, { count: Math.max(1, Math.floor(emb.count)), size: emb.size, color: parseInt(emb.color.replace('#','0x')) }); };
+    checkbox(rFX, 'Embers', false, (v) => { embersEnabled = v; applyEmbers(); }, () => {}, 'Floating sparks/embers.');
+    slider(rFX, 'Ember Count', 10, 400, 1, emb.count, (v) => { emb.count = v; applyEmbers(); }, () => {}, 'Number of ember particles.');
+    slider(rFX, 'Ember Size', 1, 12, 0.1, emb.size, (v) => { emb.size = v; applyEmbers(); }, () => {}, 'Ember sprite size.');
+    colorPicker(rFX, 'Ember Color', emb.color, (hex) => { emb.color = hex; applyEmbers(); }, () => {}, 'Ember color.');
   } else {
     sections.Render.style.display = 'none';
   }

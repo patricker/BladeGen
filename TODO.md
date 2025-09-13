@@ -33,6 +33,7 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 ## Materials & Export
 - [ ] glTF KHR_materials_variants and a simple Look switcher in UI.
 - [ ] Anisotropy direction UI and helper maps (beyond current fake direction).
+ - [ ] Damascus blade look: procedural or texture‑driven maps; expose as a blade material preset.
 
 ## Accessories
 - [ ] Scabbard generator (throat/locket/chape) matching blade profile + sword knot/tassel; simple rope curve with idle.
@@ -51,10 +52,15 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [ ] Animated shimmer (time uniform) for gradient/wear (optional).
 - [ ] Wire up global envMapIntensity in UI; persist in JSON.
 
+## Schema & Versioning
+- [ ] Schema v2 bump; add new fields as optional with safe defaults and clamps.
+- [ ] Extend Ajv tests to cover new fields and defaulting; keep `SwordParams` and `schema/sword.schema.json` in sync.
+
 ## QA, Demos & Docs
 - [ ] Visual QA checklist and screenshot gallery (consistent lighting).
 - [ ] Blender import parity (sRGB/linear, exposure/shadows check).
 - [ ] Landing page presets and images; publish to Pages.
+ - [ ] e2e sanity flow: load preset → tweak → export GLB/OBJ/SVG.
 
 ---
 

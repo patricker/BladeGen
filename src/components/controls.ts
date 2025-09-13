@@ -3,7 +3,7 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 
-type Category = 'Blade' | 'Guard' | 'Handle' | 'Pommel' | 'Other' | 'Render';
+type Category = 'Blade' | 'Engravings' | 'Guard' | 'Handle' | 'Pommel' | 'Other' | 'Render';
 
 type RenderHooks = {
   setExposure: (v: number) => void;
@@ -72,6 +72,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   const matDefaults: Record<Part, MatExt> = JSON.parse(JSON.stringify(matState));
   let raf = 0; let needs = false;
   const flush = () => { raf = 0; if (!needs) return; needs = false; sword.updateGeometry(state); updateWarnings(); updateDynamics(); };
+  const refreshWarnings = () => { try { updateWarnings(); } catch {} };
   const rerender = () => { needs = true; if (!raf) raf = requestAnimationFrame(flush); };
 
   el.innerHTML = '';
@@ -116,30 +117,29 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   btnRandomSafe.classList.add('model-only');
   toolbar.appendChild(btnRandomSafe);
 
-  const btnExport = document.createElement('button');
-  btnExport.textContent = 'Export GLB';
-  btnExport.classList.add('model-only');
-  toolbar.appendChild(btnExport);
+  // Export dropdown (combo button)
+  const exportWrap = document.createElement('div');
+  exportWrap.className = 'dropdown model-only';
+  const btnExportMenu = document.createElement('button');
+  btnExportMenu.textContent = 'Export ▾';
+  exportWrap.appendChild(btnExportMenu);
+  const exportMenu = document.createElement('div');
+  exportMenu.className = 'menu';
+  const makeMenuBtn = (label: string) => { const b = document.createElement('button'); b.type='button'; b.textContent = label; return b; };
+  const menuGLB = makeMenuBtn('GLB');
+  const menuOBJ = makeMenuBtn('OBJ');
+  const menuSTL = makeMenuBtn('STL');
+  const menuSVG = makeMenuBtn('SVG Blueprint');
+  const menuJSON = makeMenuBtn('JSON (Model + Render + Materials)');
+  exportMenu.appendChild(menuGLB);
+  exportMenu.appendChild(menuOBJ);
+  exportMenu.appendChild(menuSTL);
+  exportMenu.appendChild(menuSVG);
+  exportMenu.appendChild(menuJSON);
+  exportWrap.appendChild(exportMenu);
+  toolbar.appendChild(exportWrap);
 
-  const btnExportOBJ = document.createElement('button');
-  btnExportOBJ.textContent = 'Export OBJ';
-  btnExportOBJ.classList.add('model-only');
-  toolbar.appendChild(btnExportOBJ);
-
-  const btnExportSTL = document.createElement('button');
-  btnExportSTL.textContent = 'Export STL';
-  btnExportSTL.classList.add('model-only');
-  toolbar.appendChild(btnExportSTL);
-
-  const btnExportSVG = document.createElement('button');
-  btnExportSVG.textContent = 'Export SVG';
-  btnExportSVG.classList.add('model-only');
-  toolbar.appendChild(btnExportSVG);
-
-  // JSON Export/Import
-  const btnExportJSON = document.createElement('button');
-  btnExportJSON.textContent = 'Export JSON';
-  toolbar.appendChild(btnExportJSON);
+  // JSON Import
   const btnImportJSON = document.createElement('button');
   btnImportJSON.textContent = 'Import JSON';
   toolbar.appendChild(btnImportJSON);
@@ -150,6 +150,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   // Sections
   const sections: Record<Category, HTMLElement> = {
     Blade: addSection(el, 'Blade'),
+    Engravings: addSection(el, 'Engravings'),
     Guard: addSection(el, 'Guard'),
     Handle: addSection(el, 'Handle'),
     Pommel: addSection(el, 'Pommel'),
@@ -163,6 +164,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     tabRender.classList.toggle('active', isRender);
     // Toggle section visibility
     sections.Blade.style.display = isRender ? 'none' : '';
+    sections.Engravings.style.display = isRender ? 'none' : '';
     sections.Guard.style.display = isRender ? 'none' : '';
     sections.Handle.style.display = isRender ? 'none' : '';
     sections.Pommel.style.display = isRender ? 'none' : '';
@@ -208,11 +210,31 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   dynamicsBox.style.marginTop = '6px';
   sections.Other.appendChild(dynamicsBox);
 
+  // Track Render feature toggles for warnings
+  let outlineEnabled = false;
+  let inkEnabled = false;
+  let vignetteEnabled = false;
+  let bladeGradientEnabled = false;
+
   // Render controls (if hooks available)
+  // Keep handles to Render subsections needed later
+  let rMatSec: HTMLElement | null = null;
+  let rGradSec: HTMLElement | null = null;
   if (render) {
+    // Subsections for Render tab
+    const rQual = addSection(sections.Render, 'Render: Quality & Exposure');
+    const rBg = addSection(sections.Render, 'Render: Background');
+    const rLights = addSection(sections.Render, 'Render: Lights');
+    const rPost = addSection(sections.Render, 'Render: Post');
+    const rAtmos = addSection(sections.Render, 'Render: Atmospherics');
+    const rGrad = addSection(sections.Render, 'Render: Blade Gradient');
+    const rMat = addSection(sections.Render, 'Render: Materials');
+    rMatSec = rMat;
+    rGradSec = rGrad;
+
     // Quality & AA
-    select(sections.Render, 'AA Mode', ['none','fxaa','smaa'], 'fxaa', (v) => { render.setAAMode(v as any); }, () => {}, 'Anti-aliasing mode.');
-    select(sections.Render, 'Quality', ['Low','Medium','High'], 'Medium', (v) => {
+    select(rQual, 'AA Mode', ['none','fxaa','smaa'], 'fxaa', (v) => { render.setAAMode(v as any); }, () => {}, 'Anti-aliasing mode.');
+    select(rQual, 'Quality', ['Low','Medium','High'], 'Medium', (v) => {
       if (v === 'Low') {
         render.setAAMode('none'); render.setShadowMapSize(1024); render.setBloom(false); render.setOutline(false); render.setDPRCap(1.0);
       } else if (v === 'Medium') {
@@ -221,47 +243,48 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         render.setAAMode('smaa'); render.setShadowMapSize(2048); render.setBloom(false); render.setOutline(false); render.setDPRCap(2.0);
       }
     }, () => {}, 'Quality preset (affects AA, shadows, DPR).');
-    select(sections.Render, 'Shadow Map', ['1024','2048','4096'], '2048', (v) => { render.setShadowMapSize(parseInt(v,10) as any); }, () => {}, 'Shadow map resolution.');
-    slider(sections.Render, 'Shadow Bias', -0.01, 0.01, 0.0001, -0.0005, (v) => { render.setShadowBias(v); }, () => {}, 'Shadow acne/peter-panning tweak.');
-    select(sections.Render, 'Tone Mapping', ['ACES','Reinhard','Cineon','Linear','None'], 'ACES', (v) => { (render as any).setToneMapping?.(v as any); }, () => {}, 'Renderer tone mapping curve.');
-    slider(sections.Render, 'Exposure', 0.5, 2.0, 0.01, rstate.exposure, (v) => { rstate.exposure = v; render.setExposure(v); }, () => {} , 'Tone mapping exposure.');
-    slider(sections.Render, 'Env Intensity', 0, 3.0, 0.01, 1.0, (v) => { render.setEnvIntensity(v); }, () => {}, 'Environment map intensity (reflections).');
-    colorPicker(sections.Render, 'Background Color', rstate.bgColor, (hex) => { rstate.bgColor = hex; const n = parseInt(hex.replace('#','0x')); render.setBackgroundColor(n); }, () => {}, 'Renderer clear color.');
-    slider(sections.Render, 'Background Bright', 0, 1.0, 0.01, rstate.bgBrightness, (v) => { rstate.bgBrightness = v; render.setBackgroundBrightness(v); }, () => {}, 'Lighten/darken the background.');
-    slider(sections.Render, 'Ambient Intensity', 0, 2.0, 0.01, rstate.ambient, (v) => { rstate.ambient = v; render.setAmbient(v); }, () => {}, 'Hemisphere ambient light.');
-    slider(sections.Render, 'Key Intensity', 0, 4.0, 0.01, rstate.keyIntensity, (v) => { rstate.keyIntensity = v; render.setKeyIntensity(v); }, () => {}, 'Directional key light intensity.');
-    slider(sections.Render, 'Key Azimuth', -180, 180, 1, rstate.keyAz, (v) => { rstate.keyAz = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light horizontal angle (deg).');
-    slider(sections.Render, 'Key Elevation', -10, 85, 1, rstate.keyEl, (v) => { rstate.keyEl = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light elevation (deg).');
-    slider(sections.Render, 'Rim Intensity', 0, 3.0, 0.01, rstate.rimIntensity, (v) => { rstate.rimIntensity = v; render.setRimIntensity(v); }, () => {}, 'Back/rim light intensity.');
-    slider(sections.Render, 'Rim Azimuth', -180, 180, 1, rstate.rimAz, (v) => { rstate.rimAz = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light horizontal angle (deg).');
-    slider(sections.Render, 'Rim Elevation', -10, 85, 1, rstate.rimEl, (v) => { rstate.rimEl = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light elevation (deg).');
-    colorPicker(sections.Render, 'Rim Color', rstate.rimColor, (hex) => { rstate.rimColor = hex; const n = parseInt(hex.replace('#','0x')); render.setRimColor(n); }, () => {}, 'Rim light color.');
-    checkbox(sections.Render, 'Bloom Enabled', rstate.bloomEnabled, (v) => { rstate.bloomEnabled = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Enable bloom post-process.');
-    slider(sections.Render, 'Bloom Strength', 0, 3.0, 0.01, rstate.bloomStrength, (v) => { rstate.bloomStrength = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom intensity.');
-    slider(sections.Render, 'Bloom Threshold', 0, 1.5, 0.01, rstate.bloomThreshold, (v) => { rstate.bloomThreshold = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom threshold.');
-    slider(sections.Render, 'Bloom Radius', 0, 1.0, 0.01, rstate.bloomRadius, (v) => { rstate.bloomRadius = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom radius.');
+    select(rQual, 'Shadow Map', ['1024','2048','4096'], '2048', (v) => { render.setShadowMapSize(parseInt(v,10) as any); }, () => {}, 'Shadow map resolution.');
+    slider(rQual, 'Shadow Bias', -0.01, 0.01, 0.0001, -0.0005, (v) => { render.setShadowBias(v); }, () => {}, 'Shadow acne/peter-panning tweak.');
+    select(rQual, 'Tone Mapping', ['ACES','Reinhard','Cineon','Linear','None'], 'ACES', (v) => { (render as any).setToneMapping?.(v as any); }, () => {}, 'Renderer tone mapping curve.');
+    slider(rQual, 'Exposure', 0.5, 2.0, 0.01, rstate.exposure, (v) => { rstate.exposure = v; render.setExposure(v); }, () => {} , 'Tone mapping exposure.');
+    slider(rQual, 'Env Intensity', 0, 3.0, 0.01, 1.0, (v) => { render.setEnvIntensity(v); }, () => {}, 'Environment map intensity (reflections).');
+
+    // Background
+    colorPicker(rBg, 'Background Color', rstate.bgColor, (hex) => { rstate.bgColor = hex; const n = parseInt(hex.replace('#','0x')); render.setBackgroundColor(n); }, () => {}, 'Renderer clear color.');
+    slider(rBg, 'Background Bright', 0, 1.0, 0.01, rstate.bgBrightness, (v) => { rstate.bgBrightness = v; render.setBackgroundBrightness(v); }, () => {}, 'Lighten/darken the background.');
+
+    // Lights
+    slider(rLights, 'Ambient Intensity', 0, 2.0, 0.01, rstate.ambient, (v) => { rstate.ambient = v; render.setAmbient(v); }, () => {}, 'Hemisphere ambient light.');
+    slider(rLights, 'Key Intensity', 0, 4.0, 0.01, rstate.keyIntensity, (v) => { rstate.keyIntensity = v; render.setKeyIntensity(v); }, () => {}, 'Directional key light intensity.');
+    slider(rLights, 'Key Azimuth', -180, 180, 1, rstate.keyAz, (v) => { rstate.keyAz = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light horizontal angle (deg).');
+    slider(rLights, 'Key Elevation', -10, 85, 1, rstate.keyEl, (v) => { rstate.keyEl = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light elevation (deg).');
+    slider(rLights, 'Rim Intensity', 0, 3.0, 0.01, rstate.rimIntensity, (v) => { rstate.rimIntensity = v; render.setRimIntensity(v); }, () => {}, 'Back/rim light intensity.');
+    slider(rLights, 'Rim Azimuth', -180, 180, 1, rstate.rimAz, (v) => { rstate.rimAz = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light horizontal angle (deg).');
+    slider(rLights, 'Rim Elevation', -10, 85, 1, rstate.rimEl, (v) => { rstate.rimEl = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light elevation (deg).');
+    colorPicker(rLights, 'Rim Color', rstate.rimColor, (hex) => { rstate.rimColor = hex; const n = parseInt(hex.replace('#','0x')); render.setRimColor(n); }, () => {}, 'Rim light color.');
+
+    // Post-processing
+    checkbox(rPost, 'Bloom Enabled', rstate.bloomEnabled, (v) => { rstate.bloomEnabled = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); refreshWarnings(); }, () => {}, 'Enable bloom post-process.');
+    slider(rPost, 'Bloom Strength', 0, 3.0, 0.01, rstate.bloomStrength, (v) => { rstate.bloomStrength = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom intensity.');
+    slider(rPost, 'Bloom Threshold', 0, 1.5, 0.01, rstate.bloomThreshold, (v) => { rstate.bloomThreshold = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom threshold.');
+    slider(rPost, 'Bloom Radius', 0, 1.0, 0.01, rstate.bloomRadius, (v) => { rstate.bloomRadius = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom radius.');
     // Outline
-    checkbox(sections.Render, 'Outline Enabled', false, (v) => { render.setOutline(v); }, () => {}, 'Enable Outline pass.');
-    slider(sections.Render, 'Outline Strength', 0.0, 10.0, 0.1, 2.5, (v) => { render.setOutline(true, v); }, () => {}, 'OutlinePass edgeStrength.');
-    slider(sections.Render, 'Outline Thickness', 0.0, 4.0, 0.05, 1.0, (v) => { render.setOutline(true, undefined, v); }, () => {}, 'OutlinePass edgeThickness.');
-    colorPicker(sections.Render, 'Outline Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); render.setOutline(true, undefined, undefined, n); }, () => {}, 'Outline visible edge color.');
+    checkbox(rPost, 'Outline Enabled', false, (v) => { outlineEnabled = v; render.setOutline(v); refreshWarnings(); }, () => {}, 'Enable Outline pass.');
+    slider(rPost, 'Outline Strength', 0.0, 10.0, 0.1, 2.5, (v) => { render.setOutline(true, v); }, () => {}, 'OutlinePass edgeStrength.');
+    slider(rPost, 'Outline Thickness', 0.0, 4.0, 0.05, 1.0, (v) => { render.setOutline(true, undefined, v); }, () => {}, 'OutlinePass edgeThickness.');
+    colorPicker(rPost, 'Outline Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); render.setOutline(true, undefined, undefined, n); }, () => {}, 'Outline visible edge color.');
     // Ink outline (mesh based)
-    checkbox(sections.Render, 'Ink Outline', false, (v) => { render.setInkOutline(v, 0.02, 0x000000); }, () => {}, 'Back-face mesh outline.');
-    slider(sections.Render, 'Ink Thickness', 0, 0.2, 0.005, 0.02, (v) => { render.setInkOutline(true, v, undefined); }, () => {}, 'Scale factor for ink outline.');
-    colorPicker(sections.Render, 'Ink Color', '#000000', (hex) => { const n = parseInt(hex.replace('#','0x')); render.setInkOutline(true, undefined, n); }, () => {}, 'Ink outline color.');
+    checkbox(rPost, 'Ink Outline', false, (v) => { inkEnabled = v; render.setInkOutline(v, 0.02, 0x000000); refreshWarnings(); }, () => {}, 'Back-face mesh outline.');
+    slider(rPost, 'Ink Thickness', 0, 0.2, 0.005, 0.02, (v) => { render.setInkOutline(true, v, undefined); }, () => {}, 'Scale factor for ink outline.');
+    colorPicker(rPost, 'Ink Color', '#000000', (hex) => { const n = parseInt(hex.replace('#','0x')); render.setInkOutline(true, undefined, n); }, () => {}, 'Ink outline color.');
     // Vignette
-    checkbox(sections.Render, 'Vignette', false, (v) => { render.setVignette(v, 0.25, 0.5); }, () => {}, 'Enable vignette shading.');
-    slider(sections.Render, 'Vignette Strength', 0, 1.0, 0.01, 0.25, (v) => { render.setVignette(true, v, undefined); }, () => {}, 'Strength of vignette.');
-    slider(sections.Render, 'Vignette Softness', 0, 1.0, 0.01, 0.5, (v) => { render.setVignette(true, undefined, v); }, () => {}, 'Softness of vignette edge.');
-    // Blade gradient/wear overlay
-    checkbox(sections.Render, 'Blade Gradient', false, (v) => { (render as any).setBladeGradientWear?.(v, undefined, undefined, undefined, undefined); }, () => {}, 'Enable blade gradient/wear overlay.');
-    colorPicker(sections.Render, 'Gradient Base', '#b9c6ff', (hex) => { const n=parseInt(hex.replace('#','0x')); (render as any).setBladeGradientWear?.(true, n, undefined, undefined, undefined); }, () => {}, 'Lower/blade-base color.');
-    colorPicker(sections.Render, 'Gradient Edge', '#ffffff', (hex) => { const n=parseInt(hex.replace('#','0x')); (render as any).setBladeGradientWear?.(true, undefined, n, undefined, undefined); }, () => {}, 'Upper/tip color.');
-    slider(sections.Render, 'Edge Fade', 0, 1, 0.01, 0.2, (v) => { (render as any).setBladeGradientWear?.(true, undefined, undefined, v, undefined); }, () => {}, 'Fade width near side edges.');
-    slider(sections.Render, 'Wear', 0, 1, 0.01, 0.2, (v) => { (render as any).setBladeGradientWear?.(true, undefined, undefined, undefined, v); }, () => {}, 'Wear amount (noise).');
-    // EnvMap + Fog
-    textRow(sections.Render, 'EnvMap URL', '', (v) => { (render as any).setEnvMap?.(v, false); }, 'Equirectangular image URL.');
-    select(sections.Render, 'Env Preset', ['None','Room','Royal Esplanade','Venice Sunset'], 'None', (v) => {
+    checkbox(rPost, 'Vignette', false, (v) => { vignetteEnabled = v; render.setVignette(v, 0.25, 0.5); refreshWarnings(); }, () => {}, 'Enable vignette shading.');
+    slider(rPost, 'Vignette Strength', 0, 1.0, 0.01, 0.25, (v) => { render.setVignette(true, v, undefined); }, () => {}, 'Strength of vignette.');
+    slider(rPost, 'Vignette Softness', 0, 1.0, 0.01, 0.5, (v) => { render.setVignette(true, undefined, v); }, () => {}, 'Softness of vignette edge.');
+    // Blade gradient/wear overlay (moved to rGrad below)
+    // Environment & Atmospherics
+    textRow(rAtmos, 'EnvMap URL', '', (v) => { (render as any).setEnvMap?.(v, false); }, 'Equirectangular image URL.');
+    select(rAtmos, 'Env Preset', ['None','Room','Royal Esplanade','Venice Sunset'], 'None', (v) => {
       const map: Record<string,string|undefined> = {
         None: undefined,
         Room: undefined,
@@ -271,14 +294,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       const url = map[v];
       (render as any).setEnvMap?.(url, true);
     }, () => {}, 'Quick env presets (loads remote HDR).');
-    checkbox(sections.Render, 'Env as Background', false, (v) => { (render as any).setEnvMap?.(undefined, v); }, () => {}, 'Use environment as background. Load URL first, then toggle.');
-    colorPicker(sections.Render, 'Fog Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); (render as any).setFog?.(n, 0.03); }, () => {}, 'Fog base color (exp2).');
-    slider(sections.Render, 'Fog Density', 0, 0.1, 0.001, 0.03, (v) => { (render as any).setFog?.(undefined, v); }, () => {}, 'FogExp2 density (0 disables).');
+    checkbox(rAtmos, 'Env as Background', false, (v) => { (render as any).setEnvMap?.(undefined, v); }, () => {}, 'Use environment as background. Load URL first, then toggle.');
+    colorPicker(rAtmos, 'Fog Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); (render as any).setFog?.(n, 0.03); }, () => {}, 'Fog base color (exp2).');
+    slider(rAtmos, 'Fog Density', 0, 0.1, 0.001, 0.03, (v) => { (render as any).setFog?.(undefined, v); }, () => {}, 'FogExp2 density (0 disables).');
     // Fresnel edge accent
-    checkbox(sections.Render, 'Fresnel', false, (v) => { (render as any).setFresnel?.(v, 0xffffff, 0.6, 2.0); }, () => {}, 'Additive edge accent based on view angle.');
-    slider(sections.Render, 'Fresnel Intensity', 0, 2.0, 0.01, 0.6, (v) => { (render as any).setFresnel?.(true, undefined, v, undefined); }, () => {}, 'Fresnel intensity.');
-    slider(sections.Render, 'Fresnel Power', 0.5, 6.0, 0.1, 2.0, (v) => { (render as any).setFresnel?.(true, undefined, undefined, v); }, () => {}, 'Fresnel power exponent.');
-    colorPicker(sections.Render, 'Fresnel Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); (render as any).setFresnel?.(true, n, undefined, undefined); }, () => {}, 'Fresnel color.');
+    checkbox(rAtmos, 'Fresnel', false, (v) => { (render as any).setFresnel?.(v, 0xffffff, 0.6, 2.0); }, () => {}, 'Additive edge accent based on view angle.');
+    slider(rAtmos, 'Fresnel Intensity', 0, 2.0, 0.01, 0.6, (v) => { (render as any).setFresnel?.(true, undefined, v, undefined); }, () => {}, 'Fresnel intensity.');
+    slider(rAtmos, 'Fresnel Power', 0.5, 6.0, 0.1, 2.0, (v) => { (render as any).setFresnel?.(true, undefined, undefined, v); }, () => {}, 'Fresnel power exponent.');
+    colorPicker(rAtmos, 'Fresnel Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); (render as any).setFresnel?.(true, n, undefined, undefined); }, () => {}, 'Fresnel color.');
   } else {
     sections.Render.style.display = 'none';
   }
@@ -330,14 +353,15 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   if (render) {
     const matPartOpts = ['blade','guard','handle','pommel'] as const;
     let matPart: Part = 'blade';
-    select(sections.Render, 'Material Part', [...matPartOpts] as unknown as string[], 'blade', (v) => { matPart = v as Part; syncMaterialInputs(matPart); }, () => {});
-    colorPicker(sections.Render, 'Base Color', matState[matPart].color, (hex) => { matState[matPart].color = hex; const n = parseInt(hex.replace('#','0x')); render.setPartColor(matPart, n); }, () => {}, 'Albedo color.');
-    slider(sections.Render, 'Metalness', 0, 1, 0.01, matState[matPart].metalness, (v) => { matState[matPart].metalness = v; render.setPartMetalness(matPart, v); }, () => {}, 'PBR metalness.');
-    slider(sections.Render, 'Roughness', 0, 1, 0.01, matState[matPart].roughness, (v) => { matState[matPart].roughness = v; render.setPartRoughness(matPart, v); }, () => {}, 'PBR roughness.');
-    slider(sections.Render, 'Clearcoat', 0, 1, 0.01, matState[matPart].clearcoat, (v) => { matState[matPart].clearcoat = v; render.setPartClearcoat(matPart, v); }, () => {}, 'Clearcoat layer (if supported).');
-    slider(sections.Render, 'Clearcoat Rough', 0, 1, 0.01, matState[matPart].clearcoatRoughness, (v) => { matState[matPart].clearcoatRoughness = v; render.setPartClearcoatRoughness(matPart, v); }, () => {}, 'Clearcoat roughness (if supported).');
+    const rm = rMatSec || sections.Render;
+    select(rm, 'Material Part', [...matPartOpts] as unknown as string[], 'blade', (v) => { matPart = v as Part; syncMaterialInputs(matPart); }, () => {});
+    colorPicker(rm, 'Base Color', matState[matPart].color, (hex) => { matState[matPart].color = hex; const n = parseInt(hex.replace('#','0x')); render.setPartColor(matPart, n); }, () => {}, 'Albedo color.');
+    slider(rm, 'Metalness', 0, 1, 0.01, matState[matPart].metalness, (v) => { matState[matPart].metalness = v; render.setPartMetalness(matPart, v); }, () => {}, 'PBR metalness.');
+    slider(rm, 'Roughness', 0, 1, 0.01, matState[matPart].roughness, (v) => { matState[matPart].roughness = v; render.setPartRoughness(matPart, v); }, () => {}, 'PBR roughness.');
+    slider(rm, 'Clearcoat', 0, 1, 0.01, matState[matPart].clearcoat, (v) => { matState[matPart].clearcoat = v; render.setPartClearcoat(matPart, v); }, () => {}, 'Clearcoat layer (if supported).');
+    slider(rm, 'Clearcoat Rough', 0, 1, 0.01, matState[matPart].clearcoatRoughness, (v) => { matState[matPart].clearcoatRoughness = v; render.setPartClearcoatRoughness(matPart, v); }, () => {}, 'Clearcoat roughness (if supported).');
     // Material presets
-    select(sections.Render, 'Mat Preset', ['None','Steel','Iron','Bronze','Brass','Leather','Wood','Matte','Glass','Gem'], matState[matPart].preset, (v) => {
+    select(rm, 'Mat Preset', ['None','Steel','Iron','Bronze','Brass','Leather','Wood','Matte','Glass','Gem'], matState[matPart].preset, (v) => {
       const apply = (c:number,m:number,r:number,cc:number,ccr:number, extra?: Partial<MatExt>) => {
         matState[matPart].color = '#' + c.toString(16).padStart(6,'0');
         matState[matPart].metalness = m; matState[matPart].roughness = r; matState[matPart].clearcoat = cc; matState[matPart].clearcoatRoughness = ccr; matState[matPart].preset = v;
@@ -373,45 +397,46 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       (render as any).setPartMaterial?.(matPart, { emissiveColor: def.emissiveColor, emissiveIntensity: def.emissiveIntensity, transmission: def.transmission, ior: def.ior, thickness: def.thickness, attenuationColor: def.attenuationColor, attenuationDistance: def.attenuationDistance, sheen: def.sheen, sheenColor: def.sheenColor, iridescence: def.iridescence, iridescenceIOR: def.iridescenceIOR, iridescenceThicknessMin: def.iridescenceThicknessMin, iridescenceThicknessMax: def.iridescenceThicknessMax, envMapIntensity: def.envMapIntensity });
       syncMaterialInputs(matPart);
     });
-    sections.Render.appendChild(resetBtn);
+    rm.appendChild(resetBtn);
     // Procedural bump/noise for selected part
-    checkbox(sections.Render, 'Bump Enabled', matState[matPart].bumpEnabled, (v) => { matState[matPart].bumpEnabled = v; render.setPartBump(matPart, v, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Procedural noise bump.');
-    slider(sections.Render, 'Bump Scale', 0, 0.08, 0.001, matState[matPart].bumpScale, (v) => { matState[matPart].bumpScale = v; render.setPartBump(matPart, matState[matPart].bumpEnabled, v, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Bump map scale.');
-    slider(sections.Render, 'Noise Scale', 1, 32, 1, matState[matPart].bumpNoiseScale, (v) => { matState[matPart].bumpNoiseScale = Math.round(v); render.setPartBump(matPart, matState[matPart].bumpEnabled, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Noise frequency.');
-    slider(sections.Render, 'Noise Seed', 0, 9999, 1, matState[matPart].bumpSeed, (v) => { matState[matPart].bumpSeed = Math.round(v); render.setPartBump(matPart, matState[matPart].bumpEnabled, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Noise seed.');
+    checkbox(rm, 'Bump Enabled', matState[matPart].bumpEnabled, (v) => { matState[matPart].bumpEnabled = v; render.setPartBump(matPart, v, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Procedural noise bump.');
+    slider(rm, 'Bump Scale', 0, 0.08, 0.001, matState[matPart].bumpScale, (v) => { matState[matPart].bumpScale = v; render.setPartBump(matPart, matState[matPart].bumpEnabled, v, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Bump map scale.');
+    slider(rm, 'Noise Scale', 1, 32, 1, matState[matPart].bumpNoiseScale, (v) => { matState[matPart].bumpNoiseScale = Math.round(v); render.setPartBump(matPart, matState[matPart].bumpEnabled, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Noise frequency.');
+    slider(rm, 'Noise Seed', 0, 9999, 1, matState[matPart].bumpSeed, (v) => { matState[matPart].bumpSeed = Math.round(v); render.setPartBump(matPart, matState[matPart].bumpEnabled, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Noise seed.');
     // Advanced materials
-    colorPicker(sections.Render, 'Emissive Color', matState[matPart].emissiveColor ?? '#000000', (hex) => { matState[matPart].emissiveColor = hex; (render as any).setPartMaterial?.(matPart, { emissiveColor: hex }); }, () => {}, 'Glow color.');
-    slider(sections.Render, 'Emissive Intensity', 0, 10, 0.01, matState[matPart].emissiveIntensity ?? 0, (v) => { matState[matPart].emissiveIntensity = v; (render as any).setPartMaterial?.(matPart, { emissiveIntensity: v }); }, () => {}, 'Glow intensity.');
-    slider(sections.Render, 'Transmission', 0, 1, 0.01, matState[matPart].transmission ?? 0, (v) => { matState[matPart].transmission = v; (render as any).setPartMaterial?.(matPart, { transmission: v }); }, () => {}, 'Glass-like transmission.');
-    slider(sections.Render, 'IOR', 1, 2.5, 0.01, matState[matPart].ior ?? 1.5, (v) => { matState[matPart].ior = v; (render as any).setPartMaterial?.(matPart, { ior: v }); }, () => {}, 'Index of refraction.');
-    slider(sections.Render, 'Thickness', 0, 5, 0.01, matState[matPart].thickness ?? 0.2, (v) => { matState[matPart].thickness = v; (render as any).setPartMaterial?.(matPart, { thickness: v }); }, () => {}, 'Volume thickness.');
-    colorPicker(sections.Render, 'Atten Color', matState[matPart].attenuationColor ?? '#ffffff', (hex) => { matState[matPart].attenuationColor = hex; (render as any).setPartMaterial?.(matPart, { attenuationColor: hex }); }, () => {}, 'Transmission attenuation color.');
-    slider(sections.Render, 'Atten Dist', 0, 10, 0.01, matState[matPart].attenuationDistance ?? 0, (v) => { matState[matPart].attenuationDistance = v; (render as any).setPartMaterial?.(matPart, { attenuationDistance: v }); }, () => {}, 'Attenuation distance.');
-    slider(sections.Render, 'Sheen', 0, 1, 0.01, matState[matPart].sheen ?? 0, (v) => { matState[matPart].sheen = v; (render as any).setPartMaterial?.(matPart, { sheen: v }); }, () => {}, 'Cloth sheen.');
-    colorPicker(sections.Render, 'Sheen Color', matState[matPart].sheenColor ?? '#ffffff', (hex) => { matState[matPart].sheenColor = hex; (render as any).setPartMaterial?.(matPart, { sheenColor: hex }); }, () => {}, 'Sheen color.');
-    slider(sections.Render, 'Iridescence', 0, 1, 0.01, matState[matPart].iridescence ?? 0, (v) => { matState[matPart].iridescence = v; (render as any).setPartMaterial?.(matPart, { iridescence: v }); }, () => {}, 'Iridescence intensity.');
-    slider(sections.Render, 'Iridescence IOR', 1, 3, 0.01, matState[matPart].iridescenceIOR ?? 1.3, (v) => { matState[matPart].iridescenceIOR = v; (render as any).setPartMaterial?.(matPart, { iridescenceIOR: v }); }, () => {}, 'Iridescence IOR.');
-    slider(sections.Render, 'Iri Thick Min', 0, 2000, 1, matState[matPart].iridescenceThicknessMin ?? 100, (v) => { const iv=Math.round(v); matState[matPart].iridescenceThicknessMin = iv; (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMin: iv }); }, () => {}, 'Iridescence thickness min (nm).');
-    slider(sections.Render, 'Iri Thick Max', 0, 2000, 1, matState[matPart].iridescenceThicknessMax ?? 400, (v) => { const iv=Math.round(v); matState[matPart].iridescenceThicknessMax = iv; (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMax: iv }); }, () => {}, 'Iridescence thickness max (nm).');
-    slider(sections.Render, 'EnvMap Intensity', 0, 8, 0.01, matState[matPart].envMapIntensity ?? 1, (v) => { matState[matPart].envMapIntensity = v; (render as any).setPartMaterial?.(matPart, { envMapIntensity: v }); }, () => {}, 'Per-material env intensity.');
-    checkbox(sections.Render, 'Aniso Fake', matState[matPart].anisotropyFake ?? false, (v) => { matState[matPart].anisotropyFake = v; (render as any).setPartMaterial?.(matPart, { anisotropyFake: v }); }, () => {}, 'Enable visual anisotropy.');
-    slider(sections.Render, 'Aniso Dir', -180, 180, 1, (matState[matPart].anisotropyDirection ?? 0) * 180/Math.PI, (v) => { const rad=v*Math.PI/180; matState[matPart].anisotropyDirection = rad; (render as any).setPartMaterial?.(matPart, { anisotropyDirection: rad }); }, () => {}, 'Anisotropy direction (deg).');
-    textRow(sections.Render, 'Map URL', matState[matPart].map ?? '', (v) => { matState[matPart].map = v; (render as any).setPartMaterial?.(matPart, { map: v }); }, 'Albedo map URL (sRGB).');
-    textRow(sections.Render, 'Normal URL', matState[matPart].normalMap ?? '', (v) => { matState[matPart].normalMap = v; (render as any).setPartMaterial?.(matPart, { normalMap: v }); }, 'Normal map URL.');
-    textRow(sections.Render, 'Rough URL', matState[matPart].roughnessMap ?? '', (v) => { matState[matPart].roughnessMap = v; (render as any).setPartMaterial?.(matPart, { roughnessMap: v }); }, 'Roughness map URL.');
-    textRow(sections.Render, 'Metal URL', matState[matPart].metalnessMap ?? '', (v) => { matState[matPart].metalnessMap = v; (render as any).setPartMaterial?.(matPart, { metalnessMap: v }); }, 'Metalness map URL.');
-    textRow(sections.Render, 'AO URL', matState[matPart].aoMap ?? '', (v) => { matState[matPart].aoMap = v; (render as any).setPartMaterial?.(matPart, { aoMap: v }); }, 'AO map URL.');
-    textRow(sections.Render, 'Bump URL', matState[matPart].bumpMap ?? '', (v) => { matState[matPart].bumpMap = v; (render as any).setPartMaterial?.(matPart, { bumpMap: v }); }, 'Bump map URL.');
-    textRow(sections.Render, 'Disp URL', matState[matPart].displacementMap ?? '', (v) => { matState[matPart].displacementMap = v; (render as any).setPartMaterial?.(matPart, { displacementMap: v }); }, 'Displacement map URL.');
-    textRow(sections.Render, 'Alpha URL', matState[matPart].alphaMap ?? '', (v) => { matState[matPart].alphaMap = v; (render as any).setPartMaterial?.(matPart, { alphaMap: v }); }, 'Alpha map URL.');
-    textRow(sections.Render, 'CC Normal URL', matState[matPart].clearcoatNormalMap ?? '', (v) => { matState[matPart].clearcoatNormalMap = v; (render as any).setPartMaterial?.(matPart, { clearcoatNormalMap: v }); }, 'Clearcoat normal map URL.');
+    colorPicker(rm, 'Emissive Color', matState[matPart].emissiveColor ?? '#000000', (hex) => { matState[matPart].emissiveColor = hex; (render as any).setPartMaterial?.(matPart, { emissiveColor: hex }); }, () => {}, 'Glow color.');
+    slider(rm, 'Emissive Intensity', 0, 10, 0.01, matState[matPart].emissiveIntensity ?? 0, (v) => { matState[matPart].emissiveIntensity = v; (render as any).setPartMaterial?.(matPart, { emissiveIntensity: v }); }, () => {}, 'Glow intensity.');
+    slider(rm, 'Transmission', 0, 1, 0.01, matState[matPart].transmission ?? 0, (v) => { matState[matPart].transmission = v; (render as any).setPartMaterial?.(matPart, { transmission: v }); }, () => {}, 'Glass-like transmission.');
+    slider(rm, 'IOR', 1, 2.5, 0.01, matState[matPart].ior ?? 1.5, (v) => { matState[matPart].ior = v; (render as any).setPartMaterial?.(matPart, { ior: v }); }, () => {}, 'Index of refraction.');
+    slider(rm, 'Thickness', 0, 5, 0.01, matState[matPart].thickness ?? 0.2, (v) => { matState[matPart].thickness = v; (render as any).setPartMaterial?.(matPart, { thickness: v }); }, () => {}, 'Volume thickness.');
+    colorPicker(rm, 'Atten Color', matState[matPart].attenuationColor ?? '#ffffff', (hex) => { matState[matPart].attenuationColor = hex; (render as any).setPartMaterial?.(matPart, { attenuationColor: hex }); }, () => {}, 'Transmission attenuation color.');
+    slider(rm, 'Atten Dist', 0, 10, 0.01, matState[matPart].attenuationDistance ?? 0, (v) => { matState[matPart].attenuationDistance = v; (render as any).setPartMaterial?.(matPart, { attenuationDistance: v }); }, () => {}, 'Attenuation distance.');
+    slider(rm, 'Sheen', 0, 1, 0.01, matState[matPart].sheen ?? 0, (v) => { matState[matPart].sheen = v; (render as any).setPartMaterial?.(matPart, { sheen: v }); }, () => {}, 'Cloth sheen.');
+    colorPicker(rm, 'Sheen Color', matState[matPart].sheenColor ?? '#ffffff', (hex) => { matState[matPart].sheenColor = hex; (render as any).setPartMaterial?.(matPart, { sheenColor: hex }); }, () => {}, 'Sheen color.');
+    slider(rm, 'Iridescence', 0, 1, 0.01, matState[matPart].iridescence ?? 0, (v) => { matState[matPart].iridescence = v; (render as any).setPartMaterial?.(matPart, { iridescence: v }); }, () => {}, 'Iridescence intensity.');
+    slider(rm, 'Iridescence IOR', 1, 3, 0.01, matState[matPart].iridescenceIOR ?? 1.3, (v) => { matState[matPart].iridescenceIOR = v; (render as any).setPartMaterial?.(matPart, { iridescenceIOR: v }); }, () => {}, 'Iridescence IOR.');
+    slider(rm, 'Iri Thick Min', 0, 2000, 1, matState[matPart].iridescenceThicknessMin ?? 100, (v) => { const iv=Math.round(v); matState[matPart].iridescenceThicknessMin = iv; (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMin: iv }); }, () => {}, 'Iridescence thickness min (nm).');
+    slider(rm, 'Iri Thick Max', 0, 2000, 1, matState[matPart].iridescenceThicknessMax ?? 400, (v) => { const iv=Math.round(v); matState[matPart].iridescenceThicknessMax = iv; (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMax: iv }); }, () => {}, 'Iridescence thickness max (nm).');
+    slider(rm, 'EnvMap Intensity', 0, 8, 0.01, matState[matPart].envMapIntensity ?? 1, (v) => { matState[matPart].envMapIntensity = v; (render as any).setPartMaterial?.(matPart, { envMapIntensity: v }); }, () => {}, 'Per-material env intensity.');
+    checkbox(rm, 'Aniso Fake', matState[matPart].anisotropyFake ?? false, (v) => { matState[matPart].anisotropyFake = v; (render as any).setPartMaterial?.(matPart, { anisotropyFake: v }); }, () => {}, 'Enable visual anisotropy.');
+    slider(rm, 'Aniso Dir', -180, 180, 1, (matState[matPart].anisotropyDirection ?? 0) * 180/Math.PI, (v) => { const rad=v*Math.PI/180; matState[matPart].anisotropyDirection = rad; (render as any).setPartMaterial?.(matPart, { anisotropyDirection: rad }); }, () => {}, 'Anisotropy direction (deg).');
+    textRow(rm, 'Map URL', matState[matPart].map ?? '', (v) => { matState[matPart].map = v; (render as any).setPartMaterial?.(matPart, { map: v }); }, 'Albedo map URL (sRGB).');
+    textRow(rm, 'Normal URL', matState[matPart].normalMap ?? '', (v) => { matState[matPart].normalMap = v; (render as any).setPartMaterial?.(matPart, { normalMap: v }); }, 'Normal map URL.');
+    textRow(rm, 'Rough URL', matState[matPart].roughnessMap ?? '', (v) => { matState[matPart].roughnessMap = v; (render as any).setPartMaterial?.(matPart, { roughnessMap: v }); }, 'Roughness map URL.');
+    textRow(rm, 'Metal URL', matState[matPart].metalnessMap ?? '', (v) => { matState[matPart].metalnessMap = v; (render as any).setPartMaterial?.(matPart, { metalnessMap: v }); }, 'Metalness map URL.');
+    textRow(rm, 'AO URL', matState[matPart].aoMap ?? '', (v) => { matState[matPart].aoMap = v; (render as any).setPartMaterial?.(matPart, { aoMap: v }); }, 'AO map URL.');
+    textRow(rm, 'Bump URL', matState[matPart].bumpMap ?? '', (v) => { matState[matPart].bumpMap = v; (render as any).setPartMaterial?.(matPart, { bumpMap: v }); }, 'Bump map URL.');
+    textRow(rm, 'Disp URL', matState[matPart].displacementMap ?? '', (v) => { matState[matPart].displacementMap = v; (render as any).setPartMaterial?.(matPart, { displacementMap: v }); }, 'Displacement map URL.');
+    textRow(rm, 'Alpha URL', matState[matPart].alphaMap ?? '', (v) => { matState[matPart].alphaMap = v; (render as any).setPartMaterial?.(matPart, { alphaMap: v }); }, 'Alpha map URL.');
+    textRow(rm, 'CC Normal URL', matState[matPart].clearcoatNormalMap ?? '', (v) => { matState[matPart].clearcoatNormalMap = v; (render as any).setPartMaterial?.(matPart, { clearcoatNormalMap: v }); }, 'Clearcoat normal map URL.');
     // Blade gradient/wear overlay
     let gradEnabled = false; let gradBase = '#b9c6ff'; let gradEdge = '#ffffff'; let gradFade = 0.2; let gradWear = 0.2;
-    checkbox(sections.Render, 'Blade Gradient', false, (v) => { gradEnabled = v; render.setBladeGradientWear(gradEnabled, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Enable blade gradient/wear overlay.');
-    colorPicker(sections.Render, 'Grad Base', gradBase, (hex) => { gradBase = hex; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Gradient base color.');
-    colorPicker(sections.Render, 'Grad Edge', gradEdge, (hex) => { gradEdge = hex; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Gradient edge color.');
-    slider(sections.Render, 'Grad Edge Fade', 0, 1, 0.01, gradFade, (v) => { gradFade = v; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Edge fade thickness.');
-    slider(sections.Render, 'Wear Intensity', 0, 1, 0.01, gradWear, (v) => { gradWear = v; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Wear noise amount.');
+    const rg = rGradSec || sections.Render;
+    checkbox(rg, 'Blade Gradient', false, (v) => { bladeGradientEnabled = v; render.setBladeGradientWear(bladeGradientEnabled, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); refreshWarnings(); }, () => {}, 'Enable blade gradient/wear overlay.');
+    colorPicker(rg, 'Grad Base', gradBase, (hex) => { gradBase = hex; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Gradient base color.');
+    colorPicker(rg, 'Grad Edge', gradEdge, (hex) => { gradEdge = hex; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Gradient edge color.');
+    slider(rg, 'Grad Edge Fade', 0, 1, 0.01, gradFade, (v) => { gradFade = v; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Edge fade thickness.');
+    slider(rg, 'Wear Intensity', 0, 1, 0.01, gradWear, (v) => { gradWear = v; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Wear noise amount.');
   }
 
   // Blade controls
@@ -478,54 +503,56 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Blade, 'Serration Right', 0, 0.2, 0.001, state.blade.serrationAmplitudeRight ?? (state.blade.serrationAmplitude ?? 0), (v) => (state.blade.serrationAmplitudeRight = v), rerender, 'Right edge serration amplitude.');
   slider(sections.Blade, 'Serration Freq', 0, 30, 1, state.blade.serrationFrequency ?? 0, (v) => (state.blade.serrationFrequency = v), rerender, 'Number of serration cycles along the blade.');
   // Text Engraving (simple)
-  checkbox(sections.Blade, 'Text Engraving', false, (v) => {
+  checkbox(sections.Engravings, 'Text Engraving', false, (v) => {
     const list = (((state.blade as any).engravings) || []) as any[];
     const rest = list.filter((e:any) => e.type !== 'text');
     if (v) rest.push({ type:'text', content:'ᚠᚢᚦ', fontUrl:'https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_regular.typeface.json', width:0.18, height:0.03, depth:0.002, offsetY: state.blade.length*0.5, offsetX:0, rotation:0, side:'right' });
     (state.blade as any).engravings = rest;
   }, rerender, 'Adds a text engraving (provide font URL and content).');
   // Manage multiple engravings: add/remove/reorder and edit index
-  const engrToolbar = document.createElement('div'); engrToolbar.style.margin='4px 0'; engrToolbar.style.display='flex'; engrToolbar.style.gap='6px';
-  const engrAddBtn = document.createElement('button'); engrAddBtn.textContent = 'Add Engraving'; engrAddBtn.onclick = ()=>{ const arr = (((state.blade as any).engravings)||[]) as any[]; arr.push({ type:'text', content:'TEXT', fontUrl:'', width:0.1, height:0.02, depth:0.002, offsetY: state.blade.length*0.5, offsetX:0, rotation:0, side:'right', align:'center' }); (state.blade as any).engravings = arr; rerender(); };
-  const engrRemoveBtn = document.createElement('button'); engrRemoveBtn.textContent = 'Remove This'; engrRemoveBtn.onclick = ()=>{ const arr = (((state.blade as any).engravings)||[]) as any[]; if (!arr.length) return; if (engrIndex<0||engrIndex>=arr.length) return; arr.splice(engrIndex,1); (state.blade as any).engravings = arr; engrIndex = Math.max(0, Math.min(engrIndex, arr.length-1)); rerender(); };
-  const engrUpBtn = document.createElement('button'); engrUpBtn.textContent = 'Move Up'; engrUpBtn.onclick = ()=>{ const arr = (((state.blade as any).engravings)||[]) as any[]; if (engrIndex>0) { const t = arr[engrIndex]; arr[engrIndex] = arr[engrIndex-1]; arr[engrIndex-1] = t; engrIndex--; (state.blade as any).engravings = arr; rerender(); }};
-  const engrDownBtn = document.createElement('button'); engrDownBtn.textContent = 'Move Down'; engrDownBtn.onclick = ()=>{ const arr = (((state.blade as any).engravings)||[]) as any[]; if (engrIndex < arr.length-1) { const t = arr[engrIndex]; arr[engrIndex] = arr[engrIndex+1]; arr[engrIndex+1] = t; engrIndex++; (state.blade as any).engravings = arr; rerender(); }};
+  const engrRow = document.createElement('div'); engrRow.className = 'row full';
+  const engrToolbar = document.createElement('div'); engrToolbar.className = 'toolbar';
+  const engrAddBtn = document.createElement('button'); engrAddBtn.textContent = 'Add Engraving'; engrAddBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; arr.push({ type:'text', content:'TEXT', fontUrl:'', width:0.1, height:0.02, depth:0.002, offsetY: state.blade.length*0.5, offsetX:0, rotation:0, side:'right', align:'center' }); (state.blade as any).engravings = arr; rerender(); };
+  const engrRemoveBtn = document.createElement('button'); engrRemoveBtn.textContent = 'Remove This'; engrRemoveBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; if (!arr.length) return; if (engrIndex<0||engrIndex>=arr.length) return; arr.splice(engrIndex,1); (state.blade as any).engravings = arr; engrIndex = Math.max(0, Math.min(engrIndex, arr.length-1)); rerender(); };
+  const engrUpBtn = document.createElement('button'); engrUpBtn.textContent = 'Move Up'; engrUpBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; if (engrIndex>0) { const t = arr[engrIndex]; arr[engrIndex] = arr[engrIndex-1]; arr[engrIndex-1] = t; engrIndex--; (state.blade as any).engravings = arr; rerender(); }};
+  const engrDownBtn = document.createElement('button'); engrDownBtn.textContent = 'Move Down'; engrDownBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; if (engrIndex < arr.length-1) { const t = arr[engrIndex]; arr[engrIndex] = arr[engrIndex+1]; arr[engrIndex+1] = t; engrIndex++; (state.blade as any).engravings = arr; rerender(); }};
   engrToolbar.appendChild(engrAddBtn); engrToolbar.appendChild(engrRemoveBtn); engrToolbar.appendChild(engrUpBtn); engrToolbar.appendChild(engrDownBtn);
-  sections.Blade.appendChild(engrToolbar);
+  engrRow.appendChild(engrToolbar);
+  sections.Engravings.appendChild(engrRow);
   let engrIndex = 0; const getEngr = ()=>{ const arr = (((state.blade as any).engravings)||[]) as any[]; if (!arr.length) return null; if (engrIndex>=arr.length) engrIndex = arr.length-1; return arr[engrIndex]; };
-  slider(sections.Blade, 'Engrave Index', 0, 10, 1, 0, (v)=>{ engrIndex = Math.max(0, Math.round(v)); }, ()=>{}, 'Which engraving to edit (0..N-1).');
-  select(sections.Blade, 'Engrave Type', ['text','shape','decal'], 'text', (v) => { const e = getEngr(); if (!e) return; e.type = v; rerender(); }, ()=>{}, 'Type of engraving primitive.');
-  textRow(sections.Blade, 'Engrave Text', 'ᚠᚢᚦ', (v) => {
+  slider(sections.Engravings, 'Engrave Index', 0, 10, 1, 0, (v)=>{ engrIndex = Math.max(0, Math.round(v)); }, ()=>{}, 'Which engraving to edit (0..N-1).');
+  select(sections.Engravings, 'Engrave Type', ['text','shape','decal'], 'text', (v) => { const e = getEngr(); if (!e) return; e.type = v; rerender(); }, ()=>{}, 'Type of engraving primitive.');
+  textRow(sections.Engravings, 'Engrave Text', 'ᚠᚢᚦ', (v) => {
     const e = getEngr(); if (!e) return; e.content = v; rerender();
   }, 'Unicode supported by the chosen font.');
-  textRow(sections.Blade, 'Font URL', 'https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_regular.typeface.json', (v) => {
+  textRow(sections.Engravings, 'Font URL', 'https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_regular.typeface.json', (v) => {
     const e = getEngr(); if (!e) return; e.fontUrl = v; rerender();
   }, 'Typeface JSON URL (typeface.js format). For full Unicode, supply a suitable font.');
-  slider(sections.Blade, 'Engrave Width', 0.02, 0.6, 0.001, 0.18, (val) => {
+  slider(sections.Engravings, 'Engrave Width', 0.02, 0.6, 0.001, 0.18, (val) => {
     const e = getEngr(); if (!e) return; e.width = val; rerender();
   }, rerender, 'Max width of text region.');
-  slider(sections.Blade, 'Engrave Height', 0.005, 0.1, 0.001, 0.03, (val) => {
+  slider(sections.Engravings, 'Engrave Height', 0.005, 0.1, 0.001, 0.03, (val) => {
     const e = getEngr(); if (!e) return; e.height = val; rerender();
   }, rerender, 'Text letter height.');
-  slider(sections.Blade, 'Engrave Depth', 0.0005, 0.02, 0.0005, 0.002, (val) => {
+  slider(sections.Engravings, 'Engrave Depth', 0.0005, 0.02, 0.0005, 0.002, (val) => {
     const e = getEngr(); if (!e) return; e.depth = val; rerender();
   }, rerender, 'Extrusion depth of the engraving.');
-  slider(sections.Blade, 'Letter Spacing', 0, 0.3, 0.005, 0.05, (val) => {
+  slider(sections.Engravings, 'Letter Spacing', 0, 0.3, 0.005, 0.05, (val) => {
     const e = getEngr(); if (!e) return; (e as any).letterSpacing = val; rerender();
   }, rerender, 'Additional spacing between characters (in letter heights).');
-  slider(sections.Blade, 'Engrave OffsetY', 0, 1, 0.001, 0.5, (val) => {
+  slider(sections.Engravings, 'Engrave OffsetY', 0, 1, 0.001, 0.5, (val) => {
     const e = getEngr(); if (!e) return; e.offsetY = state.blade.length * val; rerender();
   }, rerender, 'Position along blade length (0..1).');
-  slider(sections.Blade, 'Engrave OffsetX', -0.4, 0.4, 0.001, 0, (val) => {
+  slider(sections.Engravings, 'Engrave OffsetX', -0.4, 0.4, 0.001, 0, (val) => {
     const e = getEngr(); if (!e) return; e.offsetX = val; rerender();
   }, rerender, 'Lateral offset across blade width.');
-  slider(sections.Blade, 'Engrave RotY', -180, 180, 1, 0, (deg) => {
+  slider(sections.Engravings, 'Engrave RotY', -180, 180, 1, 0, (deg) => {
     const e = getEngr(); if (!e) return; e.rotation = deg*Math.PI/180; rerender();
   }, rerender, 'Rotation around Y axis (deg).');
-  select(sections.Blade, 'Engrave Side', ['left','right','both'], 'right', (v) => {
+  select(sections.Engravings, 'Engrave Side', ['left','right','both'], 'right', (v) => {
     const e = getEngr(); if (!e) return; e.side = v; rerender();
   }, rerender, 'Which blade face.');
-  select(sections.Blade, 'Text Align', ['left','center','right'], 'center', (v) => {
+  select(sections.Engravings, 'Text Align', ['left','center','right'], 'center', (v) => {
     const e = getEngr(); if (!e) return; e.align = v as any; rerender();
   }, rerender, 'Horizontal alignment for text.');
 
@@ -758,7 +785,8 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     rerender();
     refreshInputs(el, state);
   });
-  btnExport.addEventListener('click', async () => {
+  // Export helpers for dropdown
+  const doExportGLB = async () => {
     const exporter = new GLTFExporter();
     exporter.parse(
       sword.group,
@@ -766,56 +794,41 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = 'sword.glb';
-        a.click();
+        a.href = url; a.download = 'sword.glb'; a.click();
         URL.revokeObjectURL(url);
       },
-      (error) => {
-        console.error('GLTF export error', error);
-      },
+      (error) => { console.error('GLTF export error', error); },
       { binary: true }
     );
-  });
-
-  btnExportOBJ.addEventListener('click', () => {
+  };
+  const doExportOBJ = () => {
     const exporter = new OBJExporter();
     const result = exporter.parse(sword.group);
     const blob = new Blob([result], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'sword.obj';
-    a.click();
+    a.href = url; a.download = 'sword.obj'; a.click();
     URL.revokeObjectURL(url);
-  });
-
-  btnExportSTL.addEventListener('click', () => {
+  };
+  const doExportSTL = () => {
     const exporter = new STLExporter();
     const result = exporter.parse(sword.group, { binary: true } as any);
     const blob = new Blob([result as ArrayBuffer], { type: 'model/stl' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'sword.stl';
-    a.click();
+    a.href = url; a.download = 'sword.stl'; a.click();
     URL.revokeObjectURL(url);
-  });
-
-  btnExportSVG.addEventListener('click', () => {
+  };
+  const doExportSVG = () => {
     const pts = buildBladeOutlinePoints(state.blade);
     const svg = bladeOutlineToSVG(pts);
     const blob = new Blob([svg], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'blade_outline.svg';
-    a.click();
+    a.href = url; a.download = 'blade_outline.svg'; a.click();
     URL.revokeObjectURL(url);
-  });
-
-  // JSON export: model + render + materials
-  btnExportJSON.addEventListener('click', () => {
+  };
+  const doExportJSON = () => {
     const payload = {
       $schema: 'schema/sword.schema.json',
       version: 2,
@@ -828,7 +841,19 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const a = document.createElement('a');
     a.href = url; a.download = 'swordmaker.json'; a.click();
     URL.revokeObjectURL(url);
+  };
+  // Dropdown interactions
+  btnExportMenu.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = exportMenu.style.display === 'block';
+    exportMenu.style.display = isOpen ? 'none' : 'block';
   });
+  document.addEventListener('click', () => { exportMenu.style.display = 'none'; });
+  menuGLB.addEventListener('click', () => { exportMenu.style.display='none'; doExportGLB(); });
+  menuOBJ.addEventListener('click', () => { exportMenu.style.display='none'; doExportOBJ(); });
+  menuSTL.addEventListener('click', () => { exportMenu.style.display='none'; doExportSTL(); });
+  menuSVG.addEventListener('click', () => { exportMenu.style.display='none'; doExportSVG(); });
+  menuJSON.addEventListener('click', () => { exportMenu.style.display='none'; doExportJSON(); });
   btnImportJSON.addEventListener('click', () => fileJSON.click());
   fileJSON.addEventListener('change', async () => {
     const f = fileJSON.files?.[0]; if (!f) return;
@@ -895,13 +920,13 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   });
 
   const updateWarnings = () => {
-
     const w: string[] = [];
     const blade = state.blade;
     const guard = state.guard;
     const handle = state.handle;
     // Clear existing inline warn styles
     clearWarns(el);
+    // General proportion hints
     if (guard.width > blade.length) {
       w.push('Guard very wide vs. blade length');
       setWarn(el, 'Width', true, 'Guard width is large vs. blade length');
@@ -914,6 +939,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       w.push('Tip width close to base width');
       setWarn(el, 'Tip Width', true, 'Tip nearly as wide as base');
     }
+    // Serration sanity
     const serrL = blade.serrationAmplitudeLeft ?? (blade.serrationAmplitude ?? 0);
     const serrR = blade.serrationAmplitudeRight ?? (blade.serrationAmplitude ?? 0);
     const serrMax = Math.max(serrL, serrR);
@@ -922,6 +948,57 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       setWarn(el, 'Serration Left', serrL > blade.baseWidth * 0.2, 'Left serration amplitude is high');
       setWarn(el, 'Serration Right', serrR > blade.baseWidth * 0.2, 'Right serration amplitude is high');
     }
+    // Disabled/ineffective controls hints (Blade)
+    const hamonOn = !!blade.hamonEnabled;
+    setWarn(el, 'Hamon Width', !hamonOn, 'Enable Hamon to see effect');
+    setWarn(el, 'Hamon Amp', !hamonOn, 'Enable Hamon to see effect');
+    setWarn(el, 'Hamon Freq', !hamonOn, 'Enable Hamon to see effect');
+    setWarn(el, 'Hamon Side', !hamonOn, 'Enable Hamon to see effect');
+    // Leaf bulge only for leaf tip
+    setWarn(el, 'Leaf Bulge', (blade.tipShape ?? 'pointed') !== 'leaf', 'Only affects Leaf tip shape');
+    // False edge coupling
+    const feLen = (blade as any).falseEdgeLength ?? 0;
+    const feDepth = (blade as any).falseEdgeDepth ?? 0;
+    setWarn(el, 'False Edge Depth', feLen <= 0, 'Set False Edge % > 0 for depth to do anything');
+    setWarn(el, 'False Edge %', feDepth <= 0 && feLen > 0, 'Depth is 0; no visible effect');
+    // Sori disabled when curvature ~ 0
+    const curvZero = Math.abs(blade.curvature || 0) < 1e-6;
+    setWarn(el, 'Sori Profile', curvZero, 'Curvature is 0; profile has no visible effect');
+    setWarn(el, 'Sori Bias', curvZero, 'Curvature is 0; bias has no visible effect');
+    // Fullers dependencies
+    const fEnabled = !!blade.fullerEnabled;
+    const fLen = blade.fullerLength ?? 0;
+    const fMode = (blade.fullerMode ?? 'overlay');
+    const fDepth = blade.fullerDepth ?? 0;
+    const fInset = (blade.fullerInset ?? fDepth);
+    const noFuller = !fEnabled || fLen <= 0;
+    setWarn(el, 'Fuller Count', noFuller, 'Enable Fullers and set Length > 0');
+    setWarn(el, 'Fuller Length', !fEnabled, 'Enable Fullers');
+    setWarn(el, 'Fuller Mode', !fEnabled, 'Enable Fullers');
+    setWarn(el, 'Fuller Depth', (!fEnabled || fMode !== 'overlay') || (fMode==='overlay' && (fLen<=0 || fDepth<=0)), fMode==='overlay' ? 'Enable Fullers, Length > 0, set Depth > 0' : 'Depth is used only in Overlay mode');
+    setWarn(el, 'Fuller Profile', (!fEnabled || fMode!=='carve') || (fMode==='carve' && fLen<=0), fMode==='carve' ? 'Set Length > 0' : 'Profile is used only in Carve mode');
+    setWarn(el, 'Fuller Width', (!fEnabled || fMode!=='carve') || (fMode==='carve' && fLen<=0), fMode==='carve' ? 'Set Length > 0 to see carving width' : 'Width is used only in Carve mode');
+    setWarn(el, 'Fuller Inset', (!fEnabled || fMode!=='carve') || (fMode==='carve' && (fLen<=0 || fInset<=0)), fMode==='carve' ? 'Set Length > 0 and Inset > 0 to carve' : 'Inset is used only in Carve mode');
+    // Engravings
+    const engr = (((state.blade as any).engravings) || []) as any[];
+    const engrEmpty = engr.length === 0;
+    const engrLabels = ['Engrave Index','Engrave Type','Engrave Text','Font URL','Engrave Width','Engrave Height','Engrave Depth','Letter Spacing','Engrave OffsetY','Engrave OffsetX','Engrave RotY','Engrave Side','Text Align'];
+    engrLabels.forEach((lab) => setWarn(sections.Engravings, lab, engrEmpty, 'No engravings — add one first'));
+    // Render dependent warnings
+    setWarn(sections.Render, 'Bloom Strength', !rstate.bloomEnabled, 'Enable Bloom to see effect');
+    setWarn(sections.Render, 'Bloom Threshold', !rstate.bloomEnabled, 'Enable Bloom to see effect');
+    setWarn(sections.Render, 'Bloom Radius', !rstate.bloomEnabled, 'Enable Bloom to see effect');
+    setWarn(sections.Render, 'Outline Strength', !outlineEnabled, 'Enable Outline to see effect');
+    setWarn(sections.Render, 'Outline Thickness', !outlineEnabled, 'Enable Outline to see effect');
+    setWarn(sections.Render, 'Outline Color', !outlineEnabled, 'Enable Outline to see effect');
+    setWarn(sections.Render, 'Ink Thickness', !inkEnabled, 'Enable Ink Outline to see effect');
+    setWarn(sections.Render, 'Ink Color', !inkEnabled, 'Enable Ink Outline to see effect');
+    setWarn(sections.Render, 'Vignette Strength', !vignetteEnabled, 'Enable Vignette to see effect');
+    setWarn(sections.Render, 'Vignette Softness', !vignetteEnabled, 'Enable Vignette to see effect');
+    setWarn(sections.Render, 'Grad Base', !bladeGradientEnabled, 'Enable Blade Gradient to see effect');
+    setWarn(sections.Render, 'Grad Edge', !bladeGradientEnabled, 'Enable Blade Gradient to see effect');
+    setWarn(sections.Render, 'Grad Edge Fade', !bladeGradientEnabled, 'Enable Blade Gradient to see effect');
+    setWarn(sections.Render, 'Wear Intensity', !bladeGradientEnabled, 'Enable Blade Gradient to see effect');
     warningsBox.innerHTML = w.length ? ('Warnings:\n- ' + w.join('\n- ')).replace(/\n/g, '<br/>') : 'No warnings';
   }
   const updateDynamics = () => {
@@ -941,7 +1018,32 @@ function addSection(root: HTMLElement, title: string) {
   const wrap = document.createElement('div');
   wrap.className = 'section';
   const h = document.createElement('h2');
-  h.textContent = title;
+  const caret = document.createElement('span'); caret.className = 'caret'; caret.textContent = '▾';
+  const text = document.createElement('span'); text.textContent = ' ' + title;
+  h.appendChild(caret); h.appendChild(text);
+  // Persisted collapsed state
+  const key = `swordmaker.ui.section.${title}.collapsed`;
+  try {
+    const col = localStorage.getItem(key);
+    if (col === '1') wrap.classList.add('collapsed');
+  } catch {}
+  h.addEventListener('click', (e) => {
+    // Ignore clicks originating from buttons within the header
+    if ((e.target as HTMLElement).closest('button')) return;
+    wrap.classList.toggle('collapsed');
+    // Defensive: ensure immediate children visibility is reset when expanding
+    if (!wrap.classList.contains('collapsed')) {
+      const kids = Array.from(wrap.children) as HTMLElement[];
+      kids.forEach((child) => { if (child.tagName !== 'H2') (child as HTMLElement).style.removeProperty('display'); });
+    }
+    try { localStorage.setItem(key, wrap.classList.contains('collapsed') ? '1' : '0'); } catch {}
+  });
+  // Alt+double-click to reset entire section to defaults
+  h.addEventListener('dblclick', (e) => {
+    if ((e as MouseEvent).altKey) {
+      resetSection(wrap);
+    }
+  });
   wrap.appendChild(h);
   root.appendChild(wrap);
   return wrap;
@@ -994,23 +1096,57 @@ function addShuffleButton(section: HTMLElement, onClick: () => void) {
   btn.textContent = 'Shuffle';
   btn.style.marginLeft = '8px';
   btn.title = 'Randomize values in this section';
-  btn.addEventListener('click', onClick);
+  btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
   header.appendChild(btn);
+}
+
+function resetRow(row: HTMLElement) {
+  const type = row.dataset.type;
+  const def = row.dataset.defaultValue;
+  if (def === undefined || !type) return;
+  if (type === 'slider') {
+    const range = row.querySelector('input[type="range"]') as HTMLInputElement | null;
+    const num = row.querySelector('input[type="number"]') as HTMLInputElement | null;
+    if (range && num) {
+      range.value = def; num.value = def;
+      range.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  } else if (type === 'select') {
+    const sel = row.querySelector('select') as HTMLSelectElement | null;
+    if (sel) { sel.value = def; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+  } else if (type === 'checkbox') {
+    const chk = row.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+    if (chk) { chk.checked = (def === 'true'); chk.dispatchEvent(new Event('change', { bubbles: true })); }
+  } else if (type === 'color') {
+    const col = row.querySelector('input[type="color"]') as HTMLInputElement | null;
+    if (col) { col.value = def; col.dispatchEvent(new Event('input', { bubbles: true })); }
+  } else if (type === 'text') {
+    const inp = row.querySelector('input[type="text"]') as HTMLInputElement | null;
+    if (inp) { inp.value = def; inp.dispatchEvent(new Event('change', { bubbles: true })); }
+  }
+}
+
+function resetSection(section: HTMLElement) {
+  const rows = Array.from(section.querySelectorAll('.row')) as HTMLElement[];
+  rows.forEach(resetRow);
 }
 
 function slider(parent: HTMLElement, label: string, min: number, max: number, step: number, value: number, onChange: (v: number) => void, rerender: () => void, tooltip?: string) {
   const row = document.createElement('div');
   row.className = 'row';
+  row.dataset.type = 'slider';
+  row.dataset.defaultValue = String(value);
   const lab = document.createElement('label');
   lab.textContent = label;
   if (tooltip) {
-    lab.title = tooltip;
+    lab.title = tooltip + ' — Double‑click label to reset';
     const hi = document.createElement('span');
     hi.className = 'help-icon';
     hi.textContent = '?';
     hi.title = tooltip;
     lab.appendChild(hi);
   }
+  lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const range = document.createElement('input');
   range.type = 'range';
   range.min = String(min);
@@ -1042,9 +1178,12 @@ function slider(parent: HTMLElement, label: string, min: number, max: number, st
 function select(parent: HTMLElement, label: string, options: string[], value: string, onChange: (v: string) => void, rerender: () => void, tooltip?: string) {
   const row = document.createElement('div');
   row.className = 'row';
+  row.dataset.type = 'select';
+  row.dataset.defaultValue = String(value);
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) { lab.title = tooltip; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
+  if (tooltip) { lab.title = tooltip + ' — Double‑click label to reset'; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
+  lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const sel = document.createElement('select');
   for (const opt of options) {
     const o = document.createElement('option');
@@ -1065,9 +1204,12 @@ function select(parent: HTMLElement, label: string, options: string[], value: st
 function checkbox(parent: HTMLElement, label: string, value: boolean, onChange: (v: boolean) => void, rerender: () => void, tooltip?: string) {
   const row = document.createElement('div');
   row.className = 'row';
+  row.dataset.type = 'checkbox';
+  row.dataset.defaultValue = String(!!value);
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) { lab.title = tooltip; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
+  if (tooltip) { lab.title = tooltip + ' — Double‑click label to reset'; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
+  lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const input = document.createElement('input');
   input.type = 'checkbox';
   input.checked = value;
@@ -1086,9 +1228,12 @@ function checkbox(parent: HTMLElement, label: string, value: boolean, onChange: 
 function colorPicker(parent: HTMLElement, label: string, value: string, onChange: (hex: string) => void, rerender: () => void, tooltip?: string) {
   const row = document.createElement('div');
   row.className = 'row';
+  row.dataset.type = 'color';
+  row.dataset.defaultValue = value;
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) { lab.title = tooltip; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
+  if (tooltip) { lab.title = tooltip + ' — Double‑click label to reset'; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
+  lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const input = document.createElement('input');
   input.type = 'color';
   input.value = value;
@@ -1106,9 +1251,12 @@ function colorPicker(parent: HTMLElement, label: string, value: string, onChange
 function textRow(parent: HTMLElement, label: string, value: string, onChange: (v: string) => void, tooltip?: string) {
   const row = document.createElement('div');
   row.className = 'row';
+  row.dataset.type = 'text';
+  row.dataset.defaultValue = value || '';
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) lab.title = tooltip;
+  if (tooltip) lab.title = tooltip + ' — Double‑click label to reset';
+  lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const input = document.createElement('input');
   input.type = 'text';
   input.value = value || '';

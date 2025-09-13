@@ -499,6 +499,69 @@ describe('Dependent knobs', () => {
     // only right side (2 ribbons)
     expect(gAuto.children.length).toBe(2)
   })
+
+  it('leaf bulge has no effect when tipShape != leaf', () => {
+    const base = (p: SwordParams) => { p.blade.length = 3; p.blade.baseWidth = 0.22; p.blade.tipWidth = 0.12; p.blade.curvature = 0; (p.blade as any).chaos = 0 }
+    const sA = make(p => { base(p); p.blade.tipShape = 'pointed'; p.blade.tipBulge = 0.0 })
+    const sB = make(p => { base(p); p.blade.tipShape = 'pointed'; p.blade.tipBulge = 1.0 })
+    const w = (s: SwordGenerator) => span(bboxOf(s.bladeMesh), 'x')
+    expect(approx(w(sA), w(sB), 1e-3)).toBe(true)
+  })
+
+  it('sori profile/bias have no visible effect when curvature = 0', () => {
+    const sTorii = make(p => { p.blade.curvature = 0; (p.blade as any).soriProfile = 'torii'; (p.blade as any).soriBias = 0.8; (p.blade as any).chaos = 0 })
+    const sSaki = make(p => { p.blade.curvature = 0; (p.blade as any).soriProfile = 'saki'; (p.blade as any).soriBias = 2.0; (p.blade as any).chaos = 0 })
+    const b0 = bboxOf(sTorii.bladeMesh)
+    const b1 = bboxOf(sSaki.bladeMesh)
+    expect(approx(span(b0,'x'), span(b1,'x'), 1e-3)).toBe(true)
+  })
+
+  it('false edge depth does nothing when length is 0', () => {
+    const s0 = make(p => { (p.blade as any).falseEdgeLength = 0; (p.blade as any).falseEdgeDepth = 0.05 })
+    const s1 = make(p => { (p.blade as any).falseEdgeLength = 0; (p.blade as any).falseEdgeDepth = 0.00 })
+    // identical Z thickness
+    const z0 = span(bboxOf(s0.bladeMesh), 'z')
+    const z1 = span(bboxOf(s1.bladeMesh), 'z')
+    expect(approx(z0, z1, 1e-3)).toBe(true)
+  })
+
+  it('fuller overlay requires depth and length; otherwise no overlay group', () => {
+    const sNo = make(p => { p.blade.fullerEnabled = true; p.blade.fullerLength = 0; p.blade.fullerDepth = 0.02; (p.blade as any).fullerMode = 'overlay' })
+    const sYes = make(p => { p.blade.fullerEnabled = true; p.blade.fullerLength = 0.5; p.blade.fullerDepth = 0.02; (p.blade as any).fullerMode = 'overlay' })
+    const hasOverlay = (s: SwordGenerator) => !!(s as any).fullerGroup
+    expect(hasOverlay(sNo)).toBe(false)
+    expect(hasOverlay(sYes)).toBe(true)
+  })
+
+  it('fuller carve reduces Z thickness near mid-face when inset > 0', () => {
+    const sFlat = make(p => { p.blade.fullerEnabled = true; p.blade.fullerLength = 0.6; (p.blade as any).fullerInset = 0.0; (p.blade as any).fullerMode = 'carve' })
+    const sCarved = make(p => { p.blade.fullerEnabled = true; p.blade.fullerLength = 0.6; (p.blade as any).fullerInset = 0.04; (p.blade as any).fullerMode = 'carve' })
+    const thicknessNearCenter = (s: SwordGenerator) => {
+      const g = s.bladeMesh!.geometry as THREE.BufferGeometry
+      const pos = g.getAttribute('position') as THREE.BufferAttribute
+      const arr = pos.array as unknown as number[]
+      // find mid Y
+      let minY = Infinity, maxY = -Infinity
+      for (let i=1;i<arr.length;i+=3) { const y=arr[i]; if (y<minY) minY=y; if (y>maxY) maxY=y }
+      const midY = (minY + maxY) / 2
+      const tolY = (maxY - minY) * 0.02
+      // select vertices near mid Y
+      const pts: Array<{x:number,y:number,z:number}> = []
+      for (let i=0;i<arr.length;i+=3) {
+        const x = arr[i], y = arr[i+1], z = arr[i+2]
+        if (Math.abs(y - midY) <= tolY) pts.push({x,y,z})
+      }
+      // determine width window around center (exclude edges)
+      let minX = Infinity, maxX = -Infinity
+      for (const p of pts) { if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x }
+      const w = maxX - minX
+      const sel = pts.filter(p => Math.abs(p.x) <= w * 0.15) // central 30% of width
+      let minZ = Infinity, maxZ = -Infinity
+      for (const p of sel) { if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z }
+      return maxZ - minZ
+    }
+    expect(thicknessNearCenter(sCarved)).toBeLessThan(thicknessNearCenter(sFlat))
+  })
 })
 
 

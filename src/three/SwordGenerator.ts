@@ -1479,7 +1479,9 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     const chaosOffset = (c1 * 0.6 + c2 * 0.4) * chaos * 0.08 * baseW * (1.0 - t * 0.6);
     const baseHalf = Math.max(0.001, w * 0.5 + chaosOffset);
     const asym = (b.asymmetry ?? 0);
-    const leftHalf = Math.max(0.0005, (baseHalf + serrL) * (1 - 0.5 * asym));
+    // Start with symmetric halves including serrations and asymmetry
+    let leftHalf = Math.max(0.0005, (baseHalf + serrL) * (1 - 0.5 * asym));
+    let rightHalf = Math.max(0.0005, (baseHalf + serrR) * (1 + 0.5 * asym));
     // Tip family asymmetry (clip/tanto/sheepsfoot): bias spine/edge side near tip
     if (b.tipShape === "clip" || b.tipShape === "tanto" || b.tipShape === "sheepsfoot") {
       const tipLen = Math.max(0.05, (b.kissakiLength ?? 0.2) || 0.2);
@@ -1501,7 +1503,6 @@ function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
         else leftHalf = Math.max(0.0005, leftHalf - delta);
       }
     }
-    const rightHalf = Math.max(0.0005, (baseHalf + serrR) * (1 + 0.5 * asym));
     const bend = bendOffsetX(b, y, L);
     const xl = -leftHalf + bend;
     const xr = +rightHalf + bend;

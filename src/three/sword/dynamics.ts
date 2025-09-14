@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { BladeParams } from './types'
+import { tipWidthWithKissaki } from './math'
 /**
  * Blade dynamics approximations.
  *
@@ -8,33 +9,6 @@ import type { BladeParams } from './types'
  * The goal is responsiveness and determinism for UI feedback rather than
  * physically exact values.
  */
-
-// Local copy of tipWidthWithKissaki to avoid tight coupling for now.
-function tipWidthWithKissaki(b: BladeParams, t: number, baseW: number, tipW: number): number {
-  const kf = THREE.MathUtils.clamp(b.kissakiLength ?? 0, 0, 0.35)
-  if (kf <= 1e-6) {
-    return baseW + (tipW - baseW) * t
-  }
-  const split = 1 - kf
-  const midW = baseW + (tipW - baseW) * split
-  if (t <= split) {
-    return baseW + (midW - baseW) * (t / Math.max(1e-6, split))
-  }
-  const u = (t - split) / Math.max(1e-6, kf)
-  let r = THREE.MathUtils.clamp(b.kissakiRoundness ?? 0.5, 0, 1)
-  if (b.tipShape === 'rounded') r = 1
-  let expo = THREE.MathUtils.lerp(0.5, 3.0, 1 - r)
-  switch (b.tipShape) {
-    case 'tanto': expo = 2.2; break
-    case 'clip': expo = 0.8; break
-    case 'spear': expo = 1.2; break
-    case 'sheepsfoot': expo = 0.6; break
-    case 'leaf': expo *= 1.1; break
-    default: break
-  }
-  const s = Math.pow(1 - u, expo)
-  return tipW + (midW - tipW) * s
-}
 
 /**
  * Lightweight blade dynamics approximation based on geometry parameters.

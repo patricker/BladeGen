@@ -30,6 +30,9 @@ import { buildHandle } from './sword/handleGeometry';
 import { buildPommel } from './sword/pommelGeometry';
 import { buildEngravingsGroup } from './sword/engravings';
 import { validateSwordParams } from './sword/validation';
+import { TextureCache } from './sword/textures';
+import { createMaterial } from './sword/materials';
+import { disposeObject3D } from './sword/utils';
 // Re-export selected helpers for existing consumers
 export { buildBladeOutlinePoints, bladeOutlineToSVG } from './sword/bladeGeometry';
 
@@ -51,6 +54,8 @@ export class SwordGenerator {
 
   private lastParams?: SwordParams;
     private derived?: { mass: number; cmY: number; Ibase: number; Icm: number; copY: number };
+  private mats?: Record<'blade'|'guard'|'handle'|'pommel', any>;
+  private _texCache = new TextureCache();
 
   /**
    * Create a generator and immediately build geometry for the provided params.
@@ -80,41 +85,10 @@ export class SwordGenerator {
     this.mats = mats; this.reapplyMaterials();
   }
   /**
-   * Create a MeshPhysicalMaterial for a given part, honoring optional maps and
-   * extended PBR properties when provided in the presets.
+   * Create a MeshPhysicalMaterial for a given part using shared material factory.
    */
   private makeMaterial(part: 'blade'|'guard'|'handle'|'pommel'): THREE.MeshPhysicalMaterial {
-    const m = this.mats?.[part] || {};
-    const defaults: Record<string, any> = {
-      blade: { color: 0xb9c6ff, metalness: 0.8, roughness: 0.25, clearcoat: 0.0, clearcoatRoughness: 0.5 },
-      guard: { color: 0x8892b0, metalness: 0.6, roughness: 0.4, clearcoat: 0.0, clearcoatRoughness: 0.5 },
-      handle:{ color: 0x5a6b78, metalness: 0.1, roughness: 0.85, clearcoat: 0.0, clearcoatRoughness: 0.6 },
-      pommel:{ color: 0x9aa4b2, metalness: 0.75,roughness: 0.35,clearcoat: 0.0, clearcoatRoughness: 0.5 }
-    };
-    const base = defaults[part];
-    const mat = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color(m.color ?? base.color),
-      metalness: m.metalness ?? base.metalness,
-      roughness: m.roughness ?? base.roughness,
-      clearcoat: m.clearcoat ?? base.clearcoat,
-      clearcoatRoughness: m.clearcoatRoughness ?? base.clearcoatRoughness
-    });
-    if (m.emissiveColor) { (mat as any).emissive = new THREE.Color(m.emissiveColor); (mat as any).emissiveIntensity = m.emissiveIntensity ?? 0.5; }
-    if (m.transmission) { (mat as any).transmission = m.transmission; (mat as any).ior = m.ior ?? 1.5; (mat as any).thickness = m.thickness ?? 0.2; if (m.attenuationColor) (mat as any).attenuationColor = new THREE.Color(m.attenuationColor); if (m.attenuationDistance!==undefined) (mat as any).attenuationDistance = m.attenuationDistance; }
-    if (m.sheen!==undefined) { (mat as any).sheen = m.sheen; if (m.sheenColor) (mat as any).sheenColor = new THREE.Color(m.sheenColor); }
-    if (m.iridescence!==undefined) { (mat as any).iridescence = m.iridescence; (mat as any).iridescenceIOR = m.iridescenceIOR ?? 1.3; (mat as any).iridescenceThicknessRange = [m.iridescenceThicknessMin ?? 100, m.iridescenceThicknessMax ?? 400]; }
-    // Optional texture maps
-    if (m.map) { const t = this.loadTexture(m.map, true); if (t) (mat as any).map = t; }
-    if (m.normalMap) { const t = this.loadTexture(m.normalMap, false); if (t) (mat as any).normalMap = t; }
-    if (m.roughnessMap) { const t = this.loadTexture(m.roughnessMap, false); if (t) (mat as any).roughnessMap = t; }
-    if (m.metalnessMap) { const t = this.loadTexture(m.metalnessMap, false); if (t) (mat as any).metalnessMap = t; }
-    if (m.aoMap) { const t = this.loadTexture(m.aoMap, false); if (t) (mat as any).aoMap = t; }
-    if (m.bumpMap) { const t = this.loadTexture(m.bumpMap, false); if (t) (mat as any).bumpMap = t; }
-    if (m.displacementMap) { const t = this.loadTexture(m.displacementMap, false); if (t) (mat as any).displacementMap = t; }
-    if (m.alphaMap) { const t = this.loadTexture(m.alphaMap, false); if (t) (mat as any).alphaMap = t; }
-    if (m.clearcoatNormalMap) { const t = this.loadTexture(m.clearcoatNormalMap, false); if (t) (mat as any).clearcoatNormalMap = t; }
-    if (m.envMapIntensity !== undefined) (mat as any).envMapIntensity = m.envMapIntensity;
-    return mat;
+    return createMaterial(part, this.mats?.[part] ?? null, this._texCache);
   }
   /** Traverse current parts and set freshly created materials. */
   private reapplyMaterials() {
@@ -131,26 +105,7 @@ export class SwordGenerator {
   /** Return last computed dynamics (mass proxy, CM, inertias, CoP). */
   public getDerived() { return this.derived; }
 
-  private _texLoader?: THREE.TextureLoader;
-  private _texCache?: Map<string, THREE.Texture>;
-  /**
-   * Lazy texture loader with a tiny cache. Returns a placeholder texture
-   * immediately while the real asset loads; caller can re-render when it resolves.
-   */
-  private loadTexture(url?: string, sRGB = false): THREE.Texture | undefined {
-    if (!url) return undefined;
-    this._texLoader = this._texLoader || new THREE.TextureLoader();
-    this._texCache = this._texCache || new Map();
-    const cached = this._texCache.get(url);
-    if (cached) return cached;
-    const dummy = new THREE.Texture(); // placeholder until load completes
-    this._texLoader.load(url, (tex) => {
-      if (sRGB) (tex as any).colorSpace = THREE.SRGBColorSpace;
-      tex.needsUpdate = true;
-      this._texCache!.set(url, tex);
-    });
-    return dummy;
-  }
+  // Texture loading delegated to TextureCache via createMaterial
 
   /** Validate, normalize and rebuild all parts for a new parameter set. */
   updateGeometry(params: SwordParams) {
@@ -202,7 +157,7 @@ export class SwordGenerator {
   private rebuildBlade(b: BladeParams) {
     if (this.bladeMesh) {
       this.group.remove(this.bladeMesh);
-      this.disposeMesh(this.bladeMesh);
+      disposeObject3D(this.bladeMesh);
       this.bladeMesh = null;
     }
 
@@ -219,7 +174,7 @@ export class SwordGenerator {
     // Fuller grooves: overlay ribbons (default) or carved geometry reduction
     if (this.fullerGroup) {
       this.group.remove(this.fullerGroup);
-      this.disposeGroup(this.fullerGroup);
+      disposeObject3D(this.fullerGroup);
       this.fullerGroup = null;
     }
     if (b.fullerEnabled && (b.fullerLength ?? 0) > 0 && (b.fullerMode ?? 'overlay') === 'overlay' && (b.fullerDepth ?? 0) > 0) {
@@ -229,7 +184,7 @@ export class SwordGenerator {
     }
 
     // Engravings / inlays
-    if (this.engravingGroup) { this.group.remove(this.engravingGroup); this.disposeGroup(this.engravingGroup); this.engravingGroup = null }
+    if (this.engravingGroup) { this.group.remove(this.engravingGroup); disposeObject3D(this.engravingGroup); this.engravingGroup = null }
     if ((b as any).engravings && (b as any).engravings.length && this.bladeMesh) {
       const built = buildEngravingsGroup(b, this.bladeMesh, this._fontCache)
       if (built) { this._fontCache = built.fontCache; this.engravingGroup = built.group; this.group.add(this.engravingGroup) }
@@ -238,7 +193,7 @@ export class SwordGenerator {
     // Hamon visual overlay along edge
     if (this.hamonGroup) {
       this.group.remove(this.hamonGroup);
-      this.disposeGroup(this.hamonGroup);
+      disposeObject3D(this.hamonGroup);
       this.hamonGroup = null;
     }
     if (b.hamonEnabled && (b.hamonWidth ?? 0) > 0) {
@@ -254,12 +209,12 @@ export class SwordGenerator {
     // Clear existing
     if (this.guardMesh) {
       this.group.remove(this.guardMesh);
-      this.disposeMesh(this.guardMesh);
+      disposeObject3D(this.guardMesh);
       this.guardMesh = null;
     }
     if (this.guardGroup) {
       this.group.remove(this.guardGroup);
-      this.disposeGroup(this.guardGroup);
+      disposeObject3D(this.guardGroup);
       this.guardGroup = null;
     }
 
@@ -282,8 +237,8 @@ export class SwordGenerator {
 
   /** Dispose and rebuild handle and its attached group/layers. */
   private rebuildHandle(h: HandleParams) {
-    if (this.handleMesh) { this.group.remove(this.handleMesh); this.disposeMesh(this.handleMesh); this.handleMesh = null }
-    if (this.handleGroup) { this.group.remove(this.handleGroup); this.disposeGroup(this.handleGroup); this.handleGroup = null }
+    if (this.handleMesh) { this.group.remove(this.handleMesh); disposeObject3D(this.handleMesh); this.handleMesh = null }
+    if (this.handleGroup) { this.group.remove(this.handleGroup); disposeObject3D(this.handleGroup); this.handleGroup = null }
     const built = buildHandle(h, (p)=> this.makeMaterial(p))
     this.handleMesh = built.handleMesh
     this.handleGroup = built.handleGroup
@@ -292,33 +247,14 @@ export class SwordGenerator {
 
   /** Dispose and rebuild the pommel, placing it below the handle. */
   private rebuildPommel(p: PommelParams) {
-    if (this.pommelMesh) { this.group.remove(this.pommelMesh); this.disposeMesh(this.pommelMesh); this.pommelMesh = null }
+    if (this.pommelMesh) { this.group.remove(this.pommelMesh); disposeObject3D(this.pommelMesh); this.pommelMesh = null }
     this.pommelMesh = buildPommel(p, { handleMesh: this.handleMesh, blade: this.lastParams?.blade ?? null }, (part)=> this.makeMaterial(part))
     this.group.add(this.pommelMesh)
   }
 
   // Validation moved to ./sword/validation
 
-  /** Dispose geometry and materials for a single mesh. */
-  private disposeMesh(mesh: THREE.Mesh) {
-    (mesh.geometry as any)?.dispose?.();
-    const mat = mesh.material as THREE.Material | THREE.Material[];
-    if (Array.isArray(mat)) mat.forEach((m) => (m as any)?.dispose?.());
-    else (mat as any)?.dispose?.();
-  }
-
-  /** Dispose geometries/materials for all meshes in a group. */
-  private disposeGroup(group: THREE.Group) {
-    group.traverse((obj) => {
-      const m = obj as THREE.Mesh;
-      if (m.isMesh) {
-        (m.geometry as any)?.dispose?.();
-        const mat = m.material as THREE.Material | THREE.Material[];
-        if (Array.isArray(mat)) mat.forEach((x) => (x as any)?.dispose?.());
-        else (mat as any)?.dispose?.();
-      }
-    });
-  }
+  // Disposal helpers moved to ./sword/utils
 }
 
 // outline helpers moved to ./sword/bladeGeometry

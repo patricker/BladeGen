@@ -1,0 +1,228 @@
+import * as THREE from 'three'
+
+/**
+ * Sword parameter type definitions used across geometry builders and the generator.
+ *
+ * This module is intentionally framework-agnostic aside from Three.js types used
+ * in a few helper signatures (e.g. returning `THREE.Vector2[]` from outline helpers).
+ *
+ * Design goals:
+ * - Keep a single canonical definition for all geometry knobs to avoid drift.
+ * - Provide descriptive comments so UI and schema authors can understand intent/units.
+ * - Avoid side effects: this file only exports TypeScript types and enums.
+ */
+
+export type BladeParams = {
+  /** Total blade length along +Y, in scene units (meters-ish). */
+  length: number;
+  /** Width near guard (at y=0). */
+  baseWidth: number;
+  /** Width at the tip (at y=length). Can be wider than base for exotic shapes. */
+  tipWidth: number;
+  /** Base thickness (across Z). For asymmetric edges use thicknessLeft/Right. */
+  thickness: number;
+  /** Curvature: -1..1 bends along X; positive bends toward -X along the span. */
+  curvature: number;
+  /** Edge serration amplitude. Prefer per-side values when asymmetric. */
+  serrationAmplitude?: number;
+  /** Edge serration frequency (cycles along blade). */
+  serrationFrequency?: number;
+  /** Left edge serration amplitude override. */
+  serrationAmplitudeLeft?: number;
+  /** Right edge serration amplitude override. */
+  serrationAmplitudeRight?: number;
+  /** Fuller (groove) visual depth hint for overlay mode. */
+  fullerDepth?: number;
+  /** Portion of blade length (0..1) occupied by fuller. */
+  fullerLength?: number;
+  /** Enable fuller rendering. */
+  fullerEnabled?: boolean;
+  /** Number of grooves per face. */
+  fullerCount?: number;
+  /** How fullers are realized: overlay ribbons or carved reduction. */
+  fullerMode?: 'overlay' | 'carve';
+  /** Fuller cross profile. */
+  fullerProfile?: 'u' | 'v' | 'flat';
+  /** Groove width across the blade face (scene units). */
+  fullerWidth?: number;
+  /** Inset into thickness for carve mode (fallback to fullerDepth). */
+  fullerInset?: number;
+  /** Longitudinal tessellation for blade sweep (resolution). */
+  sweepSegments?: number;
+  /** Small edge randomness 0..1. */
+  chaos?: number;
+  /** Width asymmetry: -1..1 widens left(-)/right(+) edge. */
+  asymmetry?: number;
+  /** Single or double edged. Affects hamon and spine behavior. */
+  edgeType?: 'single' | 'double';
+  /** Per-edge thickness (Z) overrides. */
+  thicknessLeft?: number;
+  thicknessRight?: number;
+  /** Base tangent angle in radians, adds linear bend component. */
+  baseAngle?: number;
+  /** Sori curvature profile family. */
+  soriProfile?: 'torii' | 'koshi' | 'saki';
+  /** Sori profile bias exponent (0.3..3). */
+  soriBias?: number;
+  /** Fraction of length defining a kissaki (tip) segment. */
+  kissakiLength?: number;
+  /** Easing of tip taper (0 sharp, 1 round). */
+  kissakiRoundness?: number;
+  /** Hamon visual overlay on edges. */
+  hamonEnabled?: boolean;
+  /** Hamon band width across X. */
+  hamonWidth?: number;
+  /** Hamon waviness amplitude across X. */
+  hamonAmplitude?: number;
+  /** Hamon wave frequency along Y. */
+  hamonFrequency?: number;
+  /** Which edge(s) receive hamon. */
+  hamonSide?: 'auto' | 'left' | 'right' | 'both';
+  /** Serration waveform family. */
+  serrationPattern?: 'sine' | 'saw' | 'scallop' | 'random';
+  /** Seed for pseudo-random serrations. */
+  serrationSeed?: number;
+  /** Total twist from base to tip, radians. */
+  twistAngle?: number;
+  /** Cross section profile family. */
+  crossSection?: 'flat' | 'lenticular' | 'diamond' | 'hexagonal';
+  /** Cross-section bevel intensity 0..1. */
+  bevel?: number;
+  /** Tip family. Controls taper behavior near tip. */
+  tipShape?: 'pointed' | 'rounded' | 'leaf' | 'clip' | 'tanto' | 'spear' | 'sheepsfoot';
+  /** Extra mid-blade bulge for 'leaf' tips (0..1). */
+  tipBulge?: number;
+  /** Optional per-face engravings/decals. */
+  engravings?: Array<{ type:'text'|'shape'|'decal', content?: string, fontUrl?: string, width:number, height:number, depth?: number, offsetY:number, offsetX:number, rotation?: number, side?: 'left'|'right'|'both', align?: 'left'|'center'|'right', letterSpacing?: number }>;
+  /** Distal taper profile: piecewise linear [t, scale] points (t in 0..1). */
+  thicknessProfile?: { points?: Array<[number, number]> };
+  /** Optional ricasso length fraction near base (0..0.3). */
+  ricassoLength?: number;
+  /** False edge length fraction near tip (0..1). */
+  falseEdgeLength?: number;
+  /** False edge depth fraction (0..0.2). */
+  falseEdgeDepth?: number;
+};
+
+export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk' | 'basket' | 'knucklebow' | 'swept';
+
+export type GuardParams = {
+  /** Span across X. */
+  width: number;
+  /** Thickness across Z (or bar thickness). */
+  thickness: number;
+  /** Up/down curvature for winged/claw families (-1..1). */
+  curve: number;
+  /** Tilt of the entire guard around Z in radians. */
+  tilt: number;
+  /** Guard family. */
+  style: GuardStyle;
+  /** 2D tessellation for extrudes. */
+  curveSegments?: number;
+  /** Habaki settings (small collar near base). */
+  habakiEnabled?: boolean;
+  habakiHeight?: number;
+  habakiMargin?: number;
+  /** Vertical offset from blade base for placement. */
+  heightOffset?: number;
+  /** Quillon options. */
+  quillonCount?: number;
+  quillonLength?: number;
+  /** Ornamentation density 0..1 (abstract control). */
+  ornamentation?: number;
+  /** Continuous tip style sharpness 0..1. */
+  tipSharpness?: number;
+  /** Disk-style perforations. */
+  cutoutCount?: number;
+  cutoutRadius?: number;
+  /** Left/right asymmetry toggles and magnitude (-1..1). */
+  asymmetricArms?: boolean;
+  asymmetry?: number;
+  /** Small blend/fillet between guard and blade base. */
+  guardBlendFillet?: number;
+  guardBlendFilletStyle?: 'box'|'smooth';
+  /** Extras like finger guards. */
+  extras?: Array<{ kind: 'loop'|'sideRing'|'fingerGuard'; radius: number; thickness: number; offsetY: number; offsetX?: number; tilt?: number }>;
+  /** Basket-hilt specific knobs. */
+  basketRodCount?: number;
+  basketRodRadius?: number;
+  basketRingCount?: number;
+  basketRingRadiusAdd?: number;
+  basketRingThickness?: number;
+};
+
+export type HandleParams = {
+  /** Grip length along Y. */
+  length: number;
+  /** Radius at top (near guard). */
+  radiusTop: number;
+  /** Radius at bottom. */
+  radiusBottom: number;
+  /** Adds ridge segmentation along length. */
+  segmentation: boolean;
+  /** Slight bend along X; positive bends toward -X around mid. */
+  curvature?: number;
+  /** Enable helical wrap pattern. */
+  wrapEnabled?: boolean;
+  /** Number of helical turns along length. */
+  wrapTurns?: number;
+  /** Radial amplitude of wrap (extrusion). */
+  wrapDepth?: number;
+  /** Radial tessellation for cylinder. */
+  phiSegments?: number;
+  /** Enable procedural wrap texture on the grip. */
+  wrapTexture?: boolean;
+  /** Wrap texture repeat scale. */
+  wrapTexScale?: number;
+  /** Stripe angle in radians for wrap texture. */
+  wrapTexAngle?: number;
+  /** >1 flattens Z and widens X (oval grip). */
+  ovalRatio?: number;
+  /** Visible tang options. */
+  tangVisible?: boolean;
+  tangWidth?: number;
+  tangThickness?: number;
+  /** Optional layered details. */
+  handleLayers?: Array<any>;
+  /** Optional ornaments (position along length, side, size). */
+  menuki?: Array<any>;
+  /** Optional rivet rings. */
+  rivets?: Array<any>;
+};
+
+export type PommelStyle = 'orb' | 'disk' | 'spike' | 'wheel' | 'scentStopper' | 'ring' | 'crown';
+
+export type PommelParams = {
+  /** Base size controlling radius/extent of the pommel. */
+  size: number;
+  /** Vertical elongation (Y scale). */
+  elongation: number;
+  /** Pommel family. */
+  style: PommelStyle;
+  /** Horizontal squash/stretch morph 0..1 for non-spike types. */
+  shapeMorph: number;
+  /** Lateral and vertical micro-adjustments. */
+  offsetX: number;
+  offsetY: number;
+  /** Tessellation/faceting control. */
+  facetCount?: number;
+  /** Spike length factor. */
+  spikeLength?: number;
+  /** Balance factor: 0 uses user size, 1 auto-balances from blade mass proxy. */
+  balance?: number;
+  /** Ring/crown specifics. */
+  ringInnerRadius?: number;
+  crownSpikes?: number;
+  crownSharpness?: number;
+};
+
+export type SwordParams = {
+  /** All per-part geometry parameters used to synthesize the sword. */
+  blade: BladeParams;
+  guard: GuardParams;
+  handle: HandleParams;
+  pommel: PommelParams;
+  /** Optional ratio-based sizing helpers. */
+  useRatios?: boolean;
+  ratios?: { guardWidthToBlade?: number; handleLengthToBlade?: number; pommelSizeToBlade?: number };
+};

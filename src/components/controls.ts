@@ -217,6 +217,22 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   dynamicsBox.style.color = '#93c5fd';
   dynamicsBox.style.marginTop = '6px';
   sections.Other.appendChild(dynamicsBox);
+  const fxSyncBox = document.createElement('div');
+  fxSyncBox.style.fontSize = '12px';
+  fxSyncBox.style.color = '#10b981';
+  fxSyncBox.style.marginTop = '4px';
+  fxSyncBox.textContent = '';
+  sections.Other.appendChild(fxSyncBox);
+  try {
+    window.addEventListener('swordmaker:fx-synced' as any, (e: any) => {
+      const when = new Date();
+      const hh = String(when.getHours()).padStart(2,'0');
+      const mm = String(when.getMinutes()).padStart(2,'0');
+      const ss = String(when.getSeconds()).padStart(2,'0');
+      const parts = (e?.detail?.parts || []).join(', ');
+      fxSyncBox.textContent = `FX synced ${hh}:${mm}:${ss}` + (parts ? ` (${parts})` : '');
+    });
+  } catch {}
 
   // Track Render feature toggles for warnings
   let outlineEnabled = false;
@@ -342,15 +358,15 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       const opts = { scale: flame.scale, color1: parseInt(flame.color1.replace('#','0x')), color2: parseInt(flame.color2.replace('#','0x')), noiseScale: flame.noiseScale, speed: flame.speed, intensity: flame.intensity } as any;
       (render as any).setFlameAura?.(flameEnabled, opts);
     };
-    checkbox(rFX, 'Flame Aura', false, (v) => { flameEnabled = v; applyFlame(); if (v) { (render as any).markForHeat?.(((sword as any).bladeMesh), true); (render as any).markForBloom?.(((sword as any).bladeMesh), true); } }, () => {}, 'Animated aura overlay around blade.');
+    checkbox(rFX, 'Flame Aura', false, (v) => { flameEnabled = v; applyFlame(); }, () => {}, 'Animated aura overlay around blade.');
     colorPicker(rFX, 'Flame Color A', flame.color1, (hex) => { flame.color1 = hex; applyFlame(); }, () => {}, 'Inner flame color.');
     colorPicker(rFX, 'Flame Color B', flame.color2, (hex) => { flame.color2 = hex; applyFlame(); }, () => {}, 'Outer flame color.');
     slider(rFX, 'Flame Intensity', 0.0, 3.0, 0.01, flame.intensity, (v) => { flame.intensity = v; applyFlame(); }, () => {}, 'Brightness scaling for aura.');
     slider(rFX, 'Flame Speed', 0.0, 8.0, 0.01, flame.speed, (v) => { flame.speed = v; applyFlame(); }, () => {}, 'Noise scroll speed.');
     slider(rFX, 'Flame NoiseScale', 0.2, 8.0, 0.01, flame.noiseScale, (v) => { flame.noiseScale = v; applyFlame(); }, () => {}, 'Spatial scale of flame noise.');
     slider(rFX, 'Flame Scale', 1.0, 1.2, 0.001, flame.scale, (v) => { flame.scale = v; applyFlame(); }, () => {}, 'Mesh scale factor for aura shell.');
-    checkbox(rFX, 'Selective Bloom', false, (v) => { (render as any).setSelectiveBloom?.(v, 1.1, 0.8, 0.35, 1.0); if (v) { (render as any).markForBloom?.(((sword as any).bladeMesh), true); } }, () => {}, 'Use bloom only on marked objects.');
-    checkbox(rFX, 'Heat Haze', false, (v) => { (render as any).setHeatHaze?.(v, 0.004); if (v) { (render as any).markForHeat?.(((sword as any).bladeMesh), true); } }, () => {}, 'Mask-based refractive shimmer.');
+    checkbox(rFX, 'Selective Bloom', false, (v) => { (render as any).setSelectiveBloom?.(v, 1.1, 0.8, 0.35, 1.0); }, () => {}, 'Use bloom only on marked objects.');
+    checkbox(rFX, 'Heat Haze', false, (v) => { (render as any).setHeatHaze?.(v, 0.004); }, () => {}, 'Mask-based refractive shimmer.');
     let embersEnabled = false;
     const emb = { count: 120, size: 3, color: '#ffaa55' };
     const applyEmbers = () => { (render as any).setEmbers?.(embersEnabled, { count: Math.max(1, Math.floor(emb.count)), size: emb.size, color: parseInt(emb.color.replace('#','0x')) }); };

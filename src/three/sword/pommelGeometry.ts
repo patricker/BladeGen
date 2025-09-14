@@ -1,0 +1,77 @@
+import * as THREE from 'three'
+import type { PommelParams, BladeParams } from './types'
+
+/**
+ * Build the pommel mesh given params and an optional handle mesh for placement.
+ * Placement: just below the handle bottom; caller adds to the parent group.
+ */
+export function buildPommel(
+  p: PommelParams,
+  ctx: { handleMesh?: THREE.Mesh | null; blade?: BladeParams | null },
+  makeMaterial: (part: 'pommel') => THREE.Material
+): THREE.Mesh {
+  const mat = makeMaterial('pommel')
+  let mesh: THREE.Mesh
+  const facets = Math.max(6, Math.round(p.facetCount ?? 32))
+
+  // Auto-balance size from blade mass proxy if desired
+  const bal = THREE.MathUtils.clamp(p.balance ?? 0, 0, 1)
+  const b = ctx.blade
+  const mass = b ? (b.length * ((b.baseWidth + b.tipWidth) * 0.5) * (((b.thicknessLeft ?? b.thickness ?? 0.08) + (b.thicknessRight ?? b.thickness ?? 0.08)) * 0.5)) : 1.0
+  const sizeAuto = Math.cbrt(Math.max(1e-6, mass)) * 0.35
+  const sizeEff = THREE.MathUtils.clamp(THREE.MathUtils.lerp(p.size, sizeAuto, bal), 0.05, 1.0)
+
+  if (p.style === 'disk') {
+    const heightY = Math.max(0.02, sizeEff * 0.15)
+    const geo = new THREE.CylinderGeometry(sizeEff * (1.0 + p.shapeMorph), sizeEff * (1.0 + p.shapeMorph), heightY, facets)
+    mesh = new THREE.Mesh(geo, mat)
+    mesh.rotation.set(0, 0, 0)
+  } else if (p.style === 'spike') {
+    const height = sizeEff * (1.2 + p.shapeMorph) * (p.spikeLength ?? 1)
+    const geo = new THREE.ConeGeometry(sizeEff * (0.8 + 0.4 * p.shapeMorph), height, facets)
+    mesh = new THREE.Mesh(geo, mat)
+    mesh.rotation.z = Math.PI
+  } else if (p.style === 'wheel') {
+    const height = Math.max(0.02, sizeEff * 0.18)
+    const radius = sizeEff * (1.0 + 0.2 * (p.shapeMorph ?? 0))
+    const geo = new THREE.CylinderGeometry(radius, radius, height, facets)
+    mesh = new THREE.Mesh(geo, mat)
+  } else if (p.style === 'scentStopper') {
+    const geo = new THREE.OctahedronGeometry(sizeEff * (0.9 + 0.2 * (p.shapeMorph ?? 0)), Math.max(0, Math.round((p.shapeMorph ?? 0) * 2)))
+    mesh = new THREE.Mesh(geo, mat)
+    mesh.scale.y *= THREE.MathUtils.clamp(p.elongation, 0.5, 2)
+  } else if (p.style === 'ring') {
+    const inner = Math.max(0.01, p.ringInnerRadius ?? (sizeEff * 0.4))
+    const tube = Math.max(0.004, sizeEff * 0.12)
+    const geo = new THREE.TorusGeometry(inner + tube, tube, 12, Math.max(12, Math.round(facets)))
+    mesh = new THREE.Mesh(geo, mat)
+    mesh.rotation.x = Math.PI / 2
+  } else if (p.style === 'crown') {
+    const spikes = Math.max(5, Math.round(p.crownSpikes ?? 8))
+    const sharp = THREE.MathUtils.clamp(p.crownSharpness ?? 0.6, 0, 1)
+    const height = sizeEff * (0.18 + 0.3 * sharp)
+    const geo = new THREE.ConeGeometry(sizeEff * (0.9 + 0.2 * (p.shapeMorph ?? 0)), height, spikes, 1, false)
+    mesh = new THREE.Mesh(geo, mat)
+    mesh.rotation.z = Math.PI
+  } else {
+    const geo = new THREE.SphereGeometry(sizeEff, facets, Math.max(8, Math.round(facets/2)))
+    mesh = new THREE.Mesh(geo, mat)
+    const s = 1.0 + (p.shapeMorph - 0.5) * 0.6
+    mesh.scale.set(1.0 * s, 1.0, 1.0 * s)
+  }
+  if (p.style !== 'disk' && p.style !== 'wheel' && p.style !== 'ring' && p.style !== 'crown' && p.style !== 'scentStopper') {
+    mesh.scale.y *= THREE.MathUtils.clamp(p.elongation, 0.5, 2)
+  }
+  // Place just below handle bottom
+  let y = -1.0
+  if (ctx.handleMesh) {
+    ctx.handleMesh.updateMatrixWorld()
+    const box = new THREE.Box3().setFromObject(ctx.handleMesh)
+    if (isFinite(box.min.y)) y = box.min.y
+  }
+  mesh.position.y = y - sizeEff * 0.3 * p.elongation + (p.offsetY ?? 0)
+  mesh.position.x = (p.offsetX ?? 0)
+  mesh.castShadow = true
+  return mesh
+}
+

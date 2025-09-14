@@ -1,4 +1,14 @@
 import * as THREE from 'three';
+/**
+ * Scene bootstrapper for the sword demo.
+ *
+ * Creates a Three.js renderer, scene, camera, post-processing pipeline, lights,
+ * a soft ground plane, and instantiates a SwordGenerator with sensible defaults.
+ * Also wires a rich set of render hooks for UI control of materials, FX and
+ * environment without coupling UI code to internals.
+ *
+ * This module is intentionally UI-agnostic; callers provide a canvas element.
+ */
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { SwordGenerator, defaultSwordParams } from './SwordGenerator';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -11,6 +21,11 @@ import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 
+/**
+ * Initialize the renderer/scene for a given canvas and return handles to core
+ * objects plus helpers: `renderer, scene, camera, controls, composer, dispose,
+ * updateFXAA, renderHooks, preFX`.
+ */
 export function setupScene(canvas: HTMLCanvasElement) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   const bgBase = new THREE.Color(0x0f1115);
@@ -143,6 +158,9 @@ export function setupScene(canvas: HTMLCanvasElement) {
     mesh.scale.setScalar(scale);
     sword.bladeMesh.add(mesh);
     flameMesh = mesh;
+    // Align layers for bloom/heat to the aura, not the blade, if effects are enabled
+    if (selectiveBloomEnabled) flameMesh.layers.enable(BLOOM_LAYER);
+    if (heatHazeEnabled) flameMesh.layers.enable(HEAT_LAYER);
   }
   let sparks: THREE.Points | null = null, sparksPos: Float32Array | null = null, sparksVel: Float32Array | null = null, sparksLife: Float32Array | null = null, sparksGeom: THREE.BufferGeometry | null = null;
   function setEmbers(enabled: boolean, {count=120, size=3, color=0xffaa55}={}){
@@ -279,18 +297,26 @@ export function setupScene(canvas: HTMLCanvasElement) {
       const changed = (!bm) ? false : ((bm.uuid !== (tick as any)._lastBladeUUID) || (geomId !== (tick as any)._lastGeomId));
       if (changed && bm) {
         (tick as any)._lastBladeUUID = bm.uuid; (tick as any)._lastGeomId = geomId;
+        const resynced: string[] = [];
         // Rebuild mist if enabled
         if (mistState.enabled) {
           const count = Math.max(10, Math.floor(400 * mistState.density));
           rebuildMist(count);
+          resynced.push('mist');
         }
         // Rebuild flame aura if enabled
-        if (flameState.enabled) setFlameAura(true, flameState.opts);
+        if (flameState.enabled) { setFlameAura(true, flameState.opts); resynced.push('aura'); }
+        // Rebuild inner glow/fresnel if enabled
+        if (innerGlowState.enabled) { renderHooks.setInnerGlow(true, innerGlowState.color, innerGlowState.iMin, innerGlowState.iMax, innerGlowState.speed); resynced.push('innerGlow'); }
+        const fres: any = (renderHooks as any)._fresnelState;
+        if (fres?.enabled) { renderHooks.setFresnel(true, fres.color, fres.intensity, fres.power); resynced.push('fresnel'); }
         // Ensure layers for bloom/heat on the new blade
         if (selectiveBloomEnabled) bm.layers.enable(BLOOM_LAYER);
         if (heatHazeEnabled) bm.layers.enable(HEAT_LAYER);
         // Rebuild blade gradient overlay if active
         try { (scene as any).__rebuildBladeGradient?.(); } catch {}
+        // Broadcast sync event for UI indicator
+        try { window.dispatchEvent(new CustomEvent('swordmaker:fx-synced', { detail: { parts: resynced } } as any)); } catch {}
       }
     }
 
@@ -492,7 +518,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
   // Inner Glow (pulsing fresnel-like overlay)
   let innerGlowGroup: THREE.Group | null = null;
   let innerGlowMat: THREE.ShaderMaterial | null = null;
-  const innerGlowState = { enabled: false, time: 0.0, speed: 1.5 };
+  const innerGlowState = { enabled: false, time: 0.0, speed: 1.5, color: 0x88ccff, iMin: 0.2, iMax: 0.9 };
   const InnerGlowShader = {
     uniforms: { color: { value: new THREE.Color(0x88ccff) }, iMin: { value: 0.2 }, iMax: { value: 0.9 }, time: { value: 0.0 }, speed: { value: 1.5 } },
     vertexShader: `
@@ -807,6 +833,12 @@ export function setupScene(canvas: HTMLCanvasElement) {
       if (threshold !== undefined) selBloomPass.threshold = threshold as any;
       if (radius !== undefined) selBloomPass.radius = radius;
       if (intensity !== undefined) (bloomCompositePass.uniforms as any).intensity.value = intensity;
+      // Mark aura for bloom if present, otherwise mark blade
+      const target = flameMesh ?? sword.bladeMesh;
+      if (target) {
+        if (enabled) target.layers.enable(BLOOM_LAYER);
+        else target.layers.disable(BLOOM_LAYER);
+      }
     },
     markForBloom: (obj: THREE.Object3D, enable = true) => {
       obj.traverse(o => enable ? o.layers.enable(BLOOM_LAYER) : o.layers.disable(BLOOM_LAYER));
@@ -814,6 +846,10 @@ export function setupScene(canvas: HTMLCanvasElement) {
     setHeatHaze: (enabled: boolean, distortion?: number) => {
       heatHazeEnabled = enabled; heatHazePass.enabled = enabled;
       if (distortion !== undefined) (heatHazePass.uniforms as any).distortion.value = distortion;
+      const target = flameMesh ?? sword.bladeMesh;
+      if (target) {
+        if (enabled) target.layers.enable(HEAT_LAYER); else target.layers.disable(HEAT_LAYER);
+      }
     },
     markForHeat: (obj: THREE.Object3D, enable = true) => {
       obj.traverse(o => enable ? o.layers.enable(HEAT_LAYER) : o.layers.disable(HEAT_LAYER));
@@ -875,8 +911,11 @@ export function setupScene(canvas: HTMLCanvasElement) {
     setInnerGlow: (enabled: boolean, colorHex?: number, iMin?: number, iMax?: number, speed?: number) => {
       if (innerGlowGroup) { scene.remove(innerGlowGroup); innerGlowGroup = null; innerGlowMat = null; }
       innerGlowState.enabled = enabled; innerGlowState.time = 0; innerGlowState.speed = speed ?? innerGlowState.speed;
+      if (colorHex !== undefined) innerGlowState.color = colorHex;
+      if (iMin !== undefined) innerGlowState.iMin = iMin;
+      if (iMax !== undefined) innerGlowState.iMax = iMax;
       if (enabled) {
-        innerGlowGroup = buildInnerGlow(colorHex ?? 0x88ccff, iMin ?? 0.2, iMax ?? 0.9, innerGlowState.speed);
+        innerGlowGroup = buildInnerGlow(innerGlowState.color, innerGlowState.iMin, innerGlowState.iMax, innerGlowState.speed);
         if (innerGlowGroup) sword.group.add(innerGlowGroup);
       }
     },
@@ -1061,6 +1100,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
     })(),
     setFresnel: (enabled: boolean, colorHex?: number, intensity?: number, power?: number) => {
       if (fresnelGroup) { (fresnelGroup.parent as any)?.remove(fresnelGroup); fresnelGroup = null; }
+      (renderHooks as any)._fresnelState = { enabled, color: colorHex ?? 0xffffff, intensity: intensity ?? 0.6, power: power ?? 2.0 };
       if (enabled) {
         fresnelGroup = buildFresnel(colorHex ?? 0xffffff, intensity ?? 0.6, power ?? 2.0);
         if (fresnelGroup) sword.group.add(fresnelGroup);

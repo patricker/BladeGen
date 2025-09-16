@@ -222,6 +222,10 @@ export type SwordParams = {
   guard: GuardParams;
   handle: HandleParams;
   pommel: PommelParams;
+  /** When false, omit guard, handle and pommel (blade-only). */
+  hiltEnabled?: boolean;
+  /** When false, omit only the guard while keeping handle/pommel. */
+  guardEnabled?: boolean;
   /** Optional ratio-based sizing helpers. */
   useRatios?: boolean;
   ratios?: { guardWidthToBlade?: number; handleLengthToBlade?: number; pommelSizeToBlade?: number };

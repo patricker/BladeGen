@@ -174,6 +174,7 @@ export function buildMist(
     depthTest: true,
     premultipliedAlpha: true
   })
+  ;(mat as any).depthTest = ((state as any).occlude !== undefined) ? !!(state as any).occlude : true
   ;(mat.uniforms as any).uColor.value = new THREE.Color(state.color)
   ;(mat.uniforms as any).uSizeMax.value = state.size
   ;(mat.uniforms as any).uSizeMin.value = Math.max(0.0, state.size * state.sizeMinRatio)

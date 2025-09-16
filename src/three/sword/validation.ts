@@ -138,6 +138,8 @@ export function validateSwordParams(params: SwordParams): SwordParams {
     guard,
     handle,
     pommel,
+    hiltEnabled: (params as any).hiltEnabled === undefined ? true : !!(params as any).hiltEnabled,
+    guardEnabled: (params as any).guardEnabled === undefined ? true : !!(params as any).guardEnabled,
     useRatios: !!params.useRatios,
     ratios: params.ratios ? {
       guardWidthToBlade: typeof params.ratios.guardWidthToBlade === 'number' ? clamp(params.ratios.guardWidthToBlade, 0.01, 10) : undefined,

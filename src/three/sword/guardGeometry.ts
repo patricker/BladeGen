@@ -169,10 +169,12 @@ export function buildGuard(
     const depth = g.thickness
     const geoR = new THREE.ExtrudeGeometry(half, { depth, bevelEnabled: false, steps: 1, curveSegments: Math.max(3, Math.min(64, Math.round(g.curveSegments ?? 12))) })
     const meshR = new THREE.Mesh(geoR, gmat3)
+    // Center both halves across Z so they overlap into a single thickness
     meshR.position.set(0, 0, -depth / 2)
     const meshL = meshR.clone()
     meshL.scale.x = -1
-    meshL.position.set(0, 0, +depth / 2)
+    // Keep the same Z centering for the mirrored half
+    meshL.position.set(0, 0, -depth / 2)
     const group = new THREE.Group()
     group.add(meshR, meshL)
     const hb = new THREE.Box3().setFromObject(group)
@@ -187,4 +189,3 @@ export function buildGuard(
     return { guardGroup: group }
   }
 }
-

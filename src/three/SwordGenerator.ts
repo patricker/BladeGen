@@ -115,10 +115,28 @@ export class SwordGenerator {
 
     // Rebuild blade on any blade param change to avoid scaling artifacts
     this.rebuildBlade(p.blade);
-
-    this.rebuildGuard(p.guard);
-    this.rebuildHandle(p.handle);
-    this.rebuildPommel(p.pommel);
+    // Optionally build or remove hilt (guard, handle, pommel)
+    if (p.hiltEnabled === false) {
+      // Remove guard
+      if (this.guardMesh) { this.group.remove(this.guardMesh); disposeObject3D(this.guardMesh); this.guardMesh = null }
+      if (this.guardGroup) { this.group.remove(this.guardGroup); disposeObject3D(this.guardGroup); this.guardGroup = null }
+      // Remove handle
+      if (this.handleMesh) { this.group.remove(this.handleMesh); disposeObject3D(this.handleMesh); this.handleMesh = null }
+      if (this.handleGroup) { this.group.remove(this.handleGroup); disposeObject3D(this.handleGroup); this.handleGroup = null }
+      // Remove pommel
+      if (this.pommelMesh) { this.group.remove(this.pommelMesh); disposeObject3D(this.pommelMesh); this.pommelMesh = null }
+    } else {
+      // Guard: optional independent toggle
+      if (p.guardEnabled === false) {
+        if (this.guardMesh) { this.group.remove(this.guardMesh); disposeObject3D(this.guardMesh); this.guardMesh = null }
+        if (this.guardGroup) { this.group.remove(this.guardGroup); disposeObject3D(this.guardGroup); this.guardGroup = null }
+      } else {
+        this.rebuildGuard(p.guard);
+      }
+      // Ensure order: handle before pommel for placement dependence
+      this.rebuildHandle(p.handle);
+      this.rebuildPommel(p.pommel);
+    }
     this.derived = computeBladeDynamics(p.blade);
   }
 

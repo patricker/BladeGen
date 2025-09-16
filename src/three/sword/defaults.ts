@@ -28,6 +28,10 @@ export function defaultSwordParams(): SwordParams {
       tipShape: 'pointed',
       tipBulge: 0.2
     },
+    // Hilt (guard/handle/pommel) enabled by default
+    hiltEnabled: true,
+    // Guard enabled by default; allow disabling guard only
+    guardEnabled: true,
     guard: {
       width: 1.2,
       thickness: 0.2,

@@ -6,6 +6,7 @@ import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 type Category = 'Blade' | 'Engravings' | 'Guard' | 'Handle' | 'Pommel' | 'Other' | 'Render';
 
 type RenderHooks = {
+  setBladeVisible?: (visible: boolean, occlude?: boolean) => void;
   setExposure: (v: number) => void;
   setAmbient: (v: number) => void;
   setKeyIntensity: (v: number) => void;
@@ -324,6 +325,17 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(rAtmos, 'Fog Density', 0, 0.1, 0.001, 0.03, (v) => { (render as any).setFog?.(undefined, v); }, () => {}, 'FogExp2 density (0 disables).');
     // Fresnel edge accent
     checkbox(rAtmos, 'Fresnel', false, (v) => { (render as any).setFresnel?.(v, 0xffffff, 0.6, 2.0); }, () => {}, 'Additive edge accent based on view angle.');
+    // Blade visibility controls (for "fire sword" / "sword of light")
+    let invisibleBlade = false;
+    let occludeInvisible = false;
+    checkbox(rAtmos, 'Blade Invisible', false, (v) => {
+      invisibleBlade = v;
+      render.setBladeVisible?.(!invisibleBlade, occludeInvisible);
+    }, () => {}, 'Hide blade surface but keep effects like aura, glow, mist.');
+    checkbox(rAtmos, 'Occlude When Invisible', false, (v) => {
+      occludeInvisible = v;
+      render.setBladeVisible?.(!invisibleBlade, occludeInvisible);
+    }, () => {}, 'When enabled, hidden blade still writes depth (occludes).');
     slider(rAtmos, 'Fresnel Intensity', 0, 2.0, 0.01, 0.6, (v) => { (render as any).setFresnel?.(true, undefined, v, undefined); }, () => {}, 'Fresnel intensity.');
     slider(rAtmos, 'Fresnel Power', 0.5, 6.0, 0.1, 2.0, (v) => { (render as any).setFresnel?.(true, undefined, undefined, v); }, () => {}, 'Fresnel power exponent.');
     colorPicker(rAtmos, 'Fresnel Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); (render as any).setFresnel?.(true, n, undefined, undefined); }, () => {}, 'Fresnel color.');
@@ -353,9 +365,9 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
 
     // FX: Flame Aura & Selective Bloom & Heat Haze & Embers
     let flameEnabled = false;
-    const flame = { scale: 1.05, color1: '#ff5a00', color2: '#fff18a', noiseScale: 2.2, speed: 1.6, intensity: 1.0 };
+    const flame = { scale: 1.05, color1: '#ff5a00', color2: '#fff18a', noiseScale: 2.2, speed: 1.6, intensity: 1.0, direction: 'Up' } as { scale: number; color1: string; color2: string; noiseScale: number; speed: number; intensity: number; direction: 'Up'|'Down' };
     const applyFlame = () => {
-      const opts = { scale: flame.scale, color1: parseInt(flame.color1.replace('#','0x')), color2: parseInt(flame.color2.replace('#','0x')), noiseScale: flame.noiseScale, speed: flame.speed, intensity: flame.intensity } as any;
+      const opts = { scale: flame.scale, color1: parseInt(flame.color1.replace('#','0x')), color2: parseInt(flame.color2.replace('#','0x')), noiseScale: flame.noiseScale, speed: flame.speed, intensity: flame.intensity, direction: (flame.direction === 'Down' ? 'down' : 'up') } as any;
       (render as any).setFlameAura?.(flameEnabled, opts);
     };
     checkbox(rFX, 'Flame Aura', false, (v) => { flameEnabled = v; applyFlame(); }, () => {}, 'Animated aura overlay around blade.');
@@ -365,6 +377,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(rFX, 'Flame Speed', 0.0, 8.0, 0.01, flame.speed, (v) => { flame.speed = v; applyFlame(); }, () => {}, 'Noise scroll speed.');
     slider(rFX, 'Flame NoiseScale', 0.2, 8.0, 0.01, flame.noiseScale, (v) => { flame.noiseScale = v; applyFlame(); }, () => {}, 'Spatial scale of flame noise.');
     slider(rFX, 'Flame Scale', 1.0, 1.2, 0.001, flame.scale, (v) => { flame.scale = v; applyFlame(); }, () => {}, 'Mesh scale factor for aura shell.');
+    select(rFX, 'Flame Direction', ['Up','Down'], flame.direction, (v) => { flame.direction = v as any; applyFlame(); }, () => {}, 'Flow direction along blade. Up = rise; Down = fall.');
     checkbox(rFX, 'Selective Bloom', false, (v) => { (render as any).setSelectiveBloom?.(v, 1.1, 0.8, 0.35, 1.0); }, () => {}, 'Use bloom only on marked objects.');
     checkbox(rFX, 'Heat Haze', false, (v) => { (render as any).setHeatHaze?.(v, 0.004); }, () => {}, 'Mask-based refractive shimmer.');
     let embersEnabled = false;

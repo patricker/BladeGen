@@ -8,11 +8,13 @@ export type FlameAuraOptions = {
   noiseScale?: number
   speed?: number
   intensity?: number
+  /** Direction of flame flow along Y: 'up' or 'down'. Defaults to 'up'. */
+  direction?: 'up'|'down'
 }
 
 /** Build a flame aura mesh cloned from the blade geometry with shader material. */
 export function buildFlameAura(bladeMesh: THREE.Mesh, opts: FlameAuraOptions = {}) {
-  const { scale=1.05, color1=0xff5a00, color2=0xffe87a, noiseScale=2.2, speed=1.5, intensity=1.0 } = opts
+  const { scale=1.05, color1=0xff5a00, color2=0xffe87a, noiseScale=2.2, speed=1.5, intensity=1.0, direction='up' } = opts
   const mat = new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.clone((FlameAuraShader as any).uniforms),
     vertexShader: (FlameAuraShader as any).vertexShader,
@@ -25,7 +27,10 @@ export function buildFlameAura(bladeMesh: THREE.Mesh, opts: FlameAuraOptions = {
   ;(mat.uniforms as any).color1.value = new THREE.Color(color1)
   ;(mat.uniforms as any).color2.value = new THREE.Color(color2)
   ;(mat.uniforms as any).noiseScale.value = noiseScale
-  ;(mat.uniforms as any).speed.value = speed
+  // Positive speed should correspond to visually rising flames ('up')
+  // If direction is 'down', invert to flow downward
+  const dirSign = (direction === 'down') ? 1.0 : -1.0
+  ;(mat.uniforms as any).speed.value = Math.abs(speed) * dirSign
   ;(mat.uniforms as any).intensity.value = intensity
   const geom = (bladeMesh.geometry as THREE.BufferGeometry).clone()
   const mesh = new THREE.Mesh(geom, mat)
@@ -34,4 +39,3 @@ export function buildFlameAura(bladeMesh: THREE.Mesh, opts: FlameAuraOptions = {
   mesh.scale.copy(bladeMesh.scale).multiplyScalar(scale)
   return { mesh, material: mat }
 }
-

@@ -23,5 +23,22 @@ describe('guardGeometry', () => {
     expect(swept.guardGroup || swept.guardMesh).toBeTruthy()
     expect(basket.guardGroup || basket.guardMesh).toBeTruthy()
   })
-})
 
+  it('mirrored guard halves overlap across Z (aligned thickness)', () => {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 0.02), mm())
+    blade.position.y = 0.6
+    const params: any = { style: 'winged', width: 0.6, thickness: 0.08, curve: 0.2, tipSharpness: 0.4 }
+    const built = buildGuard(params, { bladeMesh: blade, handleMesh: null as any, makeMaterial: ()=>mm() })
+    expect(built.guardGroup).toBeTruthy()
+    const group = built.guardGroup!
+    // Expect two child meshes (right + mirrored left)
+    const children = group.children.filter(c => (c as any).isMesh) as THREE.Mesh[]
+    expect(children.length).toBeGreaterThanOrEqual(2)
+    const a = new THREE.Box3().setFromObject(children[0])
+    const b = new THREE.Box3().setFromObject(children[1])
+    // Midpoints along Z should be nearly identical
+    const midA = (a.min.z + a.max.z) * 0.5
+    const midB = (b.min.z + b.max.z) * 0.5
+    expect(Math.abs(midA - midB)).toBeLessThan(1e-6)
+  })
+})

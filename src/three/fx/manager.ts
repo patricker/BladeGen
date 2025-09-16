@@ -80,6 +80,9 @@ export class FxManager {
       const prevMask = (this.camera as any).layers.mask
       const prevMat = this.scene.overrideMaterial
       const prevTarget = this.renderer.getRenderTarget()
+      const prevClear = new THREE.Color()
+      this.renderer.getClearColor(prevClear as any)
+      const prevClearAlpha = (this.renderer as any).getClearAlpha ? (this.renderer as any).getClearAlpha() : 1
       this.camera.layers.set(this.HEAT_LAYER)
       this.scene.overrideMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff })
       this.renderer.setRenderTarget(this.heatMaskRT)
@@ -89,6 +92,8 @@ export class FxManager {
       this.renderer.setRenderTarget(prevTarget)
       ;(this.camera as any).layers.mask = prevMask
       this.scene.overrideMaterial = prevMat
+      // Restore previous clear color/alpha so main render background is unchanged
+      this.renderer.setClearColor(prevClear as any, prevClearAlpha as any)
     }
   }
 

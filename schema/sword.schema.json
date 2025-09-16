@@ -976,6 +976,14 @@
           "$ref": "#/$defs/PommelParams",
           "description": "Pommel geometry parameters."
         },
+        "hiltEnabled": {
+          "type": "boolean",
+          "description": "When false, omit guard, handle and pommel to render a blade-only model."
+        },
+        "guardEnabled": {
+          "type": "boolean",
+          "description": "When false, omit only the guard while keeping handle and pommel."
+        },
         "useRatios": {
           "type": "boolean",
           "description": "When true, derive guard/handle/pommel sizes from blade length using ratios."

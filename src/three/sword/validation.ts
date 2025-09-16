@@ -49,7 +49,8 @@ export function validateSwordParams(params: SwordParams): SwordParams {
     hamonSide: (b.hamonSide ?? 'auto') as any,
     serrationPattern: (b.serrationPattern ?? 'sine') as any,
     serrationSeed: Math.round(clamp(b.serrationSeed ?? 1337, 0, 999999)),
-    twistAngle: clamp(b.twistAngle ?? 0, -Math.PI * 2, Math.PI * 2),
+    // Allow generous multi-turn twists (±12π ≈ ±2160°)
+    twistAngle: clamp(b.twistAngle ?? 0, -Math.PI * 12, Math.PI * 12),
     crossSection: (b.crossSection ?? 'flat') as any,
     bevel: clamp(b.bevel ?? 0.5, 0, 1),
     tipShape: (b.tipShape ?? 'pointed') as any,

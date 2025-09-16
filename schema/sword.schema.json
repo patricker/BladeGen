@@ -297,9 +297,9 @@
         },
         "twistAngle": {
           "type": "number",
-          "minimum": -6.283185307,
-          "maximum": 6.283185307,
-          "description": "Total twist around +Y (radians) from base to tip. Positive = right-handed twist."
+          "minimum": -37.699111843,
+          "maximum": 37.699111843,
+          "description": "Total twist around +Y (radians) from base to tip. Positive = right-handed twist. Generous range (±12π)."
         },
         "crossSection": {
           "type": "string",

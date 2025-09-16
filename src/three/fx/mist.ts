@@ -181,5 +181,8 @@ export function buildMist(
   ;(mat.uniforms as any).uAlphaScale.value = state.alphaScale
   ;(mat.uniforms as any).uNoiseTex.value = makeMistNoiseTexture(128)
   const points = new THREE.Points(geom, mat)
+  // Avoid any chance of frustum culling hiding the mist when bounding info is stale
+  try { geom.computeBoundingSphere() } catch {}
+  ;(points as any).frustumCulled = false
   return { points, geom, material: mat, arrays: { life, vel }, spawn }
 }

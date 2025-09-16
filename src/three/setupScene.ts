@@ -444,6 +444,10 @@ export function setupScene(canvas: HTMLCanvasElement) {
       (materials as any)[part] = { ...(materials as any)[part], ...(patch||{}) };
       (scene as any).__materials = materials;
       sword.setMaterials(materials);
+      // Preserve blade invisibility if materials were refreshed
+      if (part === 'blade' && !bladeVisibility.visible) {
+        applyBladeVisibility(false, bladeVisibility.occlude);
+      }
     },
     // Blade visibility without hiding child FX (aura, mist, overlays)
     setBladeVisible: (visible: boolean, occlude?: boolean) => {

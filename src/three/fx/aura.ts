@@ -10,16 +10,18 @@ export type FlameAuraOptions = {
   intensity?: number
   /** Direction of flame flow along Y: 'up' or 'down'. Defaults to 'up'. */
   direction?: 'up'|'down'
+  /** Blending mode: 'add' (brighten), 'normal' (allows darkening e.g. black flames), or 'multiply'. Default 'add'. */
+  blend?: 'add'|'normal'|'multiply'
 }
 
 /** Build a flame aura mesh cloned from the blade geometry with shader material. */
 export function buildFlameAura(bladeMesh: THREE.Mesh, opts: FlameAuraOptions = {}) {
-  const { scale=1.05, color1=0xff5a00, color2=0xffe87a, noiseScale=2.2, speed=1.5, intensity=1.0, direction='up' } = opts
+  const { scale=1.05, color1=0xff5a00, color2=0xffe87a, noiseScale=2.2, speed=1.5, intensity=1.0, direction='up', blend='add' } = opts
   const mat = new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.clone((FlameAuraShader as any).uniforms),
     vertexShader: (FlameAuraShader as any).vertexShader,
     fragmentShader: (FlameAuraShader as any).fragmentShader,
-    blending: THREE.AdditiveBlending,
+    blending: blend === 'normal' ? THREE.NormalBlending : (blend === 'multiply' ? THREE.MultiplyBlending : THREE.AdditiveBlending),
     transparent: true,
     depthWrite: false,
     side: THREE.DoubleSide

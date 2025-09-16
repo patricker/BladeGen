@@ -361,13 +361,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(rFX, 'Wind Z', -0.5, 0.5, 0.01, 0.0, (v) => { (render as any).setBladeMistAdvanced?.({ windZ: v }); }, () => {}, 'Constant push along Z.');
     select(rFX, 'Emit Region', ['base','edge','tip','full'], 'base', (v) => { (render as any).setBladeMistAdvanced?.({ emission: v as any }); }, () => {}, 'Where to spawn mist.');
     slider(rFX, 'Size Min Ratio', 0.0, 1.0, 0.01, 0.5, (v) => { (render as any).setBladeMistAdvanced?.({ sizeMinRatio: v }); }, () => {}, 'Min size as ratio of mist size.');
-    checkbox(rFX, 'Occlude by Blade', true, (v) => { (render as any).setBladeMistAdvanced?.({ occlude: v }); }, () => {}, 'When on, mist hides behind geometry.');
+    checkbox(rFX, 'Occlude by Blade', false, (v) => { (render as any).setBladeMistAdvanced?.({ occlude: v }); }, () => {}, 'When on, mist hides behind geometry.');
 
     // FX: Flame Aura & Selective Bloom & Heat Haze & Embers
     let flameEnabled = false;
-    const flame = { scale: 1.05, color1: '#ff5a00', color2: '#fff18a', noiseScale: 2.2, speed: 1.6, intensity: 1.0, direction: 'Up' } as { scale: number; color1: string; color2: string; noiseScale: number; speed: number; intensity: number; direction: 'Up'|'Down' };
+    const flame = { scale: 1.05, color1: '#ff5a00', color2: '#fff18a', noiseScale: 2.2, speed: 1.6, intensity: 1.0, direction: 'Up', blend: 'Add' } as { scale: number; color1: string; color2: string; noiseScale: number; speed: number; intensity: number; direction: 'Up'|'Down'; blend: 'Add'|'Darken'|'Multiply' };
     const applyFlame = () => {
-      const opts = { scale: flame.scale, color1: parseInt(flame.color1.replace('#','0x')), color2: parseInt(flame.color2.replace('#','0x')), noiseScale: flame.noiseScale, speed: flame.speed, intensity: flame.intensity, direction: (flame.direction === 'Down' ? 'down' : 'up') } as any;
+      const blendMap: Record<string,string> = { 'Add': 'add', 'Darken': 'normal', 'Multiply': 'multiply' };
+      const opts = { scale: flame.scale, color1: parseInt(flame.color1.replace('#','0x')), color2: parseInt(flame.color2.replace('#','0x')), noiseScale: flame.noiseScale, speed: flame.speed, intensity: flame.intensity, direction: (flame.direction === 'Down' ? 'down' : 'up'), blend: blendMap[flame.blend] } as any;
       (render as any).setFlameAura?.(flameEnabled, opts);
     };
     checkbox(rFX, 'Flame Aura', false, (v) => { flameEnabled = v; applyFlame(); }, () => {}, 'Animated aura overlay around blade.');
@@ -378,6 +379,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(rFX, 'Flame NoiseScale', 0.2, 8.0, 0.01, flame.noiseScale, (v) => { flame.noiseScale = v; applyFlame(); }, () => {}, 'Spatial scale of flame noise.');
     slider(rFX, 'Flame Scale', 1.0, 1.2, 0.001, flame.scale, (v) => { flame.scale = v; applyFlame(); }, () => {}, 'Mesh scale factor for aura shell.');
     select(rFX, 'Flame Direction', ['Up','Down'], flame.direction, (v) => { flame.direction = v as any; applyFlame(); }, () => {}, 'Flow direction along blade. Up = rise; Down = fall.');
+    select(rFX, 'Flame Blend', ['Add','Darken','Multiply'], flame.blend, (v) => { flame.blend = v as any; applyFlame(); }, () => {}, 'Add: bright glow. Darken: normal blend (black flames visible). Multiply: strong darkening.');
     checkbox(rFX, 'Selective Bloom', false, (v) => { (render as any).setSelectiveBloom?.(v, 1.1, 0.8, 0.35, 1.0); }, () => {}, 'Use bloom only on marked objects.');
     checkbox(rFX, 'Heat Haze', false, (v) => { (render as any).setHeatHaze?.(v, 0.004); }, () => {}, 'Mask-based refractive shimmer.');
     let embersEnabled = false;

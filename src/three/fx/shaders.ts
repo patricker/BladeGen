@@ -47,7 +47,7 @@ export const MistShader = {
     uNoiseTex: { value: null }
   },
   vertexShader: `
-    attribute float aLife; varying float vLife; void main(){ vLife = aLife; vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv; gl_PointSize = mix(uSizeMin, uSizeMax, (300.0 / max(1.0, -mv.z))); }
+    attribute float aLife; varying float vLife; void main(){ vLife = aLife; vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv; float att = clamp(12.0 / max(1.0, -mv.z), 0.0, 1.0); gl_PointSize = mix(uSizeMin, uSizeMax, att); }
   `,
   fragmentShader: `
     uniform vec3 uColor; uniform float uAlphaScale; uniform sampler2D uNoiseTex; varying float vLife; void main(){ vec2 uv = gl_PointCoord - vec2(0.5); float r = length(uv); float soft = exp(-6.0 * r * r); vec2 v2 = vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y); float noise = texture2D(uNoiseTex, v2 * 0.5).r * 0.6 + 0.4; float a = soft * (1.0 - smoothstep(0.7, 1.0, vLife)) * uAlphaScale * noise; gl_FragColor = vec4(uColor, a); }

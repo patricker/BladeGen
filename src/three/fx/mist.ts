@@ -172,7 +172,7 @@ export function buildMist(
     transparent: true,
     depthWrite: false,
     depthTest: true,
-    premultipliedAlpha: true
+    premultipliedAlpha: false
   })
   ;(mat as any).depthTest = ((state as any).occlude !== undefined) ? !!(state as any).occlude : true
   ;(mat.uniforms as any).uColor.value = new THREE.Color(state.color)

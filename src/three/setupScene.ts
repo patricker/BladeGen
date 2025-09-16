@@ -182,12 +182,12 @@ export function setupScene(canvas: HTMLCanvasElement) {
   const bbox = new THREE.Box3();
   // Flame aura & embers state
   let flameMesh: THREE.Mesh | null = null;
-  const flameState = { enabled: false, opts: { scale: 1.05, color1: 0xff5a00, color2: 0xfff18a, noiseScale: 2.2, speed: 1.6, intensity: 1.0, direction: 'up' as 'up'|'down' } };
-  function setFlameAura(enabled: boolean, { scale=1.05, color1=0xff5a00, color2=0xfff18a, noiseScale=2.2, speed=1.6, intensity=1.0, direction='up' as 'up'|'down' }={}){
-    flameState.enabled = enabled; flameState.opts = { scale, color1, color2, noiseScale, speed, intensity, direction };
+  const flameState = { enabled: false, opts: { scale: 1.05, color1: 0xff5a00, color2: 0xfff18a, noiseScale: 2.2, speed: 1.6, intensity: 1.0, direction: 'up' as 'up'|'down', blend: 'add' as 'add'|'normal'|'multiply' } };
+  function setFlameAura(enabled: boolean, { scale=1.05, color1=0xff5a00, color2=0xfff18a, noiseScale=2.2, speed=1.6, intensity=1.0, direction='up' as 'up'|'down', blend='add' as 'add'|'normal'|'multiply' }={}){
+    flameState.enabled = enabled; flameState.opts = { scale, color1, color2, noiseScale, speed, intensity, direction, blend };
     if (flameMesh) { (flameMesh.parent as any)?.remove(flameMesh); (flameMesh.material as any).dispose?.(); (flameMesh.geometry as any).dispose?.(); flameMesh = null; }
     if (!enabled || !sword.bladeMesh) return;
-    const built = buildFlameAura(sword.bladeMesh, { scale, color1, color2, noiseScale, speed, intensity, direction })
+    const built = buildFlameAura(sword.bladeMesh, { scale, color1, color2, noiseScale, speed, intensity, direction, blend })
     sword.bladeMesh.add(built.mesh);
     flameMesh = built.mesh;
     if (selectiveBloomEnabled) flameMesh.layers.enable(BLOOM_LAYER);
@@ -381,7 +381,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
     windX: 0.0,
     windZ: 0.0,
     emission: 'base' as 'base'|'edge'|'tip'|'full',
-    occlude: true,
+    occlude: false,
   };
   const mistSpawn = { xMin: 0, xMax: 0, yMin: 0, yMax: 0, baseTop: 0, tipBottom: 0, halfT: 0 };
   const rebuildMist = (count: number) => {
@@ -499,7 +499,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
       }
     },
     markForHeat: (obj: THREE.Object3D, enable = true) => { fx.markForHeat(obj, enable); },
-    setFlameAura: (enabled: boolean, opts?: { scale?: number; color1?: number; color2?: number; noiseScale?: number; speed?: number; intensity?: number; direction?: 'up'|'down' }) => {
+    setFlameAura: (enabled: boolean, opts?: { scale?: number; color1?: number; color2?: number; noiseScale?: number; speed?: number; intensity?: number; direction?: 'up'|'down'; blend?: 'add'|'normal'|'multiply' }) => {
       setFlameAura(enabled, opts || {});
     },
     setEmbers: (enabled: boolean, opts?: { count?: number; size?: number; color?: number }) => {

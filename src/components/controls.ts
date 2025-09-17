@@ -42,7 +42,139 @@ type RenderHooks = {
   setPartClearcoatRoughness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
 };
 
+type ControlType = 'slider' | 'select' | 'checkbox' | 'color' | 'text';
+
+type ControlHandle = {
+  field: string;
+  row: HTMLElement;
+  section: string;
+  label: string;
+  type: ControlType;
+  setValue: (value: unknown) => void;
+};
+
+export class ControlRegistry {
+  private controls = new Map<string, ControlHandle>();
+  private bySectionLabel = new Map<string, ControlHandle>();
+
+  registerControl(parent: HTMLElement, row: HTMLElement, label: string, type: ControlType, setValue: (value: unknown) => void, fieldOverride?: string) {
+    const section = this.resolveSectionSlug(parent);
+    const labelSlug = slugify(label);
+    const field = fieldOverride || `${section}.${labelSlug}`;
+    row.dataset.field = field;
+    const handle: ControlHandle = { field, row, section, label: labelSlug, type, setValue };
+    this.controls.set(field, handle);
+    this.bySectionLabel.set(`${section}:${labelSlug}`, handle);
+    return field;
+  }
+
+  setValueByField(field: string, value: unknown) {
+    const handle = this.controls.get(field);
+    if (!handle) return;
+    handle.setValue(value);
+  }
+
+  setValue(section: string, label: string, value: unknown) {
+    const handle = this.bySectionLabel.get(`${section}:${slugify(label)}`);
+    if (!handle) return;
+    handle.setValue(value);
+  }
+
+  setWarningByField(field: string, on: boolean, tooltip?: string) {
+    const handle = this.controls.get(field);
+    if (!handle) return;
+    this.applyWarning(handle, on, tooltip);
+  }
+
+  setWarning(section: string, label: string, on: boolean, tooltip?: string) {
+    const handle = this.bySectionLabel.get(`${section}:${slugify(label)}`);
+    if (!handle) return;
+    this.applyWarning(handle, on, tooltip);
+  }
+
+  clearWarnings() {
+    for (const handle of this.controls.values()) {
+      this.applyWarning(handle, false);
+    }
+  }
+
+  getField(section: string, label: string) {
+    const handle = this.bySectionLabel.get(`${section}:${slugify(label)}`);
+    return handle?.field;
+  }
+
+  private applyWarning(handle: ControlHandle, on: boolean, tooltip?: string) {
+    const lab = handle.row.querySelector('label') as HTMLElement | null;
+    if (!lab) return;
+    if (!lab.dataset.warnOriginalTitle) {
+      lab.dataset.warnOriginalTitle = lab.title || '';
+    }
+    if (on) {
+      lab.style.color = '#eab308';
+      if (tooltip) {
+        lab.title = tooltip;
+      } else {
+        lab.title = lab.dataset.warnOriginalTitle || '';
+      }
+      let icon = handle.row.querySelector('.warn-icon') as HTMLElement | null;
+      if (!icon) {
+        icon = document.createElement('span');
+        icon.className = 'warn-icon';
+        icon.textContent = '⚠';
+        icon.title = tooltip || 'Extreme value';
+        icon.style.marginLeft = '4px';
+        icon.style.color = '#eab308';
+        icon.style.fontSize = '12px';
+        lab.insertAdjacentElement('beforeend', icon);
+      } else {
+        icon.title = tooltip || icon.title || 'Extreme value';
+      }
+    } else {
+      lab.style.color = '';
+      lab.title = lab.dataset.warnOriginalTitle || '';
+      const existing = handle.row.querySelector('.warn-icon');
+      existing?.remove();
+    }
+  }
+
+  private resolveSectionSlug(elem: HTMLElement) {
+    const namespace = this.findNamespace(elem);
+    return namespace || 'root';
+  }
+
+  private findNamespace(elem: HTMLElement | null): string | undefined {
+    let current: HTMLElement | null = elem;
+    while (current) {
+      if (current.dataset && current.dataset.fieldNamespace) {
+        return current.dataset.fieldNamespace;
+      }
+      current = current.parentElement;
+    }
+    return undefined;
+  }
+}
+
+let activeRegistry: ControlRegistry | null = null;
+
+function getActiveRegistry() {
+  if (!activeRegistry) {
+    throw new Error('Control registry not initialised');
+  }
+  return activeRegistry;
+}
+
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '') || 'field';
+}
+
 export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: SwordParams, render?: RenderHooks) {
+  const registry = new ControlRegistry();
+  const previousRegistry = activeRegistry;
+  activeRegistry = registry;
   const state: SwordParams = JSON.parse(JSON.stringify(params));
   const rstate = {
     exposure: 1.0,
@@ -60,6 +192,73 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     bloomStrength: 0.6,
     bloomThreshold: 0.85,
     bloomRadius: 0.2,
+    envIntensity: 1.0,
+    aaMode: 'fxaa' as 'none'|'fxaa'|'smaa',
+    shadowMapSize: 2048 as 1024|2048|4096,
+    qualityPreset: 'Medium' as 'Low'|'Medium'|'High',
+    toneMapping: 'ACES' as 'ACES'|'Reinhard'|'Cineon'|'Linear'|'None'
+  };
+  const postState = {
+    outlineEnabled: false,
+    outlineStrength: 2.5,
+    outlineThickness: 1.0,
+    outlineColor: '#ffffff',
+    inkEnabled: false,
+    inkThickness: 0.02,
+    inkColor: '#000000',
+    vignetteEnabled: false,
+    vignetteStrength: 0.25,
+    vignetteSoftness: 0.5,
+    bladeGradientEnabled: false,
+    gradBase: '#b9c6ff',
+    gradEdge: '#ffffff',
+    gradFade: 0.2,
+    gradWear: 0.2
+  };
+  const atmosState = {
+    envUrl: '',
+    envPreset: 'None' as 'None' | 'Room' | 'Royal Esplanade' | 'Venice Sunset',
+    envAsBackground: false,
+    fogColor: '#ffffff',
+    fogDensity: 0.03,
+    fresnelEnabled: false,
+    fresnelColor: '#ffffff',
+    fresnelIntensity: 0.6,
+    fresnelPower: 2.0,
+    bladeInvisible: false,
+    occludeInvisible: false,
+  };
+  const fxState = {
+    innerGlow: { enabled: false, color: '#88ccff', min: 0.2, max: 0.9, speed: 1.5 },
+    mist: {
+      enabled: false,
+      color: '#88aadd',
+      density: 0.4,
+      speed: 0.6,
+      spread: 0.08,
+      size: 6.0,
+      lifeRate: 0.25,
+      turbulence: 0.08,
+      windX: 0,
+      windZ: 0,
+      emission: 'base' as 'base' | 'edge' | 'tip' | 'full',
+      sizeMinRatio: 0.5,
+      occlude: false,
+    },
+    flame: {
+      enabled: false,
+      color1: '#ff5a00',
+      color2: '#fff18a',
+      intensity: 1.0,
+      speed: 1.6,
+      noiseScale: 2.2,
+      scale: 1.05,
+      direction: 'Up' as 'Up' | 'Down',
+      blend: 'Add' as 'Add' | 'Darken' | 'Multiply',
+    },
+    selectiveBloom: false,
+    heatHaze: false,
+    embers: { enabled: false, count: 120, size: 3, color: '#ffaa55' },
   };
   type Part = 'blade'|'guard'|'handle'|'pommel';
   type MatExt = {
@@ -79,6 +278,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       pommel: { color: '#9aa4b2', metalness: 0.75, roughness: 0.35, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337 }
     };
   const matDefaults: Record<Part, MatExt> = JSON.parse(JSON.stringify(matState));
+  let matPart: Part = 'blade';
   let raf = 0; let needs = false;
   const flush = () => { raf = 0; if (!needs) return; needs = false; sword.updateGeometry(state); updateWarnings(); updateDynamics(); };
   const refreshWarnings = () => { try { updateWarnings(); } catch {} };
@@ -99,6 +299,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
 
   const toolbar = document.createElement('div');
   toolbar.className = 'toolbar';
+  toolbar.dataset.fieldNamespace = 'toolbar';
   el.appendChild(toolbar);
 
   // Presets dropdown
@@ -108,6 +309,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     <option value="katana">Katana</option>
     <option value="claymore">Claymore</option>
     <option value="rapier">Rapier</option>
+    <option value="arming">Arming Sword</option>
     <option value="demon">Demon Blade</option>
   `;
   toolbar.appendChild(presetSel);
@@ -188,10 +390,10 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   showTab('Model');
 
   // Per-section shuffle buttons
-  addShuffleButton(sections.Blade, () => { randomizeBlade(state, true); rerender(); refreshInputs(el, state); });
-  addShuffleButton(sections.Guard, () => { randomizeGuard(state, true); rerender(); refreshInputs(el, state); });
-  addShuffleButton(sections.Handle, () => { randomizeHandle(state, true); rerender(); refreshInputs(el, state); });
-  addShuffleButton(sections.Pommel, () => { randomizePommel(state, true); rerender(); refreshInputs(el, state); });
+  addShuffleButton(sections.Blade, () => { randomizeBlade(state, true); rerender(); syncUi(); });
+  addShuffleButton(sections.Guard, () => { randomizeGuard(state, true); rerender(); syncUi(); });
+  addShuffleButton(sections.Handle, () => { randomizeHandle(state, true); rerender(); syncUi(); });
+  addShuffleButton(sections.Pommel, () => { randomizePommel(state, true); rerender(); syncUi(); });
 
   // Section highlight (mouseenter/leave)
   const highlight = (part: 'blade'|'guard'|'handle'|'pommel'|null) => {
@@ -235,16 +437,131 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     });
   } catch {}
 
-  // Track Render feature toggles for warnings
-  let outlineEnabled = false;
-  let inkEnabled = false;
-  let vignetteEnabled = false;
-  let bladeGradientEnabled = false;
-
   // Render controls (if hooks available)
   // Keep handles to Render subsections needed later
   let rMatSec: HTMLElement | null = null;
   let rGradSec: HTMLElement | null = null;
+  function syncMaterialInputs(currentPart?: Part) {
+    const partKey: Part = currentPart || matPart;
+    const m = matState[partKey];
+    registry.setValue('render-materials', 'Material Part', partKey);
+    registry.setValue('render-materials', 'Base Color', m.color);
+    registry.setValue('render-materials', 'Metalness', m.metalness);
+    registry.setValue('render-materials', 'Roughness', m.roughness);
+    registry.setValue('render-materials', 'Clearcoat', m.clearcoat);
+    registry.setValue('render-materials', 'Clearcoat Rough', m.clearcoatRoughness);
+    registry.setValue('render-materials', 'Mat Preset', m.preset || 'None');
+    registry.setValue('render-materials', 'Bump Enabled', m.bumpEnabled);
+    registry.setValue('render-materials', 'Bump Scale', m.bumpScale);
+    registry.setValue('render-materials', 'Noise Scale', m.bumpNoiseScale);
+    registry.setValue('render-materials', 'Noise Seed', m.bumpSeed);
+    registry.setValue('render-materials', 'Emissive Color', m.emissiveColor ?? '#000000');
+    registry.setValue('render-materials', 'Emissive Intensity', m.emissiveIntensity ?? 0);
+    registry.setValue('render-materials', 'Transmission', m.transmission ?? 0);
+    registry.setValue('render-materials', 'IOR', m.ior ?? 1.5);
+    registry.setValue('render-materials', 'Thickness', m.thickness ?? 0);
+    registry.setValue('render-materials', 'Atten Color', m.attenuationColor ?? '#ffffff');
+    registry.setValue('render-materials', 'Atten Dist', m.attenuationDistance ?? 1);
+    registry.setValue('render-materials', 'Sheen', m.sheen ?? 0);
+    registry.setValue('render-materials', 'Sheen Color', m.sheenColor ?? '#ffffff');
+    registry.setValue('render-materials', 'Iridescence', m.iridescence ?? 0);
+    registry.setValue('render-materials', 'Iridescence IOR', m.iridescenceIOR ?? 1.3);
+    registry.setValue('render-materials', 'Iridescence Min', m.iridescenceThicknessMin ?? 100);
+    registry.setValue('render-materials', 'Iridescence Max', m.iridescenceThicknessMax ?? 400);
+    registry.setValue('render-materials', 'EnvMap Intensity', m.envMapIntensity ?? 1);
+  }
+
+  const syncRenderControls = () => {
+    registry.setValue('render-quality-exposure', 'AA Mode', rstate.aaMode);
+    registry.setValue('render-quality-exposure', 'Quality', rstate.qualityPreset);
+    registry.setValue('render-quality-exposure', 'Shadow Map', String(rstate.shadowMapSize));
+    registry.setValue('render-quality-exposure', 'Tone Mapping', rstate.toneMapping);
+    registry.setValue('render-quality-exposure', 'Exposure', rstate.exposure);
+    registry.setValue('render-quality-exposure', 'Env Intensity', rstate.envIntensity);
+    registry.setValue('render-background', 'Background Color', rstate.bgColor);
+    registry.setValue('render-background', 'Background Bright', rstate.bgBrightness);
+    registry.setValue('render-lights', 'Ambient Intensity', rstate.ambient);
+    registry.setValue('render-lights', 'Key Intensity', rstate.keyIntensity);
+    registry.setValue('render-lights', 'Key Azimuth', rstate.keyAz);
+    registry.setValue('render-lights', 'Key Elevation', rstate.keyEl);
+    registry.setValue('render-lights', 'Rim Intensity', rstate.rimIntensity);
+    registry.setValue('render-lights', 'Rim Azimuth', rstate.rimAz);
+    registry.setValue('render-lights', 'Rim Elevation', rstate.rimEl);
+    registry.setValue('render-lights', 'Rim Color', rstate.rimColor);
+    registry.setValue('render-post', 'Bloom Enabled', rstate.bloomEnabled);
+    registry.setValue('render-post', 'Bloom Strength', rstate.bloomStrength);
+    registry.setValue('render-post', 'Bloom Threshold', rstate.bloomThreshold);
+    registry.setValue('render-post', 'Bloom Radius', rstate.bloomRadius);
+    registry.setValue('render-post', 'Outline Enabled', postState.outlineEnabled);
+    registry.setValue('render-post', 'Outline Strength', postState.outlineStrength);
+    registry.setValue('render-post', 'Outline Thickness', postState.outlineThickness);
+    registry.setValue('render-post', 'Outline Color', postState.outlineColor);
+    registry.setValue('render-post', 'Ink Outline', postState.inkEnabled);
+    registry.setValue('render-post', 'Ink Thickness', postState.inkThickness);
+    registry.setValue('render-post', 'Ink Color', postState.inkColor);
+    registry.setValue('render-post', 'Vignette', postState.vignetteEnabled);
+    registry.setValue('render-post', 'Vignette Strength', postState.vignetteStrength);
+    registry.setValue('render-post', 'Vignette Softness', postState.vignetteSoftness);
+    registry.setValue('render-blade-gradient', 'Blade Gradient', postState.bladeGradientEnabled);
+    registry.setValue('render-blade-gradient', 'Grad Base', postState.gradBase);
+    registry.setValue('render-blade-gradient', 'Grad Edge', postState.gradEdge);
+    registry.setValue('render-blade-gradient', 'Grad Edge Fade', postState.gradFade);
+    registry.setValue('render-blade-gradient', 'Wear Intensity', postState.gradWear);
+    registry.setValue('render-atmospherics', 'EnvMap URL', atmosState.envUrl);
+    registry.setValue('render-atmospherics', 'Env Preset', atmosState.envPreset);
+    registry.setValue('render-atmospherics', 'Env as Background', atmosState.envAsBackground);
+    registry.setValue('render-atmospherics', 'Fog Color', atmosState.fogColor);
+    registry.setValue('render-atmospherics', 'Fog Density', atmosState.fogDensity);
+    registry.setValue('render-atmospherics', 'Fresnel', atmosState.fresnelEnabled);
+    registry.setValue('render-atmospherics', 'Fresnel Intensity', atmosState.fresnelIntensity);
+    registry.setValue('render-atmospherics', 'Fresnel Power', atmosState.fresnelPower);
+    registry.setValue('render-atmospherics', 'Fresnel Color', atmosState.fresnelColor);
+    registry.setValue('render-atmospherics', 'Blade Invisible', atmosState.bladeInvisible);
+    registry.setValue('render-atmospherics', 'Occlude When Invisible', atmosState.occludeInvisible);
+    registry.setValue('render-fx', 'Inner Glow', fxState.innerGlow.enabled);
+    registry.setValue('render-fx', 'Glow Color', fxState.innerGlow.color);
+    registry.setValue('render-fx', 'Glow Min', fxState.innerGlow.min);
+    registry.setValue('render-fx', 'Glow Max', fxState.innerGlow.max);
+    registry.setValue('render-fx', 'Glow Speed', fxState.innerGlow.speed);
+    registry.setValue('render-fx', 'Blade Mist', fxState.mist.enabled);
+    registry.setValue('render-fx', 'Mist Color', fxState.mist.color);
+    registry.setValue('render-fx', 'Mist Density', fxState.mist.density);
+    registry.setValue('render-fx', 'Mist Speed', fxState.mist.speed);
+    registry.setValue('render-fx', 'Mist Spread', fxState.mist.spread);
+    registry.setValue('render-fx', 'Mist Size', fxState.mist.size);
+    registry.setValue('render-fx', 'Mist Life Rate', fxState.mist.lifeRate);
+    registry.setValue('render-fx', 'Mist Turbulence', fxState.mist.turbulence);
+    registry.setValue('render-fx', 'Wind X', fxState.mist.windX);
+    registry.setValue('render-fx', 'Wind Z', fxState.mist.windZ);
+    registry.setValue('render-fx', 'Emit Region', fxState.mist.emission);
+    registry.setValue('render-fx', 'Size Min Ratio', fxState.mist.sizeMinRatio);
+    registry.setValue('render-fx', 'Occlude by Blade', fxState.mist.occlude);
+    registry.setValue('render-fx', 'Flame Aura', fxState.flame.enabled);
+    registry.setValue('render-fx', 'Flame Color A', fxState.flame.color1);
+    registry.setValue('render-fx', 'Flame Color B', fxState.flame.color2);
+    registry.setValue('render-fx', 'Flame Intensity', fxState.flame.intensity);
+    registry.setValue('render-fx', 'Flame Speed', fxState.flame.speed);
+    registry.setValue('render-fx', 'Flame NoiseScale', fxState.flame.noiseScale);
+    registry.setValue('render-fx', 'Flame Scale', fxState.flame.scale);
+    registry.setValue('render-fx', 'Flame Direction', fxState.flame.direction);
+    registry.setValue('render-fx', 'Flame Blend', fxState.flame.blend);
+    registry.setValue('render-fx', 'Selective Bloom', fxState.selectiveBloom);
+    registry.setValue('render-fx', 'Heat Haze', fxState.heatHaze);
+    registry.setValue('render-fx', 'Embers', fxState.embers.enabled);
+    registry.setValue('render-fx', 'Ember Count', fxState.embers.count);
+    registry.setValue('render-fx', 'Ember Size', fxState.embers.size);
+    registry.setValue('render-fx', 'Ember Color', fxState.embers.color);
+  };
+
+  const syncUi = () => {
+    refreshInputs(registry, state);
+    syncEngravingControls();
+    if (render) {
+      syncRenderControls();
+      syncMaterialInputs(matPart);
+    }
+  };
+
   if (render) {
     // Subsections for Render tab
     const rQual = addSection(sections.Render, 'Render: Quality & Exposure');
@@ -258,188 +575,58 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     rMatSec = rMat;
     rGradSec = rGrad;
 
-    // Quality & AA
-    select(rQual, 'AA Mode', ['none','fxaa','smaa'], 'fxaa', (v) => { render.setAAMode(v as any); }, () => {}, 'Anti-aliasing mode.');
-    select(rQual, 'Quality', ['Low','Medium','High'], 'Medium', (v) => {
-      if (v === 'Low') {
-        render.setAAMode('none'); render.setShadowMapSize(1024); render.setBloom(false); render.setOutline(false); render.setDPRCap(1.0);
-      } else if (v === 'Medium') {
-        render.setAAMode('fxaa'); render.setShadowMapSize(2048); render.setBloom(false); render.setOutline(false); render.setDPRCap(1.5);
-      } else {
-        render.setAAMode('smaa'); render.setShadowMapSize(2048); render.setBloom(false); render.setOutline(false); render.setDPRCap(2.0);
-      }
-    }, () => {}, 'Quality preset (affects AA, shadows, DPR).');
-    select(rQual, 'Shadow Map', ['1024','2048','4096'], '2048', (v) => { render.setShadowMapSize(parseInt(v,10) as any); }, () => {}, 'Shadow map resolution.');
-    slider(rQual, 'Shadow Bias', -0.01, 0.01, 0.0001, -0.0005, (v) => { render.setShadowBias(v); }, () => {}, 'Shadow acne/peter-panning tweak.');
-    select(rQual, 'Tone Mapping', ['ACES','Reinhard','Cineon','Linear','None'], 'ACES', (v) => { (render as any).setToneMapping?.(v as any); }, () => {}, 'Renderer tone mapping curve.');
-    slider(rQual, 'Exposure', 0.5, 2.0, 0.01, rstate.exposure, (v) => { rstate.exposure = v; render.setExposure(v); }, () => {} , 'Tone mapping exposure.');
-    slider(rQual, 'Env Intensity', 0, 3.0, 0.01, 1.0, (v) => { render.setEnvIntensity(v); }, () => {}, 'Environment map intensity (reflections).');
-
-    // Background
-    colorPicker(rBg, 'Background Color', rstate.bgColor, (hex) => { rstate.bgColor = hex; const n = parseInt(hex.replace('#','0x')); render.setBackgroundColor(n); }, () => {}, 'Renderer clear color.');
-    slider(rBg, 'Background Bright', 0, 1.0, 0.01, rstate.bgBrightness, (v) => { rstate.bgBrightness = v; render.setBackgroundBrightness(v); }, () => {}, 'Lighten/darken the background.');
-
-    // Lights
-    slider(rLights, 'Ambient Intensity', 0, 2.0, 0.01, rstate.ambient, (v) => { rstate.ambient = v; render.setAmbient(v); }, () => {}, 'Hemisphere ambient light.');
-    slider(rLights, 'Key Intensity', 0, 4.0, 0.01, rstate.keyIntensity, (v) => { rstate.keyIntensity = v; render.setKeyIntensity(v); }, () => {}, 'Directional key light intensity.');
-    slider(rLights, 'Key Azimuth', -180, 180, 1, rstate.keyAz, (v) => { rstate.keyAz = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light horizontal angle (deg).');
-    slider(rLights, 'Key Elevation', -10, 85, 1, rstate.keyEl, (v) => { rstate.keyEl = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light elevation (deg).');
-    slider(rLights, 'Rim Intensity', 0, 3.0, 0.01, rstate.rimIntensity, (v) => { rstate.rimIntensity = v; render.setRimIntensity(v); }, () => {}, 'Back/rim light intensity.');
-    slider(rLights, 'Rim Azimuth', -180, 180, 1, rstate.rimAz, (v) => { rstate.rimAz = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light horizontal angle (deg).');
-    slider(rLights, 'Rim Elevation', -10, 85, 1, rstate.rimEl, (v) => { rstate.rimEl = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light elevation (deg).');
-    colorPicker(rLights, 'Rim Color', rstate.rimColor, (hex) => { rstate.rimColor = hex; const n = parseInt(hex.replace('#','0x')); render.setRimColor(n); }, () => {}, 'Rim light color.');
-
-    // Post-processing
-    checkbox(rPost, 'Bloom Enabled', rstate.bloomEnabled, (v) => { rstate.bloomEnabled = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); refreshWarnings(); }, () => {}, 'Enable bloom post-process.');
-    slider(rPost, 'Bloom Strength', 0, 3.0, 0.01, rstate.bloomStrength, (v) => { rstate.bloomStrength = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom intensity.');
-    slider(rPost, 'Bloom Threshold', 0, 1.5, 0.01, rstate.bloomThreshold, (v) => { rstate.bloomThreshold = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom threshold.');
-    slider(rPost, 'Bloom Radius', 0, 1.0, 0.01, rstate.bloomRadius, (v) => { rstate.bloomRadius = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom radius.');
-    // Outline
-    checkbox(rPost, 'Outline Enabled', false, (v) => { outlineEnabled = v; render.setOutline(v); refreshWarnings(); }, () => {}, 'Enable Outline pass.');
-    slider(rPost, 'Outline Strength', 0.0, 10.0, 0.1, 2.5, (v) => { render.setOutline(true, v); }, () => {}, 'OutlinePass edgeStrength.');
-    slider(rPost, 'Outline Thickness', 0.0, 4.0, 0.05, 1.0, (v) => { render.setOutline(true, undefined, v); }, () => {}, 'OutlinePass edgeThickness.');
-    colorPicker(rPost, 'Outline Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); render.setOutline(true, undefined, undefined, n); }, () => {}, 'Outline visible edge color.');
-    // Ink outline (mesh based)
-    checkbox(rPost, 'Ink Outline', false, (v) => { inkEnabled = v; render.setInkOutline(v, 0.02, 0x000000); refreshWarnings(); }, () => {}, 'Back-face mesh outline.');
-    slider(rPost, 'Ink Thickness', 0, 0.2, 0.005, 0.02, (v) => { render.setInkOutline(true, v, undefined); }, () => {}, 'Scale factor for ink outline.');
-    colorPicker(rPost, 'Ink Color', '#000000', (hex) => { const n = parseInt(hex.replace('#','0x')); render.setInkOutline(true, undefined, n); }, () => {}, 'Ink outline color.');
-    // Vignette
-    checkbox(rPost, 'Vignette', false, (v) => { vignetteEnabled = v; render.setVignette(v, 0.25, 0.5); refreshWarnings(); }, () => {}, 'Enable vignette shading.');
-    slider(rPost, 'Vignette Strength', 0, 1.0, 0.01, 0.25, (v) => { render.setVignette(true, v, undefined); }, () => {}, 'Strength of vignette.');
-    slider(rPost, 'Vignette Softness', 0, 1.0, 0.01, 0.5, (v) => { render.setVignette(true, undefined, v); }, () => {}, 'Softness of vignette edge.');
-    // Blade gradient/wear overlay (moved to rGrad below)
-    // Environment & Atmospherics
-    textRow(rAtmos, 'EnvMap URL', '', (v) => { (render as any).setEnvMap?.(v, false); }, 'Equirectangular image URL.');
-    select(rAtmos, 'Env Preset', ['None','Room','Royal Esplanade','Venice Sunset'], 'None', (v) => {
-      const map: Record<string,string|undefined> = {
-        None: undefined,
-        Room: undefined,
-        'Royal Esplanade': 'https://threejs.org/examples/textures/equirectangular/royal_esplanade_1k.hdr',
-        'Venice Sunset': 'https://threejs.org/examples/textures/equirectangular/venice_sunset_1k.hdr'
-      };
-      const url = map[v];
-      (render as any).setEnvMap?.(url, true);
-    }, () => {}, 'Quick env presets (loads remote HDR).');
-    checkbox(rAtmos, 'Env as Background', false, (v) => { (render as any).setEnvMap?.(undefined, v); }, () => {}, 'Use environment as background. Load URL first, then toggle.');
-    colorPicker(rAtmos, 'Fog Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); (render as any).setFog?.(n, 0.03); }, () => {}, 'Fog base color (exp2).');
-    slider(rAtmos, 'Fog Density', 0, 0.1, 0.001, 0.03, (v) => { (render as any).setFog?.(undefined, v); }, () => {}, 'FogExp2 density (0 disables).');
-    // Fresnel edge accent
-    checkbox(rAtmos, 'Fresnel', false, (v) => { (render as any).setFresnel?.(v, 0xffffff, 0.6, 2.0); }, () => {}, 'Additive edge accent based on view angle.');
-    // Blade visibility controls (for "fire sword" / "sword of light")
-    let invisibleBlade = false;
-    let occludeInvisible = false;
-    checkbox(rAtmos, 'Blade Invisible', false, (v) => {
-      invisibleBlade = v;
-      render.setBladeVisible?.(!invisibleBlade, occludeInvisible);
-    }, () => {}, 'Hide blade surface but keep effects like aura, glow, mist.');
-    checkbox(rAtmos, 'Occlude When Invisible', false, (v) => {
-      occludeInvisible = v;
-      render.setBladeVisible?.(!invisibleBlade, occludeInvisible);
-    }, () => {}, 'When enabled, hidden blade still writes depth (occludes).');
-    slider(rAtmos, 'Fresnel Intensity', 0, 2.0, 0.01, 0.6, (v) => { (render as any).setFresnel?.(true, undefined, v, undefined); }, () => {}, 'Fresnel intensity.');
-    slider(rAtmos, 'Fresnel Power', 0.5, 6.0, 0.1, 2.0, (v) => { (render as any).setFresnel?.(true, undefined, undefined, v); }, () => {}, 'Fresnel power exponent.');
-    colorPicker(rAtmos, 'Fresnel Color', '#ffffff', (hex) => { const n = parseInt(hex.replace('#','0x')); (render as any).setFresnel?.(true, n, undefined, undefined); }, () => {}, 'Fresnel color.');
-
-    // FX: Inner Glow (pulsing)
-    checkbox(rFX, 'Inner Glow', false, (v) => { (render as any).setInnerGlow?.(v, undefined, undefined, undefined, undefined); }, () => {}, 'Pulsing fresnel-like inner glow overlay.');
-    colorPicker(rFX, 'Glow Color', '#88ccff', (hex) => { const n=parseInt(hex.replace('#','0x')); (render as any).setInnerGlow?.(true, n, undefined, undefined, undefined); }, () => {}, 'Inner glow color.');
-    slider(rFX, 'Glow Min', 0, 2.0, 0.01, 0.2, (v) => { (render as any).setInnerGlow?.(true, undefined, v, undefined, undefined); }, () => {}, 'Minimum intensity.');
-    slider(rFX, 'Glow Max', 0, 2.0, 0.01, 0.9, (v) => { (render as any).setInnerGlow?.(true, undefined, undefined, v, undefined); }, () => {}, 'Maximum intensity.');
-    slider(rFX, 'Glow Speed', 0, 10.0, 0.01, 1.5, (v) => { (render as any).setInnerGlow?.(true, undefined, undefined, undefined, v); }, () => {}, 'Pulse speed.');
-
-    // FX: Blade Mist
-    checkbox(rFX, 'Blade Mist', false, (v) => { (render as any).setBladeMist?.(v, undefined, undefined, undefined, undefined, undefined); }, () => {}, 'Subtle mist particles rising from blade.');
-    colorPicker(rFX, 'Mist Color', '#88aadd', (hex) => { const n=parseInt(hex.replace('#','0x')); (render as any).setBladeMist?.(true, n, undefined, undefined, undefined, undefined); }, () => {}, 'Mist color.');
-    slider(rFX, 'Mist Density', 0, 1.0, 0.01, 0.4, (v) => { (render as any).setBladeMist?.(true, undefined, v, undefined, undefined, undefined); }, () => {}, 'Particle count factor.');
-    slider(rFX, 'Mist Speed', 0, 2.0, 0.01, 0.6, (v) => { (render as any).setBladeMist?.(true, undefined, undefined, v, undefined, undefined); }, () => {}, 'Rise speed.');
-    slider(rFX, 'Mist Spread', 0, 0.2, 0.001, 0.08, (v) => { (render as any).setBladeMist?.(true, undefined, undefined, undefined, v, undefined); }, () => {}, 'Horizontal drift factor.');
-    slider(rFX, 'Mist Size', 1, 16, 0.1, 6.0, (v) => { (render as any).setBladeMist?.(true, undefined, undefined, undefined, undefined, v); }, () => {}, 'Sprite size (px-scaled).');
-    // Advanced mist shaping
-    slider(rFX, 'Mist Life Rate', 0.05, 1.0, 0.01, 0.25, (v) => { (render as any).setBladeMistAdvanced?.({ lifeRate: v }); }, () => {}, 'How fast particles age (fade in/out).');
-    slider(rFX, 'Mist Turbulence', 0.0, 0.3, 0.005, 0.08, (v) => { (render as any).setBladeMistAdvanced?.({ noiseAmp: v }); }, () => {}, 'Wavy drift amplitude.');
-    slider(rFX, 'Wind X', -0.5, 0.5, 0.01, 0.0, (v) => { (render as any).setBladeMistAdvanced?.({ windX: v }); }, () => {}, 'Constant push along X.');
-    slider(rFX, 'Wind Z', -0.5, 0.5, 0.01, 0.0, (v) => { (render as any).setBladeMistAdvanced?.({ windZ: v }); }, () => {}, 'Constant push along Z.');
-    select(rFX, 'Emit Region', ['base','edge','tip','full'], 'base', (v) => { (render as any).setBladeMistAdvanced?.({ emission: v as any }); }, () => {}, 'Where to spawn mist.');
-    slider(rFX, 'Size Min Ratio', 0.0, 1.0, 0.01, 0.5, (v) => { (render as any).setBladeMistAdvanced?.({ sizeMinRatio: v }); }, () => {}, 'Min size as ratio of mist size.');
-    checkbox(rFX, 'Occlude by Blade', false, (v) => { (render as any).setBladeMistAdvanced?.({ occlude: v }); }, () => {}, 'When on, mist hides behind geometry.');
-
-    // FX: Flame Aura & Selective Bloom & Heat Haze & Embers
-    let flameEnabled = false;
-    const flame = { scale: 1.05, color1: '#ff5a00', color2: '#fff18a', noiseScale: 2.2, speed: 1.6, intensity: 1.0, direction: 'Up', blend: 'Add' } as { scale: number; color1: string; color2: string; noiseScale: number; speed: number; intensity: number; direction: 'Up'|'Down'; blend: 'Add'|'Darken'|'Multiply' };
+    const hexToInt = (hex: string) => parseInt(hex.replace('#', '0x'));
+    const applyEnvMap = (url?: string | null, asBackground?: boolean) => {
+      if (!render?.setEnvMap) return;
+      const effectiveUrl = url === undefined ? atmosState.envUrl : (url || '');
+      const background = asBackground === undefined ? atmosState.envAsBackground : asBackground;
+      render.setEnvMap(effectiveUrl ? effectiveUrl : undefined, background);
+    };
+    const applyFresnel = () => {
+      (render as any).setFresnel?.(atmosState.fresnelEnabled, hexToInt(atmosState.fresnelColor), atmosState.fresnelIntensity, atmosState.fresnelPower);
+    };
+    const applyBladeVisibility = () => {
+      render.setBladeVisible?.(!atmosState.bladeInvisible, atmosState.occludeInvisible);
+    };
+    const applyInnerGlow = () => {
+      const ig = fxState.innerGlow;
+      (render as any).setInnerGlow?.(ig.enabled, hexToInt(ig.color), ig.min, ig.max, ig.speed);
+    };
+    const applyMist = () => {
+      const m = fxState.mist;
+      (render as any).setBladeMist?.(m.enabled, hexToInt(m.color), m.density, m.speed, m.spread, m.size);
+      (render as any).setBladeMistAdvanced?.({
+        lifeRate: m.lifeRate,
+        noiseAmp: m.turbulence,
+        windX: m.windX,
+        windZ: m.windZ,
+        emission: m.emission,
+        sizeMinRatio: m.sizeMinRatio,
+        occlude: m.occlude,
+      });
+    };
     const applyFlame = () => {
-      const blendMap: Record<string,string> = { 'Add': 'add', 'Darken': 'normal', 'Multiply': 'multiply' };
-      const opts = { scale: flame.scale, color1: parseInt(flame.color1.replace('#','0x')), color2: parseInt(flame.color2.replace('#','0x')), noiseScale: flame.noiseScale, speed: flame.speed, intensity: flame.intensity, direction: (flame.direction === 'Down' ? 'down' : 'up'), blend: blendMap[flame.blend] } as any;
-      (render as any).setFlameAura?.(flameEnabled, opts);
+      const f = fxState.flame;
+      const blendMap: Record<'Add' | 'Darken' | 'Multiply', string> = { Add: 'add', Darken: 'normal', Multiply: 'multiply' };
+      (render as any).setFlameAura?.(f.enabled, {
+        scale: f.scale,
+        color1: hexToInt(f.color1),
+        color2: hexToInt(f.color2),
+        noiseScale: f.noiseScale,
+        speed: f.speed,
+        intensity: f.intensity,
+        direction: f.direction === 'Down' ? 'down' : 'up',
+        blend: blendMap[f.blend],
+      });
     };
-    checkbox(rFX, 'Flame Aura', false, (v) => { flameEnabled = v; applyFlame(); }, () => {}, 'Animated aura overlay around blade.');
-    colorPicker(rFX, 'Flame Color A', flame.color1, (hex) => { flame.color1 = hex; applyFlame(); }, () => {}, 'Inner flame color.');
-    colorPicker(rFX, 'Flame Color B', flame.color2, (hex) => { flame.color2 = hex; applyFlame(); }, () => {}, 'Outer flame color.');
-    slider(rFX, 'Flame Intensity', 0.0, 3.0, 0.01, flame.intensity, (v) => { flame.intensity = v; applyFlame(); }, () => {}, 'Brightness scaling for aura.');
-    slider(rFX, 'Flame Speed', 0.0, 8.0, 0.01, flame.speed, (v) => { flame.speed = v; applyFlame(); }, () => {}, 'Noise scroll speed.');
-    slider(rFX, 'Flame NoiseScale', 0.2, 8.0, 0.01, flame.noiseScale, (v) => { flame.noiseScale = v; applyFlame(); }, () => {}, 'Spatial scale of flame noise.');
-    slider(rFX, 'Flame Scale', 1.0, 1.2, 0.001, flame.scale, (v) => { flame.scale = v; applyFlame(); }, () => {}, 'Mesh scale factor for aura shell.');
-    select(rFX, 'Flame Direction', ['Up','Down'], flame.direction, (v) => { flame.direction = v as any; applyFlame(); }, () => {}, 'Flow direction along blade. Up = rise; Down = fall.');
-    select(rFX, 'Flame Blend', ['Add','Darken','Multiply'], flame.blend, (v) => { flame.blend = v as any; applyFlame(); }, () => {}, 'Add: bright glow. Darken: normal blend (black flames visible). Multiply: strong darkening.');
-    checkbox(rFX, 'Selective Bloom', false, (v) => { (render as any).setSelectiveBloom?.(v, 1.1, 0.8, 0.35, 1.0); }, () => {}, 'Use bloom only on marked objects.');
-    checkbox(rFX, 'Heat Haze', false, (v) => { (render as any).setHeatHaze?.(v, 0.004); }, () => {}, 'Mask-based refractive shimmer.');
-    let embersEnabled = false;
-    const emb = { count: 120, size: 3, color: '#ffaa55' };
-    const applyEmbers = () => { (render as any).setEmbers?.(embersEnabled, { count: Math.max(1, Math.floor(emb.count)), size: emb.size, color: parseInt(emb.color.replace('#','0x')) }); };
-    checkbox(rFX, 'Embers', false, (v) => { embersEnabled = v; applyEmbers(); }, () => {}, 'Floating sparks/embers.');
-    slider(rFX, 'Ember Count', 10, 400, 1, emb.count, (v) => { emb.count = v; applyEmbers(); }, () => {}, 'Number of ember particles.');
-    slider(rFX, 'Ember Size', 1, 12, 0.1, emb.size, (v) => { emb.size = v; applyEmbers(); }, () => {}, 'Ember sprite size.');
-    colorPicker(rFX, 'Ember Color', emb.color, (hex) => { emb.color = hex; applyEmbers(); }, () => {}, 'Ember color.');
-  } else {
-    sections.Render.style.display = 'none';
-  }
+    const applyEmbers = () => {
+      const e = fxState.embers;
+      (render as any).setEmbers?.(e.enabled, { count: Math.max(1, Math.floor(e.count)), size: e.size, color: hexToInt(e.color) });
+    };
 
-  // Helper to sync Render material controls to the selected part's stored values
-  function syncMaterialInputs(currentPart?: Part) {
-    const partKey: Part = currentPart || 'blade';
-    const root = sections.Render;
-    const setSlider = (label: string, val: number) => {
-      const row = Array.from(root.querySelectorAll('.row')).find((r) => r.querySelector('label')?.textContent === label) as HTMLElement | undefined;
-      if (!row) return;
-      const range = row.querySelector('input[type=range]') as HTMLInputElement | null;
-      const num = row.querySelector('input[type=number]') as HTMLInputElement | null;
-      if (range) range.value = String(val);
-      if (num) num.value = String(val);
-    };
-    const setCheckbox = (label: string, checked: boolean) => {
-      const row = Array.from(root.querySelectorAll('.row')).find((r) => r.querySelector('label')?.textContent === label) as HTMLElement | undefined;
-      if (!row) return;
-      const inp = row.querySelector('input[type=checkbox]') as HTMLInputElement | null;
-      if (inp) inp.checked = checked;
-    };
-    const setColor = (label: string, hex: string) => {
-      const row = Array.from(root.querySelectorAll('.row')).find((r) => r.querySelector('label')?.textContent === label) as HTMLElement | undefined;
-      if (!row) return;
-      const inp = row.querySelector('input[type=color]') as HTMLInputElement | null;
-      if (inp) inp.value = hex;
-    };
-    const setSelect = (label: string, value: string) => {
-      const row = Array.from(root.querySelectorAll('.row')).find((r) => r.querySelector('label')?.textContent === label) as HTMLElement | undefined;
-      if (!row) return;
-      const sel = row.querySelector('select') as HTMLSelectElement | null;
-      if (sel) sel.value = value;
-    };
-    const m = matState[partKey];
-    setColor('Base Color', m.color);
-    setSlider('Metalness', m.metalness);
-    setSlider('Roughness', m.roughness);
-    setSlider('Clearcoat', m.clearcoat);
-    setSlider('Clearcoat Rough', m.clearcoatRoughness);
-    setSelect('Mat Preset', m.preset || 'None');
-    setCheckbox('Bump Enabled', m.bumpEnabled);
-    setSlider('Bump Scale', m.bumpScale);
-    setSlider('Noise Scale', m.bumpNoiseScale);
-    setSlider('Noise Seed', m.bumpSeed);
-  }
-
-  // Material Base (Render tab)
-  if (render) {
+    // Material Base (Render tab)
     const matPartOpts = ['blade','guard','handle','pommel'] as const;
-    let matPart: Part = 'blade';
+    matPart = 'blade';
     const rm = rMatSec || sections.Render;
     select(rm, 'Material Part', [...matPartOpts] as unknown as string[], 'blade', (v) => { matPart = v as Part; syncMaterialInputs(matPart); }, () => {});
     colorPicker(rm, 'Base Color', matState[matPart].color, (hex) => { matState[matPart].color = hex; const n = parseInt(hex.replace('#','0x')); render.setPartColor(matPart, n); }, () => {}, 'Albedo color.');
@@ -500,36 +687,287 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(rm, 'Atten Dist', 0, 10, 0.01, matState[matPart].attenuationDistance ?? 0, (v) => { matState[matPart].attenuationDistance = v; (render as any).setPartMaterial?.(matPart, { attenuationDistance: v }); }, () => {}, 'Attenuation distance.');
     slider(rm, 'Sheen', 0, 1, 0.01, matState[matPart].sheen ?? 0, (v) => { matState[matPart].sheen = v; (render as any).setPartMaterial?.(matPart, { sheen: v }); }, () => {}, 'Cloth sheen.');
     colorPicker(rm, 'Sheen Color', matState[matPart].sheenColor ?? '#ffffff', (hex) => { matState[matPart].sheenColor = hex; (render as any).setPartMaterial?.(matPart, { sheenColor: hex }); }, () => {}, 'Sheen color.');
-    slider(rm, 'Iridescence', 0, 1, 0.01, matState[matPart].iridescence ?? 0, (v) => { matState[matPart].iridescence = v; (render as any).setPartMaterial?.(matPart, { iridescence: v }); }, () => {}, 'Iridescence intensity.');
-    slider(rm, 'Iridescence IOR', 1, 3, 0.01, matState[matPart].iridescenceIOR ?? 1.3, (v) => { matState[matPart].iridescenceIOR = v; (render as any).setPartMaterial?.(matPart, { iridescenceIOR: v }); }, () => {}, 'Iridescence IOR.');
-    slider(rm, 'Iri Thick Min', 0, 2000, 1, matState[matPart].iridescenceThicknessMin ?? 100, (v) => { const iv=Math.round(v); matState[matPart].iridescenceThicknessMin = iv; (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMin: iv }); }, () => {}, 'Iridescence thickness min (nm).');
-    slider(rm, 'Iri Thick Max', 0, 2000, 1, matState[matPart].iridescenceThicknessMax ?? 400, (v) => { const iv=Math.round(v); matState[matPart].iridescenceThicknessMax = iv; (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMax: iv }); }, () => {}, 'Iridescence thickness max (nm).');
-    slider(rm, 'EnvMap Intensity', 0, 8, 0.01, matState[matPart].envMapIntensity ?? 1, (v) => { matState[matPart].envMapIntensity = v; (render as any).setPartMaterial?.(matPart, { envMapIntensity: v }); }, () => {}, 'Per-material env intensity.');
-    checkbox(rm, 'Aniso Fake', matState[matPart].anisotropyFake ?? false, (v) => { matState[matPart].anisotropyFake = v; (render as any).setPartMaterial?.(matPart, { anisotropyFake: v }); }, () => {}, 'Enable visual anisotropy.');
-    slider(rm, 'Aniso Dir', -180, 180, 1, (matState[matPart].anisotropyDirection ?? 0) * 180/Math.PI, (v) => { const rad=v*Math.PI/180; matState[matPart].anisotropyDirection = rad; (render as any).setPartMaterial?.(matPart, { anisotropyDirection: rad }); }, () => {}, 'Anisotropy direction (deg).');
-    textRow(rm, 'Map URL', matState[matPart].map ?? '', (v) => { matState[matPart].map = v; (render as any).setPartMaterial?.(matPart, { map: v }); }, 'Albedo map URL (sRGB).');
-    textRow(rm, 'Normal URL', matState[matPart].normalMap ?? '', (v) => { matState[matPart].normalMap = v; (render as any).setPartMaterial?.(matPart, { normalMap: v }); }, 'Normal map URL.');
-    textRow(rm, 'Rough URL', matState[matPart].roughnessMap ?? '', (v) => { matState[matPart].roughnessMap = v; (render as any).setPartMaterial?.(matPart, { roughnessMap: v }); }, 'Roughness map URL.');
-    textRow(rm, 'Metal URL', matState[matPart].metalnessMap ?? '', (v) => { matState[matPart].metalnessMap = v; (render as any).setPartMaterial?.(matPart, { metalnessMap: v }); }, 'Metalness map URL.');
-    textRow(rm, 'AO URL', matState[matPart].aoMap ?? '', (v) => { matState[matPart].aoMap = v; (render as any).setPartMaterial?.(matPart, { aoMap: v }); }, 'AO map URL.');
-    textRow(rm, 'Bump URL', matState[matPart].bumpMap ?? '', (v) => { matState[matPart].bumpMap = v; (render as any).setPartMaterial?.(matPart, { bumpMap: v }); }, 'Bump map URL.');
-    textRow(rm, 'Disp URL', matState[matPart].displacementMap ?? '', (v) => { matState[matPart].displacementMap = v; (render as any).setPartMaterial?.(matPart, { displacementMap: v }); }, 'Displacement map URL.');
-    textRow(rm, 'Alpha URL', matState[matPart].alphaMap ?? '', (v) => { matState[matPart].alphaMap = v; (render as any).setPartMaterial?.(matPart, { alphaMap: v }); }, 'Alpha map URL.');
-    textRow(rm, 'CC Normal URL', matState[matPart].clearcoatNormalMap ?? '', (v) => { matState[matPart].clearcoatNormalMap = v; (render as any).setPartMaterial?.(matPart, { clearcoatNormalMap: v }); }, 'Clearcoat normal map URL.');
-    // Blade gradient/wear overlay
-    let gradEnabled = false; let gradBase = '#b9c6ff'; let gradEdge = '#ffffff'; let gradFade = 0.2; let gradWear = 0.2;
-    const rg = rGradSec || sections.Render;
-    checkbox(rg, 'Blade Gradient', false, (v) => { bladeGradientEnabled = v; render.setBladeGradientWear(bladeGradientEnabled, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); refreshWarnings(); }, () => {}, 'Enable blade gradient/wear overlay.');
-    colorPicker(rg, 'Grad Base', gradBase, (hex) => { gradBase = hex; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Gradient base color.');
-    colorPicker(rg, 'Grad Edge', gradEdge, (hex) => { gradEdge = hex; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Gradient edge color.');
-    slider(rg, 'Grad Edge Fade', 0, 1, 0.01, gradFade, (v) => { gradFade = v; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Edge fade thickness.');
-    slider(rg, 'Wear Intensity', 0, 1, 0.01, gradWear, (v) => { gradWear = v; render.setBladeGradientWear(true, parseInt(gradBase.replace('#','0x')), parseInt(gradEdge.replace('#','0x')), gradFade, gradWear); }, () => {}, 'Wear noise amount.');
+    slider(rm, 'Iridescence', 0, 1, 0.01, matState[matPart].iridescence ?? 0, (v) => { matState[matPart].iridescence = v; (render as any).setPartMaterial?.(matPart, { iridescence: v }); }, () => {}, 'Iridescent layer strength.');
+    slider(rm, 'Iridescence IOR', 1, 2.5, 0.01, matState[matPart].iridescenceIOR ?? 1.3, (v) => { matState[matPart].iridescenceIOR = v; (render as any).setPartMaterial?.(matPart, { iridescenceIOR: v }); }, () => {}, 'Iridescence index of refraction.');
+    slider(rm, 'Iridescence Min', 0, 1200, 1, matState[matPart].iridescenceThicknessMin ?? 100, (v) => { matState[matPart].iridescenceThicknessMin = Math.round(v); (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMin: Math.round(v) }); }, () => {}, 'Thin-film min thickness (nm).');
+    slider(rm, 'Iridescence Max', 0, 1200, 1, matState[matPart].iridescenceThicknessMax ?? 400, (v) => { matState[matPart].iridescenceThicknessMax = Math.round(v); (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMax: Math.round(v) }); }, () => {}, 'Thin-film max thickness (nm).');
+    slider(rm, 'EnvMap Intensity', 0, 3, 0.01, matState[matPart].envMapIntensity ?? 1, (v) => { matState[matPart].envMapIntensity = v; (render as any).setPartMaterial?.(matPart, { envMapIntensity: v }); }, () => {}, 'Boost environment reflections.');
+
+    // Quality & AA
+    select(rQual, 'AA Mode', ['none','fxaa','smaa'], rstate.aaMode, (v) => { rstate.aaMode = v as 'none'|'fxaa'|'smaa'; render.setAAMode(rstate.aaMode); }, () => {}, 'Anti-aliasing mode.');
+    select(rQual, 'Quality', ['Low','Medium','High'], 'Medium', (v) => {
+      type Preset = { aa: 'none'|'fxaa'|'smaa'; shadow: 1024|2048|4096; bloom: boolean; outline: boolean; dpr: number; };
+      const presets: Record<string, Preset> = {
+        Low: { aa: 'none', shadow: 1024, bloom: false, outline: false, dpr: 1.0 },
+        Medium: { aa: 'fxaa', shadow: 2048, bloom: false, outline: false, dpr: 1.5 },
+        High: { aa: 'smaa', shadow: 2048, bloom: false, outline: false, dpr: 2.0 }
+      };
+      const preset = presets[v] || presets.Medium;
+      render.setAAMode(preset.aa);
+      render.setShadowMapSize(preset.shadow);
+      render.setBloom(preset.bloom, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius);
+      render.setOutline(preset.outline);
+      render.setDPRCap(preset.dpr);
+      rstate.bloomEnabled = preset.bloom;
+      postState.outlineEnabled = preset.outline;
+      rstate.aaMode = preset.aa;
+      rstate.shadowMapSize = preset.shadow;
+      rstate.qualityPreset = v as 'Low'|'Medium'|'High';
+      registry.setValue('render-quality-exposure', 'AA Mode', preset.aa);
+      registry.setValue('render-quality-exposure', 'Shadow Map', String(preset.shadow));
+      registry.setValue('render-quality-exposure', 'Quality', rstate.qualityPreset);
+      registry.setValue('render-post', 'Bloom Enabled', preset.bloom);
+      registry.setValue('render-post', 'Outline Enabled', preset.outline);
+      refreshWarnings();
+    }, () => {}, 'Quality preset (affects AA, shadows, DPR).');
+    select(rQual, 'Shadow Map', ['1024','2048','4096'], '2048', (v) => { const size = parseInt(v,10) as 1024|2048|4096; rstate.shadowMapSize = size; render.setShadowMapSize(size); }, () => {}, 'Shadow map resolution.');
+    slider(rQual, 'Shadow Bias', -0.01, 0.01, 0.0001, -0.0005, (v) => { render.setShadowBias(v); }, () => {}, 'Shadow acne/peter-panning tweak.');
+    select(rQual, 'Tone Mapping', ['ACES','Reinhard','Cineon','Linear','None'], 'ACES', (v) => { rstate.toneMapping = v as any; (render as any).setToneMapping?.(v as any); }, () => {}, 'Renderer tone mapping curve.');
+    slider(rQual, 'Exposure', 0.5, 2.0, 0.01, rstate.exposure, (v) => { rstate.exposure = v; render.setExposure(v); }, () => {} , 'Tone mapping exposure.');
+    slider(rQual, 'Env Intensity', 0, 3.0, 0.01, rstate.envIntensity, (v) => { rstate.envIntensity = v; render.setEnvIntensity(v); }, () => {}, 'Environment map intensity (reflections).');
+
+    // Background
+    colorPicker(rBg, 'Background Color', rstate.bgColor, (hex) => { rstate.bgColor = hex; const n = parseInt(hex.replace('#','0x')); render.setBackgroundColor(n); }, () => {}, 'Renderer clear color.');
+    slider(rBg, 'Background Bright', 0, 1.0, 0.01, rstate.bgBrightness, (v) => { rstate.bgBrightness = v; render.setBackgroundBrightness(v); }, () => {}, 'Lighten/darken the background.');
+
+    // Lights
+    slider(rLights, 'Ambient Intensity', 0, 2.0, 0.01, rstate.ambient, (v) => { rstate.ambient = v; render.setAmbient(v); }, () => {}, 'Hemisphere ambient light.');
+    slider(rLights, 'Key Intensity', 0, 4.0, 0.01, rstate.keyIntensity, (v) => { rstate.keyIntensity = v; render.setKeyIntensity(v); }, () => {}, 'Directional key light intensity.');
+    slider(rLights, 'Key Azimuth', -180, 180, 1, rstate.keyAz, (v) => { rstate.keyAz = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light horizontal angle (deg).');
+    slider(rLights, 'Key Elevation', -10, 85, 1, rstate.keyEl, (v) => { rstate.keyEl = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light elevation (deg).');
+    slider(rLights, 'Rim Intensity', 0, 3.0, 0.01, rstate.rimIntensity, (v) => { rstate.rimIntensity = v; render.setRimIntensity(v); }, () => {}, 'Back/rim light intensity.');
+    slider(rLights, 'Rim Azimuth', -180, 180, 1, rstate.rimAz, (v) => { rstate.rimAz = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light horizontal angle (deg).');
+    slider(rLights, 'Rim Elevation', -10, 85, 1, rstate.rimEl, (v) => { rstate.rimEl = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light elevation (deg).');
+    colorPicker(rLights, 'Rim Color', rstate.rimColor, (hex) => { rstate.rimColor = hex; const n = parseInt(hex.replace('#','0x')); render.setRimColor(n); }, () => {}, 'Rim light color.');
+
+    // Post-processing
+    checkbox(rPost, 'Bloom Enabled', rstate.bloomEnabled, (v) => { rstate.bloomEnabled = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); refreshWarnings(); }, () => {}, 'Enable bloom post-process.');
+    slider(rPost, 'Bloom Strength', 0, 3.0, 0.01, rstate.bloomStrength, (v) => { rstate.bloomStrength = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom intensity.');
+    slider(rPost, 'Bloom Threshold', 0, 1.5, 0.01, rstate.bloomThreshold, (v) => { rstate.bloomThreshold = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom threshold.');
+    slider(rPost, 'Bloom Radius', 0, 1.0, 0.01, rstate.bloomRadius, (v) => { rstate.bloomRadius = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom radius.');
+    // Outline
+    checkbox(rPost, 'Outline Enabled', postState.outlineEnabled, (v) => { postState.outlineEnabled = v; render.setOutline(v, postState.outlineStrength, postState.outlineThickness, parseInt(postState.outlineColor.replace('#','0x'))); refreshWarnings(); }, () => {}, 'Enable Outline pass.');
+    slider(rPost, 'Outline Strength', 0.0, 10.0, 0.1, postState.outlineStrength, (v) => { postState.outlineStrength = v; if (postState.outlineEnabled) render.setOutline(true, v, postState.outlineThickness, parseInt(postState.outlineColor.replace('#','0x'))); }, () => {}, 'OutlinePass edgeStrength.');
+    slider(rPost, 'Outline Thickness', 0.0, 4.0, 0.05, postState.outlineThickness, (v) => { postState.outlineThickness = v; if (postState.outlineEnabled) render.setOutline(true, postState.outlineStrength, v, parseInt(postState.outlineColor.replace('#','0x'))); }, () => {}, 'OutlinePass edgeThickness.');
+    colorPicker(rPost, 'Outline Color', postState.outlineColor, (hex) => { postState.outlineColor = hex; const n = parseInt(hex.replace('#','0x')); if (postState.outlineEnabled) render.setOutline(true, postState.outlineStrength, postState.outlineThickness, n); }, () => {}, 'Outline visible edge color.');
+    // Ink outline (mesh based)
+    checkbox(rPost, 'Ink Outline', postState.inkEnabled, (v) => { postState.inkEnabled = v; render.setInkOutline(v, postState.inkThickness, parseInt(postState.inkColor.replace('#','0x'))); refreshWarnings(); }, () => {}, 'Back-face mesh outline.');
+    slider(rPost, 'Ink Thickness', 0, 0.2, 0.005, postState.inkThickness, (v) => { postState.inkThickness = v; if (postState.inkEnabled) render.setInkOutline(true, v, parseInt(postState.inkColor.replace('#','0x'))); }, () => {}, 'Scale factor for ink outline.');
+    colorPicker(rPost, 'Ink Color', postState.inkColor, (hex) => { postState.inkColor = hex; const n = parseInt(hex.replace('#','0x')); if (postState.inkEnabled) render.setInkOutline(true, postState.inkThickness, n); }, () => {}, 'Ink outline color.');
+    // Vignette
+    checkbox(rPost, 'Vignette', postState.vignetteEnabled, (v) => { postState.vignetteEnabled = v; render.setVignette(v, postState.vignetteStrength, postState.vignetteSoftness); refreshWarnings(); }, () => {}, 'Enable vignette shading.');
+    slider(rPost, 'Vignette Strength', 0, 1.0, 0.01, postState.vignetteStrength, (v) => { postState.vignetteStrength = v; if (postState.vignetteEnabled) render.setVignette(true, v, postState.vignetteSoftness); }, () => {}, 'Strength of vignette.');
+    slider(rPost, 'Vignette Softness', 0, 1.0, 0.01, postState.vignetteSoftness, (v) => { postState.vignetteSoftness = v; if (postState.vignetteEnabled) render.setVignette(true, postState.vignetteStrength, v); }, () => {}, 'Softness of vignette edge.');
+    // Blade gradient/wear overlay (moved to rGrad below)
+    // Environment & Atmospherics
+    textRow(rAtmos, 'EnvMap URL', atmosState.envUrl, (v) => {
+      atmosState.envUrl = v.trim();
+      atmosState.envPreset = 'None';
+      atmosState.envAsBackground = false;
+      applyEnvMap();
+      registry.setValue('render-atmospherics', 'Env Preset', 'None');
+      registry.setValue('render-atmospherics', 'Env as Background', atmosState.envAsBackground);
+    }, 'Equirectangular image URL.');
+    select(rAtmos, 'Env Preset', ['None','Room','Royal Esplanade','Venice Sunset'], atmosState.envPreset, (v) => {
+      const preset = v as 'None' | 'Room' | 'Royal Esplanade' | 'Venice Sunset';
+      const map: Record<typeof preset, string | undefined> = {
+        None: undefined,
+        Room: undefined,
+        'Royal Esplanade': 'https://threejs.org/examples/textures/equirectangular/royal_esplanade_1k.hdr',
+        'Venice Sunset': 'https://threejs.org/examples/textures/equirectangular/venice_sunset_1k.hdr'
+      } as any;
+      atmosState.envPreset = preset;
+      atmosState.envUrl = map[preset] ?? '';
+      atmosState.envAsBackground = preset !== 'None';
+      applyEnvMap(atmosState.envUrl, atmosState.envAsBackground);
+      registry.setValue('render-atmospherics', 'EnvMap URL', atmosState.envUrl);
+      registry.setValue('render-atmospherics', 'Env as Background', atmosState.envAsBackground);
+    }, () => {}, 'Quick env presets (loads remote HDR).');
+    checkbox(rAtmos, 'Env as Background', atmosState.envAsBackground, (v) => {
+      atmosState.envAsBackground = v;
+      applyEnvMap(undefined, v);
+    }, () => {}, 'Use environment as background. Load URL first, then toggle.');
+    colorPicker(rAtmos, 'Fog Color', atmosState.fogColor, (hex) => {
+      atmosState.fogColor = hex;
+      (render as any).setFog?.(hexToInt(atmosState.fogColor), atmosState.fogDensity);
+    }, () => {}, 'Fog base color (exp2).');
+    slider(rAtmos, 'Fog Density', 0, 0.1, 0.001, atmosState.fogDensity, (v) => {
+      atmosState.fogDensity = v;
+      (render as any).setFog?.(hexToInt(atmosState.fogColor), atmosState.fogDensity);
+    }, () => {}, 'FogExp2 density (0 disables).');
+    // Fresnel edge accent
+    checkbox(rAtmos, 'Fresnel', atmosState.fresnelEnabled, (v) => {
+      atmosState.fresnelEnabled = v;
+      applyFresnel();
+    }, () => {}, 'Additive edge accent based on view angle.');
+    slider(rAtmos, 'Fresnel Intensity', 0, 2.0, 0.01, atmosState.fresnelIntensity, (v) => {
+      atmosState.fresnelIntensity = v;
+      applyFresnel();
+    }, () => {}, 'Fresnel intensity.');
+    slider(rAtmos, 'Fresnel Power', 0.5, 6.0, 0.1, atmosState.fresnelPower, (v) => {
+      atmosState.fresnelPower = v;
+      applyFresnel();
+    }, () => {}, 'Fresnel power exponent.');
+    colorPicker(rAtmos, 'Fresnel Color', atmosState.fresnelColor, (hex) => {
+      atmosState.fresnelColor = hex;
+      applyFresnel();
+    }, () => {}, 'Fresnel color.');
+    // Blade visibility controls (for "fire sword" / "sword of light")
+    checkbox(rAtmos, 'Blade Invisible', atmosState.bladeInvisible, (v) => {
+      atmosState.bladeInvisible = v;
+      applyBladeVisibility();
+    }, () => {}, 'Hide blade surface but keep effects like aura, glow, mist.');
+    checkbox(rAtmos, 'Occlude When Invisible', atmosState.occludeInvisible, (v) => {
+      atmosState.occludeInvisible = v;
+      applyBladeVisibility();
+    }, () => {}, 'When enabled, hidden blade still writes depth (occludes).');
+
+    // FX: Inner Glow (pulsing)
+    checkbox(rFX, 'Inner Glow', fxState.innerGlow.enabled, (v) => {
+      fxState.innerGlow.enabled = v;
+      applyInnerGlow();
+    }, () => {}, 'Pulsing fresnel-like inner glow overlay.');
+    colorPicker(rFX, 'Glow Color', fxState.innerGlow.color, (hex) => {
+      fxState.innerGlow.color = hex;
+      applyInnerGlow();
+    }, () => {}, 'Inner glow color.');
+    slider(rFX, 'Glow Min', 0, 2.0, 0.01, fxState.innerGlow.min, (v) => {
+      fxState.innerGlow.min = v;
+      applyInnerGlow();
+    }, () => {}, 'Minimum intensity.');
+    slider(rFX, 'Glow Max', 0, 2.0, 0.01, fxState.innerGlow.max, (v) => {
+      fxState.innerGlow.max = v;
+      applyInnerGlow();
+    }, () => {}, 'Maximum intensity.');
+    slider(rFX, 'Glow Speed', 0, 10.0, 0.01, fxState.innerGlow.speed, (v) => {
+      fxState.innerGlow.speed = v;
+      applyInnerGlow();
+    }, () => {}, 'Pulse speed.');
+
+    // FX: Blade Mist
+    checkbox(rFX, 'Blade Mist', fxState.mist.enabled, (v) => {
+      fxState.mist.enabled = v;
+      applyMist();
+    }, () => {}, 'Subtle mist particles rising from blade.');
+    colorPicker(rFX, 'Mist Color', fxState.mist.color, (hex) => {
+      fxState.mist.color = hex;
+      applyMist();
+    }, () => {}, 'Mist color.');
+    slider(rFX, 'Mist Density', 0, 1.0, 0.01, fxState.mist.density, (v) => {
+      fxState.mist.density = v;
+      applyMist();
+    }, () => {}, 'Particle count factor.');
+    slider(rFX, 'Mist Speed', 0, 2.0, 0.01, fxState.mist.speed, (v) => {
+      fxState.mist.speed = v;
+      applyMist();
+    }, () => {}, 'Rise speed.');
+    slider(rFX, 'Mist Spread', 0, 0.2, 0.001, fxState.mist.spread, (v) => {
+      fxState.mist.spread = v;
+      applyMist();
+    }, () => {}, 'Horizontal drift factor.');
+    slider(rFX, 'Mist Size', 1, 16, 0.1, fxState.mist.size, (v) => {
+      fxState.mist.size = v;
+      applyMist();
+    }, () => {}, 'Sprite size (px-scaled).');
+    // Advanced mist shaping
+    slider(rFX, 'Mist Life Rate', 0.05, 1.0, 0.01, fxState.mist.lifeRate, (v) => {
+      fxState.mist.lifeRate = v;
+      applyMist();
+    }, () => {}, 'How fast particles age (fade in/out).');
+    slider(rFX, 'Mist Turbulence', 0.0, 0.3, 0.005, fxState.mist.turbulence, (v) => {
+      fxState.mist.turbulence = v;
+      applyMist();
+    }, () => {}, 'Wavy drift amplitude.');
+    slider(rFX, 'Wind X', -0.5, 0.5, 0.01, fxState.mist.windX, (v) => {
+      fxState.mist.windX = v;
+      applyMist();
+    }, () => {}, 'Constant push along X.');
+    slider(rFX, 'Wind Z', -0.5, 0.5, 0.01, fxState.mist.windZ, (v) => {
+      fxState.mist.windZ = v;
+      applyMist();
+    }, () => {}, 'Constant push along Z.');
+    select(rFX, 'Emit Region', ['base','edge','tip','full'], fxState.mist.emission, (v) => {
+      fxState.mist.emission = v as typeof fxState.mist.emission;
+      applyMist();
+    }, () => {}, 'Where to spawn mist.');
+    slider(rFX, 'Size Min Ratio', 0.0, 1.0, 0.01, fxState.mist.sizeMinRatio, (v) => {
+      fxState.mist.sizeMinRatio = v;
+      applyMist();
+    }, () => {}, 'Min size as ratio of mist size.');
+    checkbox(rFX, 'Occlude by Blade', fxState.mist.occlude, (v) => {
+      fxState.mist.occlude = v;
+      applyMist();
+    }, () => {}, 'When on, mist hides behind geometry.');
+
+    // FX: Flame Aura & Selective Bloom & Heat Haze & Embers
+    checkbox(rFX, 'Flame Aura', fxState.flame.enabled, (v) => {
+      fxState.flame.enabled = v;
+      applyFlame();
+    }, () => {}, 'Animated aura overlay around blade.');
+    colorPicker(rFX, 'Flame Color A', fxState.flame.color1, (hex) => {
+      fxState.flame.color1 = hex;
+      applyFlame();
+    }, () => {}, 'Inner flame color.');
+    colorPicker(rFX, 'Flame Color B', fxState.flame.color2, (hex) => {
+      fxState.flame.color2 = hex;
+      applyFlame();
+    }, () => {}, 'Outer flame color.');
+    slider(rFX, 'Flame Intensity', 0.0, 3.0, 0.01, fxState.flame.intensity, (v) => {
+      fxState.flame.intensity = v;
+      applyFlame();
+    }, () => {}, 'Brightness scaling for aura.');
+    slider(rFX, 'Flame Speed', 0.0, 8.0, 0.01, fxState.flame.speed, (v) => {
+      fxState.flame.speed = v;
+      applyFlame();
+    }, () => {}, 'Noise scroll speed.');
+    slider(rFX, 'Flame NoiseScale', 0.2, 8.0, 0.01, fxState.flame.noiseScale, (v) => {
+      fxState.flame.noiseScale = v;
+      applyFlame();
+    }, () => {}, 'Spatial scale of flame noise.');
+    slider(rFX, 'Flame Scale', 1.0, 1.2, 0.001, fxState.flame.scale, (v) => {
+      fxState.flame.scale = v;
+      applyFlame();
+    }, () => {}, 'Mesh scale factor for aura shell.');
+    select(rFX, 'Flame Direction', ['Up','Down'], fxState.flame.direction, (v) => {
+      fxState.flame.direction = v as typeof fxState.flame.direction;
+      applyFlame();
+    }, () => {}, 'Flow direction along blade. Up = rise; Down = fall.');
+    select(rFX, 'Flame Blend', ['Add','Darken','Multiply'], fxState.flame.blend, (v) => {
+      fxState.flame.blend = v as typeof fxState.flame.blend;
+      applyFlame();
+    }, () => {}, 'Add: bright glow. Darken: normal blend (black flames visible). Multiply: strong darkening.');
+    checkbox(rFX, 'Selective Bloom', fxState.selectiveBloom, (v) => {
+      fxState.selectiveBloom = v;
+      (render as any).setSelectiveBloom?.(v, 1.1, 0.8, 0.35, 1.0);
+    }, () => {}, 'Use bloom only on marked objects.');
+    checkbox(rFX, 'Heat Haze', fxState.heatHaze, (v) => {
+      fxState.heatHaze = v;
+      (render as any).setHeatHaze?.(v, 0.004);
+    }, () => {}, 'Mask-based refractive shimmer.');
+    checkbox(rFX, 'Embers', fxState.embers.enabled, (v) => {
+      fxState.embers.enabled = v;
+      applyEmbers();
+    }, () => {}, 'Floating sparks/embers.');
+    slider(rFX, 'Ember Count', 10, 400, 1, fxState.embers.count, (v) => {
+      fxState.embers.count = v;
+      applyEmbers();
+    }, () => {}, 'Number of ember particles.');
+    slider(rFX, 'Ember Size', 1, 12, 0.1, fxState.embers.size, (v) => {
+      fxState.embers.size = v;
+      applyEmbers();
+    }, () => {}, 'Ember sprite size.');
+    colorPicker(rFX, 'Ember Color', fxState.embers.color, (hex) => {
+      fxState.embers.color = hex;
+      applyEmbers();
+    }, () => {}, 'Ember tint.');
+
   }
 
   // Blade controls
-  // Serration pattern & seed
-  select(sections.Blade, 'Serration Pattern', ['sine','saw','scallop','random'], (state.blade as any).serrationPattern ?? 'sine', (v) => { (state.blade as any).serrationPattern = v as any; }, rerender, 'Pattern used for serrations along edges.');
-  slider(sections.Blade, 'Serration Seed', 0, 999999, 1, (state.blade as any).serrationSeed ?? 1337, (v) => { (state.blade as any).serrationSeed = Math.round(v); }, rerender, 'Seed value for random serration pattern.');
+  // Sub-heading: Serrations (non-collapsible, keeps controls within Blade)
+  const bSerr = addSubheading(sections.Blade, 'Serrations');
+  select(bSerr, 'Serration Pattern', ['sine','saw','scallop','random'], (state.blade as any).serrationPattern ?? 'sine', (v) => { (state.blade as any).serrationPattern = v as any; }, rerender, 'Pattern used for serrations along edges.');
+  slider(bSerr, 'Serration Seed', 0, 999999, 1, (state.blade as any).serrationSeed ?? 1337, (v) => { (state.blade as any).serrationSeed = Math.round(v); }, rerender, 'Seed value for random serration pattern.');
   // Fuller carve options
   select(sections.Blade, 'Fuller Mode', ['overlay','carve'], (state.blade as any).fullerMode ?? 'overlay', (v) => { (state.blade as any).fullerMode = v as any; }, rerender, 'overlay: visual ribbons; carve: actual groove reduces thickness.');
   select(sections.Blade, 'Fuller Profile', ['u','v','flat'], (state.blade as any).fullerProfile ?? 'u', (v) => { (state.blade as any).fullerProfile = v as any; }, rerender, 'Cross-section profile for carved fuller.');
@@ -574,6 +1012,9 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Blade, 'Sori Bias', 0.3, 3.0, 0.01, state.blade.soriBias ?? 0.8, (v) => (state.blade.soriBias = v), rerender, 'Bias exponent for sori profile.');
   slider(sections.Blade, 'Kissaki Length', 0, 0.35, 0.005, state.blade.kissakiLength ?? 0, (v) => (state.blade.kissakiLength = v), rerender, 'Tip segment fraction (yokote position).');
   slider(sections.Blade, 'Kissaki Round', 0, 1, 0.01, state.blade.kissakiRoundness ?? 0.5, (v) => (state.blade.kissakiRoundness = v), rerender, 'Tip rounding (0 sharp, 1 round).');
+  slider(sections.Blade, 'Tip Ramp %', 0, 95, 1, Math.round((state.blade.tipRampStart ?? 0) * 100), (v) => {
+    state.blade.tipRampStart = clamp((v as number) / 100, 0, 0.98);
+  }, rerender, 'Percent of blade length kept at base width before the tip taper begins.');
   select(sections.Blade, 'Edge Type', ['double', 'single'], (state.blade.edgeType ?? 'double') as string, (v) => (state.blade.edgeType = v as any), rerender, 'Single uses thin cutting edge and thick spine.');
   // Hamon (visual)
   checkbox(sections.Blade, 'Hamon Enabled', state.blade.hamonEnabled ?? false, (v) => (state.blade.hamonEnabled = v), rerender, 'Toggle hamon visual band along the edge.');
@@ -587,9 +1028,12 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Blade, 'Fuller Count', 0, 3, 1, state.blade.fullerCount ?? 1, (v) => (state.blade.fullerCount = Math.round(v)), rerender, 'Number of grooves (0–3).');
   slider(sections.Blade, 'Fuller Depth', 0, 0.1, 0.001, state.blade.fullerDepth ?? 0, (v) => (state.blade.fullerDepth = v), rerender, 'Visual depth/shading of the groove; not actual subtraction.');
   slider(sections.Blade, 'Fuller Length', 0, 1, 0.01, state.blade.fullerLength ?? 0, (v) => (state.blade.fullerLength = v), rerender, 'Portion of blade occupied by the groove (0..1).');
-  slider(sections.Blade, 'Serration Left', 0, 0.2, 0.001, state.blade.serrationAmplitudeLeft ?? (state.blade.serrationAmplitude ?? 0), (v) => (state.blade.serrationAmplitudeLeft = v), rerender, 'Left edge serration amplitude.');
-  slider(sections.Blade, 'Serration Right', 0, 0.2, 0.001, state.blade.serrationAmplitudeRight ?? (state.blade.serrationAmplitude ?? 0), (v) => (state.blade.serrationAmplitudeRight = v), rerender, 'Right edge serration amplitude.');
-  slider(sections.Blade, 'Serration Freq', 0, 30, 1, state.blade.serrationFrequency ?? 0, (v) => (state.blade.serrationFrequency = v), rerender, 'Number of serration cycles along the blade.');
+  slider(bSerr, 'Serration Left', 0, 0.2, 0.001, state.blade.serrationAmplitudeLeft ?? (state.blade.serrationAmplitude ?? 0), (v) => (state.blade.serrationAmplitudeLeft = v), rerender, 'Left edge serration amplitude.');
+  slider(bSerr, 'Serration Right', 0, 0.2, 0.001, state.blade.serrationAmplitudeRight ?? (state.blade.serrationAmplitude ?? 0), (v) => (state.blade.serrationAmplitudeRight = v), rerender, 'Right edge serration amplitude.');
+  slider(bSerr, 'Serration Freq', 0, 120, 1, state.blade.serrationFrequency ?? 0, (v) => (state.blade.serrationFrequency = v), rerender, 'Number of serration cycles along the blade.');
+  slider(bSerr, 'Serration Sharpness', 0, 1, 0.01, (state.blade as any).serrationSharpness ?? 0, (v) => { (state.blade as any).serrationSharpness = v; }, rerender, '0 = smooth (rounded teeth), 1 = pointy teeth.');
+  slider(bSerr, 'Serration Lean L', -1, 1, 0.01, (state.blade as any).serrationLeanLeft ?? 0, (v) => { (state.blade as any).serrationLeanLeft = v; }, rerender, 'Lean left edge teeth backward (-1) or forward (+1).');
+  slider(bSerr, 'Serration Lean R', -1, 1, 0.01, (state.blade as any).serrationLeanRight ?? 0, (v) => { (state.blade as any).serrationLeanRight = v; }, rerender, 'Lean right edge teeth backward (-1) or forward (+1).');
   // Text Engraving (simple)
   checkbox(sections.Engravings, 'Text Engraving', false, (v) => {
     const list = (((state.blade as any).engravings) || []) as any[];
@@ -600,51 +1044,109 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   // Manage multiple engravings: add/remove/reorder and edit index
   const engrRow = document.createElement('div'); engrRow.className = 'row full';
   const engrToolbar = document.createElement('div'); engrToolbar.className = 'toolbar';
-  const engrAddBtn = document.createElement('button'); engrAddBtn.textContent = 'Add Engraving'; engrAddBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; arr.push({ type:'text', content:'TEXT', fontUrl:'', width:0.1, height:0.02, depth:0.002, offsetY: state.blade.length*0.5, offsetX:0, rotation:0, side:'right', align:'center' }); (state.blade as any).engravings = arr; rerender(); };
-  const engrRemoveBtn = document.createElement('button'); engrRemoveBtn.textContent = 'Remove This'; engrRemoveBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; if (!arr.length) return; if (engrIndex<0||engrIndex>=arr.length) return; arr.splice(engrIndex,1); (state.blade as any).engravings = arr; engrIndex = Math.max(0, Math.min(engrIndex, arr.length-1)); rerender(); };
-  const engrUpBtn = document.createElement('button'); engrUpBtn.textContent = 'Move Up'; engrUpBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; if (engrIndex>0) { const t = arr[engrIndex]; arr[engrIndex] = arr[engrIndex-1]; arr[engrIndex-1] = t; engrIndex--; (state.blade as any).engravings = arr; rerender(); }};
-  const engrDownBtn = document.createElement('button'); engrDownBtn.textContent = 'Move Down'; engrDownBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; if (engrIndex < arr.length-1) { const t = arr[engrIndex]; arr[engrIndex] = arr[engrIndex+1]; arr[engrIndex+1] = t; engrIndex++; (state.blade as any).engravings = arr; rerender(); }};
+  const engrAddBtn = document.createElement('button'); engrAddBtn.textContent = 'Add Engraving'; engrAddBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; arr.push({ type:'text', content:'TEXT', fontUrl:'', width:0.1, height:0.02, depth:0.002, offsetY: state.blade.length*0.5, offsetX:0, rotation:0, side:'right', align:'center' }); (state.blade as any).engravings = arr; engrIndex = arr.length - 1; rerender(); syncEngravingControls(); };
+  const engrRemoveBtn = document.createElement('button'); engrRemoveBtn.textContent = 'Remove This'; engrRemoveBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; if (!arr.length) return; if (engrIndex<0||engrIndex>=arr.length) return; arr.splice(engrIndex,1); (state.blade as any).engravings = arr; engrIndex = Math.max(0, Math.min(engrIndex, arr.length-1)); rerender(); syncEngravingControls(); };
+  const engrUpBtn = document.createElement('button'); engrUpBtn.textContent = 'Move Up'; engrUpBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; if (engrIndex>0) { const t = arr[engrIndex]; arr[engrIndex] = arr[engrIndex-1]; arr[engrIndex-1] = t; engrIndex--; (state.blade as any).engravings = arr; rerender(); syncEngravingControls(); }};
+  const engrDownBtn = document.createElement('button'); engrDownBtn.textContent = 'Move Down'; engrDownBtn.onclick = (e)=>{ e.stopPropagation(); const arr = (((state.blade as any).engravings)||[]) as any[]; if (engrIndex < arr.length-1) { const t = arr[engrIndex]; arr[engrIndex] = arr[engrIndex+1]; arr[engrIndex+1] = t; engrIndex++; (state.blade as any).engravings = arr; rerender(); syncEngravingControls(); }};
   engrToolbar.appendChild(engrAddBtn); engrToolbar.appendChild(engrRemoveBtn); engrToolbar.appendChild(engrUpBtn); engrToolbar.appendChild(engrDownBtn);
   engrRow.appendChild(engrToolbar);
   sections.Engravings.appendChild(engrRow);
   let engrIndex = 0; const getEngr = ()=>{ const arr = (((state.blade as any).engravings)||[]) as any[]; if (!arr.length) return null; if (engrIndex>=arr.length) engrIndex = arr.length-1; return arr[engrIndex]; };
-  slider(sections.Engravings, 'Engrave Index', 0, 10, 1, 0, (v)=>{ engrIndex = Math.max(0, Math.round(v)); }, ()=>{}, 'Which engraving to edit (0..N-1).');
-  select(sections.Engravings, 'Engrave Type', ['text','shape','decal'], 'text', (v) => { const e = getEngr(); if (!e) return; e.type = v; rerender(); }, ()=>{}, 'Type of engraving primitive.');
-  textRow(sections.Engravings, 'Engrave Text', 'ᚠᚢᚦ', (v) => {
+  const engrFields = {
+    index: '',
+    type: '',
+    text: '',
+    font: '',
+    width: '',
+    height: '',
+    depth: '',
+    spacing: '',
+    offsetY: '',
+    offsetX: '',
+    rotY: '',
+    side: '',
+    align: ''
+  };
+  engrFields.index = slider(sections.Engravings, 'Engrave Index', 0, 10, 1, 0, (v)=>{ engrIndex = Math.max(0, Math.round(v)); syncEngravingControls(); }, ()=>{}, 'Which engraving to edit (0..N-1).');
+  engrFields.type = select(sections.Engravings, 'Engrave Type', ['text','shape','decal'], 'text', (v) => { const e = getEngr(); if (!e) return; e.type = v; rerender(); }, ()=>{}, 'Type of engraving primitive.');
+  engrFields.text = textRow(sections.Engravings, 'Engrave Text', 'ᚠᚢᚦ', (v) => {
     const e = getEngr(); if (!e) return; e.content = v; rerender();
   }, 'Unicode supported by the chosen font.');
-  textRow(sections.Engravings, 'Font URL', 'https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_regular.typeface.json', (v) => {
+  engrFields.font = textRow(sections.Engravings, 'Font URL', 'https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_regular.typeface.json', (v) => {
     const e = getEngr(); if (!e) return; e.fontUrl = v; rerender();
   }, 'Typeface JSON URL (typeface.js format). For full Unicode, supply a suitable font.');
-  slider(sections.Engravings, 'Engrave Width', 0.02, 0.6, 0.001, 0.18, (val) => {
+  engrFields.width = slider(sections.Engravings, 'Engrave Width', 0.02, 0.6, 0.001, 0.18, (val) => {
     const e = getEngr(); if (!e) return; e.width = val; rerender();
   }, rerender, 'Max width of text region.');
-  slider(sections.Engravings, 'Engrave Height', 0.005, 0.1, 0.001, 0.03, (val) => {
+  engrFields.height = slider(sections.Engravings, 'Engrave Height', 0.005, 0.1, 0.001, 0.03, (val) => {
     const e = getEngr(); if (!e) return; e.height = val; rerender();
   }, rerender, 'Text letter height.');
-  slider(sections.Engravings, 'Engrave Depth', 0.0005, 0.02, 0.0005, 0.002, (val) => {
+  engrFields.depth = slider(sections.Engravings, 'Engrave Depth', 0.0005, 0.02, 0.0005, 0.002, (val) => {
     const e = getEngr(); if (!e) return; e.depth = val; rerender();
   }, rerender, 'Extrusion depth of the engraving.');
-  slider(sections.Engravings, 'Letter Spacing', 0, 0.3, 0.005, 0.05, (val) => {
+  engrFields.spacing = slider(sections.Engravings, 'Letter Spacing', 0, 0.3, 0.005, 0.05, (val) => {
     const e = getEngr(); if (!e) return; (e as any).letterSpacing = val; rerender();
   }, rerender, 'Additional spacing between characters (in letter heights).');
-  slider(sections.Engravings, 'Engrave OffsetY', 0, 1, 0.001, 0.5, (val) => {
+  engrFields.offsetY = slider(sections.Engravings, 'Engrave OffsetY', 0, 1, 0.001, 0.5, (val) => {
     const e = getEngr(); if (!e) return; e.offsetY = state.blade.length * val; rerender();
   }, rerender, 'Position along blade length (0..1).');
-  slider(sections.Engravings, 'Engrave OffsetX', -0.4, 0.4, 0.001, 0, (val) => {
+  engrFields.offsetX = slider(sections.Engravings, 'Engrave OffsetX', -0.4, 0.4, 0.001, 0, (val) => {
     const e = getEngr(); if (!e) return; e.offsetX = val; rerender();
   }, rerender, 'Lateral offset across blade width.');
-  slider(sections.Engravings, 'Engrave RotY', -180, 180, 1, 0, (deg) => {
+  engrFields.rotY = slider(sections.Engravings, 'Engrave RotY', -180, 180, 1, 0, (deg) => {
     const e = getEngr(); if (!e) return; e.rotation = deg*Math.PI/180; rerender();
   }, rerender, 'Rotation around Y axis (deg).');
-  select(sections.Engravings, 'Engrave Side', ['left','right','both'], 'right', (v) => {
+  engrFields.side = select(sections.Engravings, 'Engrave Side', ['left','right','both'], 'right', (v) => {
     const e = getEngr(); if (!e) return; e.side = v; rerender();
   }, rerender, 'Which blade face.');
-  select(sections.Engravings, 'Text Align', ['left','center','right'], 'center', (v) => {
+  engrFields.align = select(sections.Engravings, 'Text Align', ['left','center','right'], 'center', (v) => {
     const e = getEngr(); if (!e) return; e.align = v as any; rerender();
   }, rerender, 'Horizontal alignment for text.');
 
+  function syncEngravingControls() {
+    const arr = (((state.blade as any).engravings) || []) as any[];
+    const bladeLen = state.blade.length || 1;
+    if (!arr.length) {
+      engrIndex = 0;
+      registry.setValue('engravings', 'Engrave Index', 0);
+      registry.setValue('engravings', 'Engrave Type', 'text');
+      registry.setValue('engravings', 'Engrave Text', '');
+      registry.setValue('engravings', 'Font URL', '');
+      registry.setValue('engravings', 'Engrave Width', 0.18);
+      registry.setValue('engravings', 'Engrave Height', 0.03);
+      registry.setValue('engravings', 'Engrave Depth', 0.002);
+      registry.setValue('engravings', 'Letter Spacing', 0);
+      registry.setValue('engravings', 'Engrave OffsetY', 0.5);
+      registry.setValue('engravings', 'Engrave OffsetX', 0);
+      registry.setValue('engravings', 'Engrave RotY', 0);
+      registry.setValue('engravings', 'Engrave Side', 'right');
+      registry.setValue('engravings', 'Text Align', 'center');
+      return;
+    }
+    if (engrIndex >= arr.length) engrIndex = arr.length - 1;
+    if (engrIndex < 0) engrIndex = 0;
+    const e = arr[engrIndex] || {};
+    registry.setValue('engravings', 'Engrave Index', engrIndex);
+    registry.setValue('engravings', 'Engrave Type', e.type ?? 'text');
+    registry.setValue('engravings', 'Engrave Text', e.content ?? '');
+    registry.setValue('engravings', 'Font URL', e.fontUrl ?? '');
+    registry.setValue('engravings', 'Engrave Width', e.width ?? 0.18);
+    registry.setValue('engravings', 'Engrave Height', e.height ?? 0.03);
+    registry.setValue('engravings', 'Engrave Depth', e.depth ?? 0.002);
+    registry.setValue('engravings', 'Letter Spacing', e.letterSpacing ?? 0);
+    registry.setValue('engravings', 'Engrave OffsetY', (e.offsetY ?? (bladeLen * 0.5)) / bladeLen);
+    registry.setValue('engravings', 'Engrave OffsetX', e.offsetX ?? 0);
+    registry.setValue('engravings', 'Engrave RotY', ((e.rotation ?? 0) * 180) / Math.PI);
+    registry.setValue('engravings', 'Engrave Side', e.side ?? 'right');
+    registry.setValue('engravings', 'Text Align', e.align ?? 'center');
+  }
+
+  syncEngravingControls();
+
   // Guard controls
+  const guardExtras = () => (((state.guard as any).extras) || []) as any[];
+  const findGuardExtra = (kind: string) => guardExtras().find((e: any) => e.kind === kind);
+  const hasGuardExtra = (kind: string) => guardExtras().some((e: any) => e.kind === kind);
   slider(sections.Guard, 'Width', 0.2, 3.0, 0.01, state.guard.width, (v) => (state.guard.width = v), rerender);
   slider(sections.Guard, 'Guard Thickness', 0.05, 0.6, 0.005, state.guard.thickness, (v) => (state.guard.thickness = v), rerender);
   slider(sections.Guard, 'Curve', -1, 1, 0.01, state.guard.curve, (v) => (state.guard.curve = v), rerender, 'Bends ornate guards upward/downward.');
@@ -652,48 +1154,48 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   select(sections.Guard, 'Style', ['bar', 'winged', 'claw', 'disk', 'knucklebow', 'swept', 'basket'], state.guard.style, (v) => (state.guard.style = v as any), rerender);
   slider(sections.Guard, 'Blend Fillet', 0, 1, 0.01, (state.guard as any).guardBlendFillet ?? 0, (v) => ((state.guard as any).guardBlendFillet = v), rerender, 'Small bridge piece between blade and guard.');
   select(sections.Guard, 'Fillet Style', ['box','smooth'], ((state.guard as any).guardBlendFilletStyle ?? 'box') as string, (v) => { (state.guard as any).guardBlendFilletStyle = v as any; }, rerender, 'Fillet style between guard and blade.');
-  checkbox(sections.Guard, 'Finger Guard', false, (v) => {
-    const arr = (((state.guard as any).extras) || []) as any[];
+  checkbox(sections.Guard, 'Finger Guard', hasGuardExtra('fingerGuard'), (v) => {
+    const arr = guardExtras();
     const without = arr.filter((e) => e.kind !== 'fingerGuard');
     if (v) without.push({ kind: 'fingerGuard', radius: 0.12, thickness: 0.03, offsetY: 0 });
     (state.guard as any).extras = without;
   }, rerender, 'Add a small bar under the knuckles.');
   // Side rings controls
-  checkbox(sections.Guard, 'Side Rings', false, (v) => {
-    const arr = (((state.guard as any).extras) || []) as any[];
+  checkbox(sections.Guard, 'Side Rings', hasGuardExtra('sideRing'), (v) => {
+    const arr = guardExtras();
     const without = arr.filter((e) => e.kind !== 'sideRing');
     if (v) without.push({ kind: 'sideRing', radius: 0.12, thickness: 0.03, offsetY: 0 });
     (state.guard as any).extras = without;
   }, rerender, 'Add decorative rings at guard sides.');
-  slider(sections.Guard, 'Ring Radius', 0.01, 0.4, 0.001, 0.12, (v) => {
-    const arr = (((state.guard as any).extras) || []) as any[];
+  slider(sections.Guard, 'Ring Radius', 0.01, 0.4, 0.001, findGuardExtra('sideRing')?.radius ?? 0.12, (v) => {
+    const arr = guardExtras();
     (state.guard as any).extras = arr.map((e:any) => e.kind==='sideRing' ? { ...e, radius: v } : e);
   }, rerender, 'Side ring radius.');
-  slider(sections.Guard, 'Ring Thick', 0.005, 0.1, 0.001, 0.03, (v) => {
-    const arr = (((state.guard as any).extras) || []) as any[];
+  slider(sections.Guard, 'Ring Thick', 0.005, 0.1, 0.001, findGuardExtra('sideRing')?.thickness ?? 0.03, (v) => {
+    const arr = guardExtras();
     (state.guard as any).extras = arr.map((e:any) => e.kind==='sideRing' ? { ...e, thickness: v } : e);
   }, rerender, 'Side ring thickness.');
-  slider(sections.Guard, 'Ring OffsetY', -0.2, 0.2, 0.001, 0, (v) => {
-    const arr = (((state.guard as any).extras) || []) as any[];
+  slider(sections.Guard, 'Ring OffsetY', -0.2, 0.2, 0.001, findGuardExtra('sideRing')?.offsetY ?? 0, (v) => {
+    const arr = guardExtras();
     (state.guard as any).extras = arr.map((e:any) => e.kind==='sideRing' ? { ...e, offsetY: v } : e);
   }, rerender, 'Side ring vertical offset.');
   // Loops controls
-  checkbox(sections.Guard, 'Loops', false, (v) => {
-    const arr = (((state.guard as any).extras) || []) as any[];
+  checkbox(sections.Guard, 'Loops', hasGuardExtra('loop'), (v) => {
+    const arr = guardExtras();
     const without = arr.filter((e) => e.kind !== 'loop');
     if (v) without.push({ kind: 'loop', radius: 0.12, thickness: 0.02, offsetY: 0 });
     (state.guard as any).extras = without;
   }, rerender, 'Add decorative loops near quillon ends.');
-  slider(sections.Guard, 'Loop Radius', 0.01, 0.4, 0.001, 0.12, (v) => {
-    const arr = (((state.guard as any).extras) || []) as any[];
+  slider(sections.Guard, 'Loop Radius', 0.01, 0.4, 0.001, findGuardExtra('loop')?.radius ?? 0.12, (v) => {
+    const arr = guardExtras();
     (state.guard as any).extras = arr.map((e:any) => e.kind==='loop' ? { ...e, radius: v } : e);
   }, rerender, 'Loop radius.');
-  slider(sections.Guard, 'Loop Thick', 0.005, 0.1, 0.001, 0.02, (v) => {
-    const arr = (((state.guard as any).extras) || []) as any[];
+  slider(sections.Guard, 'Loop Thick', 0.005, 0.1, 0.001, findGuardExtra('loop')?.thickness ?? 0.02, (v) => {
+    const arr = guardExtras();
     (state.guard as any).extras = arr.map((e:any) => e.kind==='loop' ? { ...e, thickness: v } : e);
   }, rerender, 'Loop thickness.');
-  slider(sections.Guard, 'Loop OffsetY', -0.2, 0.2, 0.001, 0, (v) => {
-    const arr = (((state.guard as any).extras) || []) as any[];
+  slider(sections.Guard, 'Loop OffsetY', -0.2, 0.2, 0.001, findGuardExtra('loop')?.offsetY ?? 0, (v) => {
+    const arr = guardExtras();
     (state.guard as any).extras = arr.map((e:any) => e.kind==='loop' ? { ...e, offsetY: v } : e);
   }, rerender, 'Loop vertical offset.');
   checkbox(sections.Guard, 'Asymmetric Arms', state.guard.asymmetricArms ?? false, (v) => (state.guard.asymmetricArms = v), rerender, 'Scale left/right guard arms differently.');
@@ -717,6 +1219,13 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Guard, 'Ring Radius +', 0, 0.2, 0.001, (state.guard as any).basketRingRadiusAdd ?? 0.0, (v) => ((state.guard as any).basketRingRadiusAdd = v), rerender, 'Additional radius added to basket rim rings.');
 
   // Handle controls
+  const handleLayers = () => (((state.handle as any).handleLayers) || []) as any[];
+  const findHandleLayer = (kind: string, predicate?: (layer: any) => boolean) => handleLayers().find((layer) => layer.kind === kind && (!predicate || predicate(layer)));
+  const ringLayers = () => handleLayers().filter((layer) => layer.kind === 'ring');
+  const crisscrossLayer = () => findHandleLayer('wrap', (layer) => layer.wrapPattern === 'crisscross');
+  const ringLayer = () => ringLayers()[0];
+  const menukiLayers = () => (((state.handle as any).menuki) || []) as any[];
+  const rivetLayers = () => (((state.handle as any).rivets) || []) as any[];
   slider(sections.Handle, 'Length', 0.2, 2.0, 0.01, state.handle.length, (v) => (state.handle.length = v), rerender);
   slider(sections.Handle, 'Radius Top', 0.05, 0.3, 0.001, state.handle.radiusTop, (v) => (state.handle.radiusTop = v), rerender);
   slider(sections.Handle, 'Radius Bottom', 0.05, 0.3, 0.001, state.handle.radiusBottom, (v) => (state.handle.radiusBottom = v), rerender);
@@ -736,45 +1245,45 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Handle, 'Tang Width', 0.005, 0.2, 0.001, state.handle.tangWidth ?? 0.05, (v) => (state.handle.tangWidth = v), rerender, 'Visible tang width.');
   slider(sections.Handle, 'Tang Thickness', 0.003, 0.1, 0.001, state.handle.tangThickness ?? 0.02, (v) => (state.handle.tangThickness = v), rerender, 'Visible tang thickness.');
   // Handle layers (simple)
-  checkbox(sections.Handle, 'Crisscross Wrap Layer', false, (v) => {
-    const arr = (((state.handle as any).handleLayers) || []) as any[];
+  checkbox(sections.Handle, 'Crisscross Wrap Layer', !!crisscrossLayer(), (v) => {
+    const arr = handleLayers();
     const rest = arr.filter((e:any) => !(e.kind==='wrap' && e.wrapPattern==='crisscross'));
     if (v) rest.push({ kind:'wrap', wrapPattern:'crisscross', y0Frac:0, lengthFrac:1, turns:7, depth:0.012 });
     (state.handle as any).handleLayers = rest;
   }, rerender, 'Adds two intertwined helices around the grip.');
-  slider(sections.Handle, 'Wrap Turns L', 1, 20, 1, 7, (val) => {
-    const arr = (((state.handle as any).handleLayers) || []) as any[];
+  slider(sections.Handle, 'Wrap Turns L', 1, 20, 1, Math.round(crisscrossLayer()?.turns ?? 7), (val) => {
+    const arr = handleLayers();
     (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='wrap' && e.wrapPattern==='crisscross' ? { ...e, turns: Math.round(val) } : e);
   }, rerender, 'Number of crisscross turns.');
-  slider(sections.Handle, 'Wrap Depth', 0.001, 0.05, 0.001, 0.012, (val) => {
-    const arr = (((state.handle as any).handleLayers) || []) as any[];
+  slider(sections.Handle, 'Wrap Depth', 0.001, 0.05, 0.001, crisscrossLayer()?.depth ?? 0.012, (val) => {
+    const arr = handleLayers();
     (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='wrap' && e.wrapPattern==='crisscross' ? { ...e, depth: val } : e);
-  }, rerender, 'Radial height of the wrap layer.');
-  slider(sections.Handle, 'Wrap Y0 %', 0, 100, 1, 0, (val) => {
-    const arr = (((state.handle as any).handleLayers) || []) as any[];
+  }, rerender, 'Radial height of the wrap layer.', 'handle.layer-wrap-depth');
+  slider(sections.Handle, 'Wrap Y0 %', 0, 100, 1, Math.round((crisscrossLayer()?.y0Frac ?? 0) * 100), (val) => {
+    const arr = handleLayers();
     (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='wrap' && e.wrapPattern==='crisscross' ? { ...e, y0Frac: (val/100) } : e);
   }, rerender, 'Start position of wrap (percent of handle length).');
-  slider(sections.Handle, 'Wrap Len %', 1, 100, 1, 100, (val) => {
-    const arr = (((state.handle as any).handleLayers) || []) as any[];
+  slider(sections.Handle, 'Wrap Len %', 1, 100, 1, Math.round((crisscrossLayer()?.lengthFrac ?? 1) * 100), (val) => {
+    const arr = handleLayers();
     (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='wrap' && e.wrapPattern==='crisscross' ? { ...e, lengthFrac: Math.max(0.01, (val/100)) } : e);
   }, rerender, 'Length of the wrap section (percent of handle).');
-  checkbox(sections.Handle, 'Handle Ring', false, (v) => {
-    const arr = (((state.handle as any).handleLayers) || []) as any[];
+  checkbox(sections.Handle, 'Handle Ring', ringLayers().length > 0, (v) => {
+    const arr = handleLayers();
     const rest = arr.filter((e:any) => e.kind!=='ring');
     if (v) rest.push({ kind:'ring', y0Frac:0.5, radiusAdd:0.0 });
     (state.handle as any).handleLayers = rest;
   }, rerender, 'Add a decorative ring around the grip.');
-  slider(sections.Handle, 'Ring Y %', 0, 100, 1, 50, (val) => {
-    const arr = (((state.handle as any).handleLayers) || []) as any[];
+  slider(sections.Handle, 'Ring Y %', 0, 100, 1, Math.round((ringLayer()?.y0Frac ?? 0.5) * 100), (val) => {
+    const arr = handleLayers();
     (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='ring' ? { ...e, y0Frac: (val/100) } : e);
   }, rerender, 'Vertical position of ring.');
-  slider(sections.Handle, 'Ring Radius +', 0, 0.2, 0.001, 0.0, (val) => {
-    const arr = (((state.handle as any).handleLayers) || []) as any[];
+  slider(sections.Handle, 'Ring Radius +', 0, 0.2, 0.001, ringLayer()?.radiusAdd ?? 0.0, (val) => {
+    const arr = handleLayers();
     (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='ring' ? { ...e, radiusAdd: val } : e);
   }, rerender, 'Additional radius for ring.');
-  slider(sections.Handle, 'Rings Count', 0, 3, 1, 1, (val) => {
+  slider(sections.Handle, 'Rings Count', 0, 3, 1, ringLayers().length, (val) => {
     const n = Math.max(0, Math.round(val));
-    const arr = (((state.handle as any).handleLayers) || []) as any[];
+    const arr = handleLayers();
     const others = arr.filter((e:any) => e.kind!=='ring');
     const rings: any[] = [];
     if (n>0) {
@@ -785,23 +1294,23 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     }
     (state.handle as any).handleLayers = [...others, ...rings];
   }, rerender, 'Create multiple ring layers, evenly spaced.');
-  checkbox(sections.Handle, 'Menuki', false, (v) => {
+  checkbox(sections.Handle, 'Menuki', menukiLayers().length > 0, (v) => {
     (state.handle as any).menuki = v ? [{ positionFrac: 0.55, side:'left', size:0.02 }] : [];
   }, rerender, 'Add a menuki ornament on the grip.');
   // Rivets
-  checkbox(sections.Handle, 'Rivets', false, (v) => {
+  checkbox(sections.Handle, 'Rivets', rivetLayers().length > 0, (v) => {
     (state.handle as any).rivets = v ? [{ count: 8, ringFrac: 0.3, radius: 0.01 }] : [];
   }, rerender, 'Add a ring of rivets.');
-  slider(sections.Handle, 'Rivets Count', 1, 32, 1, 8, (val) => {
-    const arr = (((state.handle as any).rivets) || []) as any[];
+  slider(sections.Handle, 'Rivets Count', 1, 32, 1, Math.round((rivetLayers()[0]?.count ?? 8)), (val) => {
+    const arr = rivetLayers();
     (state.handle as any).rivets = arr.map((r:any) => ({ ...r, count: Math.round(val) }));
   }, rerender, 'Number of rivets around the ring.');
-  slider(sections.Handle, 'Rivets Y %', 0, 100, 1, 30, (val) => {
-    const arr = (((state.handle as any).rivets) || []) as any[];
+  slider(sections.Handle, 'Rivets Y %', 0, 100, 1, Math.round(((rivetLayers()[0]?.ringFrac) ?? 0.3) * 100), (val) => {
+    const arr = rivetLayers();
     (state.handle as any).rivets = arr.map((r:any) => ({ ...r, ringFrac: (val/100) }));
   }, rerender, 'Vertical position of rivets ring.');
-  slider(sections.Handle, 'Rivet Size', 0.002, 0.05, 0.001, 0.01, (val) => {
-    const arr = (((state.handle as any).rivets) || []) as any[];
+  slider(sections.Handle, 'Rivet Size', 0.002, 0.05, 0.001, rivetLayers()[0]?.radius ?? 0.01, (val) => {
+    const arr = rivetLayers();
     (state.handle as any).rivets = arr.map((r:any) => ({ ...r, radius: val }));
   }, rerender, 'Rivet sphere radius.');
 
@@ -852,11 +1361,12 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     if (p === 'katana') next = presetKatana();
     if (p === 'claymore') next = presetClaymore();
     if (p === 'rapier') next = presetRapier();
+    if (p === 'arming') next = presetArming();
     if (p === 'demon') next = presetDemon();
     if (p && next) {
       assignParams(state, next);
       rerender();
-      refreshInputs(el, state);
+      syncUi();
     }
   });
   btnSave.addEventListener('click', () => {
@@ -866,12 +1376,12 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   btnRandom.addEventListener('click', () => {
     randomize(state, false);
     rerender();
-    refreshInputs(el, state);
+    syncUi();
   });
   btnRandomSafe.addEventListener('click', () => {
     randomize(state, true);
     rerender();
-    refreshInputs(el, state);
+    syncUi();
   });
   // Export helpers for dropdown
   const doExportGLB = async () => {
@@ -966,7 +1476,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       } catch (e) {
         console.warn('Schema validation skipped or failed to load:', e);
       }
-      if (obj?.model) { assignParams(state, obj.model); rerender(); refreshInputs(el, state); }
+      if (obj?.model) { assignParams(state, obj.model); rerender(); }
       if (obj?.materials) {
         const parts: (keyof typeof matState)[] = ['blade','guard','handle','pommel'];
         for (const part of parts) {
@@ -998,8 +1508,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
           render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius);
         }
       }
-      // Sync material UI for current part
-      setTimeout(()=>syncMaterialInputs(),0);
+      syncUi();
     } catch (e) {
       console.error('Import JSON failed', e);
     } finally {
@@ -1013,19 +1522,19 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const guard = state.guard;
     const handle = state.handle;
     // Clear existing inline warn styles
-    clearWarns(el);
+    registry.clearWarnings();
     // General proportion hints
     if (guard.width > blade.length) {
       w.push('Guard very wide vs. blade length');
-      setWarn(el, 'Width', true, 'Guard width is large vs. blade length');
+      registry.setWarning('guard', 'Width', true, 'Guard width is large vs. blade length');
     }
     if (handle.length > blade.length * 0.8) {
       w.push('Handle unusually long for blade');
-      setWarn(el, 'Length', true, 'Handle length is large relative to blade');
+      registry.setWarning('handle', 'Length', true, 'Handle length is large relative to blade');
     }
     if (blade.tipWidth > blade.baseWidth * 0.8) {
       w.push('Tip width close to base width');
-      setWarn(el, 'Tip Width', true, 'Tip nearly as wide as base');
+      registry.setWarning('blade', 'Tip Width', true, 'Tip nearly as wide as base');
     }
     // Serration sanity
     const serrL = blade.serrationAmplitudeLeft ?? (blade.serrationAmplitude ?? 0);
@@ -1033,26 +1542,26 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const serrMax = Math.max(serrL, serrR);
     if (serrMax > blade.baseWidth * 0.2) {
       w.push('Serration amplitude high for base width');
-      setWarn(el, 'Serration Left', serrL > blade.baseWidth * 0.2, 'Left serration amplitude is high');
-      setWarn(el, 'Serration Right', serrR > blade.baseWidth * 0.2, 'Right serration amplitude is high');
+      registry.setWarning('blade', 'Serration Left', serrL > blade.baseWidth * 0.2, 'Left serration amplitude is high');
+      registry.setWarning('blade', 'Serration Right', serrR > blade.baseWidth * 0.2, 'Right serration amplitude is high');
     }
     // Disabled/ineffective controls hints (Blade)
     const hamonOn = !!blade.hamonEnabled;
-    setWarn(el, 'Hamon Width', !hamonOn, 'Enable Hamon to see effect');
-    setWarn(el, 'Hamon Amp', !hamonOn, 'Enable Hamon to see effect');
-    setWarn(el, 'Hamon Freq', !hamonOn, 'Enable Hamon to see effect');
-    setWarn(el, 'Hamon Side', !hamonOn, 'Enable Hamon to see effect');
+    registry.setWarning('blade', 'Hamon Width', !hamonOn, 'Enable Hamon to see effect');
+    registry.setWarning('blade', 'Hamon Amp', !hamonOn, 'Enable Hamon to see effect');
+    registry.setWarning('blade', 'Hamon Freq', !hamonOn, 'Enable Hamon to see effect');
+    registry.setWarning('blade', 'Hamon Side', !hamonOn, 'Enable Hamon to see effect');
     // Leaf bulge only for leaf tip
-    setWarn(el, 'Leaf Bulge', (blade.tipShape ?? 'pointed') !== 'leaf', 'Only affects Leaf tip shape');
+    registry.setWarning('blade', 'Leaf Bulge', (blade.tipShape ?? 'pointed') !== 'leaf', 'Only affects Leaf tip shape');
     // False edge coupling
     const feLen = (blade as any).falseEdgeLength ?? 0;
     const feDepth = (blade as any).falseEdgeDepth ?? 0;
-    setWarn(el, 'False Edge Depth', feLen <= 0, 'Set False Edge % > 0 for depth to do anything');
-    setWarn(el, 'False Edge %', feDepth <= 0 && feLen > 0, 'Depth is 0; no visible effect');
+    registry.setWarning('blade', 'False Edge Depth', feLen <= 0, 'Set False Edge % > 0 for depth to do anything');
+    registry.setWarning('blade', 'False Edge %', feDepth <= 0 && feLen > 0, 'Depth is 0; no visible effect');
     // Sori disabled when curvature ~ 0
     const curvZero = Math.abs(blade.curvature || 0) < 1e-6;
-    setWarn(el, 'Sori Profile', curvZero, 'Curvature is 0; profile has no visible effect');
-    setWarn(el, 'Sori Bias', curvZero, 'Curvature is 0; bias has no visible effect');
+    registry.setWarning('blade', 'Sori Profile', curvZero, 'Curvature is 0; profile has no visible effect');
+    registry.setWarning('blade', 'Sori Bias', curvZero, 'Curvature is 0; bias has no visible effect');
     // Fullers dependencies
     const fEnabled = !!blade.fullerEnabled;
     const fLen = blade.fullerLength ?? 0;
@@ -1060,33 +1569,33 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const fDepth = blade.fullerDepth ?? 0;
     const fInset = (blade.fullerInset ?? fDepth);
     const noFuller = !fEnabled || fLen <= 0;
-    setWarn(el, 'Fuller Count', noFuller, 'Enable Fullers and set Length > 0');
-    setWarn(el, 'Fuller Length', !fEnabled, 'Enable Fullers');
-    setWarn(el, 'Fuller Mode', !fEnabled, 'Enable Fullers');
-    setWarn(el, 'Fuller Depth', (!fEnabled || fMode !== 'overlay') || (fMode==='overlay' && (fLen<=0 || fDepth<=0)), fMode==='overlay' ? 'Enable Fullers, Length > 0, set Depth > 0' : 'Depth is used only in Overlay mode');
-    setWarn(el, 'Fuller Profile', (!fEnabled || fMode!=='carve') || (fMode==='carve' && fLen<=0), fMode==='carve' ? 'Set Length > 0' : 'Profile is used only in Carve mode');
-    setWarn(el, 'Fuller Width', (!fEnabled || fMode!=='carve') || (fMode==='carve' && fLen<=0), fMode==='carve' ? 'Set Length > 0 to see carving width' : 'Width is used only in Carve mode');
-    setWarn(el, 'Fuller Inset', (!fEnabled || fMode!=='carve') || (fMode==='carve' && (fLen<=0 || fInset<=0)), fMode==='carve' ? 'Set Length > 0 and Inset > 0 to carve' : 'Inset is used only in Carve mode');
+    registry.setWarning('blade', 'Fuller Count', noFuller, 'Enable Fullers and set Length > 0');
+    registry.setWarning('blade', 'Fuller Length', !fEnabled, 'Enable Fullers');
+    registry.setWarning('blade', 'Fuller Mode', !fEnabled, 'Enable Fullers');
+    registry.setWarning('blade', 'Fuller Depth', (!fEnabled || fMode !== 'overlay') || (fMode === 'overlay' && (fLen <= 0 || fDepth <= 0)), fMode === 'overlay' ? 'Enable Fullers, Length > 0, set Depth > 0' : 'Depth is used only in Overlay mode');
+    registry.setWarning('blade', 'Fuller Profile', (!fEnabled || fMode !== 'carve') || (fMode === 'carve' && fLen <= 0), fMode === 'carve' ? 'Set Length > 0' : 'Profile is used only in Carve mode');
+    registry.setWarning('blade', 'Fuller Width', (!fEnabled || fMode !== 'carve') || (fMode === 'carve' && fLen <= 0), fMode === 'carve' ? 'Set Length > 0 to see carving width' : 'Width is used only in Carve mode');
+    registry.setWarning('blade', 'Fuller Inset', (!fEnabled || fMode !== 'carve') || (fMode === 'carve' && (fLen <= 0 || fInset <= 0)), fMode === 'carve' ? 'Set Length > 0 and Inset > 0 to carve' : 'Inset is used only in Carve mode');
     // Engravings
     const engr = (((state.blade as any).engravings) || []) as any[];
     const engrEmpty = engr.length === 0;
     const engrLabels = ['Engrave Index','Engrave Type','Engrave Text','Font URL','Engrave Width','Engrave Height','Engrave Depth','Letter Spacing','Engrave OffsetY','Engrave OffsetX','Engrave RotY','Engrave Side','Text Align'];
-    engrLabels.forEach((lab) => setWarn(sections.Engravings, lab, engrEmpty, 'No engravings — add one first'));
+    engrLabels.forEach((lab) => registry.setWarning('engravings', lab, engrEmpty, 'No engravings — add one first'));
     // Render dependent warnings
-    setWarn(sections.Render, 'Bloom Strength', !rstate.bloomEnabled, 'Enable Bloom to see effect');
-    setWarn(sections.Render, 'Bloom Threshold', !rstate.bloomEnabled, 'Enable Bloom to see effect');
-    setWarn(sections.Render, 'Bloom Radius', !rstate.bloomEnabled, 'Enable Bloom to see effect');
-    setWarn(sections.Render, 'Outline Strength', !outlineEnabled, 'Enable Outline to see effect');
-    setWarn(sections.Render, 'Outline Thickness', !outlineEnabled, 'Enable Outline to see effect');
-    setWarn(sections.Render, 'Outline Color', !outlineEnabled, 'Enable Outline to see effect');
-    setWarn(sections.Render, 'Ink Thickness', !inkEnabled, 'Enable Ink Outline to see effect');
-    setWarn(sections.Render, 'Ink Color', !inkEnabled, 'Enable Ink Outline to see effect');
-    setWarn(sections.Render, 'Vignette Strength', !vignetteEnabled, 'Enable Vignette to see effect');
-    setWarn(sections.Render, 'Vignette Softness', !vignetteEnabled, 'Enable Vignette to see effect');
-    setWarn(sections.Render, 'Grad Base', !bladeGradientEnabled, 'Enable Blade Gradient to see effect');
-    setWarn(sections.Render, 'Grad Edge', !bladeGradientEnabled, 'Enable Blade Gradient to see effect');
-    setWarn(sections.Render, 'Grad Edge Fade', !bladeGradientEnabled, 'Enable Blade Gradient to see effect');
-    setWarn(sections.Render, 'Wear Intensity', !bladeGradientEnabled, 'Enable Blade Gradient to see effect');
+    registry.setWarning('render-post', 'Bloom Strength', !rstate.bloomEnabled, 'Enable Bloom to see effect');
+    registry.setWarning('render-post', 'Bloom Threshold', !rstate.bloomEnabled, 'Enable Bloom to see effect');
+    registry.setWarning('render-post', 'Bloom Radius', !rstate.bloomEnabled, 'Enable Bloom to see effect');
+    registry.setWarning('render-post', 'Outline Strength', !postState.outlineEnabled, 'Enable Outline to see effect');
+    registry.setWarning('render-post', 'Outline Thickness', !postState.outlineEnabled, 'Enable Outline to see effect');
+    registry.setWarning('render-post', 'Outline Color', !postState.outlineEnabled, 'Enable Outline to see effect');
+    registry.setWarning('render-post', 'Ink Thickness', !postState.inkEnabled, 'Enable Ink Outline to see effect');
+    registry.setWarning('render-post', 'Ink Color', !postState.inkEnabled, 'Enable Ink Outline to see effect');
+    registry.setWarning('render-post', 'Vignette Strength', !postState.vignetteEnabled, 'Enable Vignette to see effect');
+    registry.setWarning('render-post', 'Vignette Softness', !postState.vignetteEnabled, 'Enable Vignette to see effect');
+    registry.setWarning('render-blade-gradient', 'Grad Base', !postState.bladeGradientEnabled, 'Enable Blade Gradient to see effect');
+    registry.setWarning('render-blade-gradient', 'Grad Edge', !postState.bladeGradientEnabled, 'Enable Blade Gradient to see effect');
+    registry.setWarning('render-blade-gradient', 'Grad Edge Fade', !postState.bladeGradientEnabled, 'Enable Blade Gradient to see effect');
+    registry.setWarning('render-blade-gradient', 'Wear Intensity', !postState.bladeGradientEnabled, 'Enable Blade Gradient to see effect');
     warningsBox.innerHTML = w.length ? ('Warnings:\n- ' + w.join('\n- ')).replace(/\n/g, '<br/>') : 'No warnings';
   }
   const updateDynamics = () => {
@@ -1099,12 +1608,15 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     dynamicsBox.textContent = text;
   };
 
+  syncUi();
   rerender();
+  activeRegistry = previousRegistry;
 }
 
 function addSection(root: HTMLElement, title: string) {
   const wrap = document.createElement('div');
   wrap.className = 'section';
+  wrap.dataset.fieldNamespace = slugify(title);
   const h = document.createElement('h2');
   const caret = document.createElement('span'); caret.className = 'caret'; caret.textContent = '▾';
   const text = document.createElement('span'); text.textContent = ' ' + title;
@@ -1137,44 +1649,16 @@ function addSection(root: HTMLElement, title: string) {
   return wrap;
 }
 
-function clearWarns(root: HTMLElement) {
-  const labels = root.querySelectorAll('.row label');
-  labels.forEach((lab) => {
-    (lab as HTMLElement).style.color = '';
-    (lab as HTMLElement).title = (lab as HTMLElement).getAttribute('data-title') || (lab as HTMLElement).title;
-  });
-  root.querySelectorAll('.row .warn-icon').forEach((el) => el.remove());
-}
-
-function setWarn(root: HTMLElement, labelText: string, on: boolean, tooltip?: string) {
-  const rows = Array.from(root.querySelectorAll('.row')) as HTMLElement[];
-  for (const row of rows) {
-    const lab = row.querySelector('label');
-    if (!lab) continue;
-    if (lab.textContent === labelText) {
-      const el = lab as HTMLElement;
-      if (!el.getAttribute('data-title')) el.setAttribute('data-title', el.title || '');
-      el.style.color = on ? '#eab308' : '';
-      if (on && tooltip) el.title = tooltip; else el.title = el.getAttribute('data-title') || '';
-      // Add/remove warn icon
-      const existing = row.querySelector('.warn-icon');
-      if (on) {
-        if (!existing) {
-          const icon = document.createElement('span');
-          icon.className = 'warn-icon';
-          icon.textContent = '⚠';
-          icon.title = tooltip || 'Extreme value';
-          icon.style.marginLeft = '4px';
-          icon.style.color = '#eab308';
-          icon.style.fontSize = '12px';
-          el.insertAdjacentElement('beforeend', icon);
-        }
-      } else {
-        existing?.remove();
-      }
-      break;
-    }
-  }
+// Simple non-collapsible subheading within a section
+function addSubheading(parent: HTMLElement, title: string) {
+  const row = document.createElement('div')
+  row.className = 'subheading'
+  const h = document.createElement('h3')
+  h.textContent = title
+  row.appendChild(h)
+  parent.appendChild(row)
+  // Return the same parent as the target container for subsequent controls
+  return parent
 }
 
 function addShuffleButton(section: HTMLElement, onClick: () => void) {
@@ -1219,7 +1703,19 @@ function resetSection(section: HTMLElement) {
   rows.forEach(resetRow);
 }
 
-function slider(parent: HTMLElement, label: string, min: number, max: number, step: number, value: number, onChange: (v: number) => void, rerender: () => void, tooltip?: string) {
+function slider(
+  parent: HTMLElement,
+  label: string,
+  min: number,
+  max: number,
+  step: number,
+  value: number,
+  onChange: (v: number) => void,
+  rerender: () => void,
+  tooltip?: string,
+  fieldOverride?: string
+) {
+  const registry = getActiveRegistry();
   const row = document.createElement('div');
   row.className = 'row';
   row.dataset.type = 'slider';
@@ -1247,30 +1743,69 @@ function slider(parent: HTMLElement, label: string, min: number, max: number, st
   num.max = String(max);
   num.step = String(step);
   num.value = String(value);
+
+  const commit = (raw: unknown, emit = true) => {
+    const parsed = typeof raw === 'number' ? raw : parseFloat(String(raw));
+    if (!Number.isFinite(parsed)) return;
+    const clamped = clamp(parsed, min, max);
+    range.value = String(clamped);
+    num.value = String(clamped);
+    if (emit) {
+      onChange(clamped);
+      rerender();
+    }
+  };
+
   range.addEventListener('input', () => {
-    num.value = range.value;
-    onChange(parseFloat(range.value));
-    rerender();
+    commit(range.value);
   });
+
   num.addEventListener('input', () => {
-    range.value = num.value;
-    onChange(parseFloat(num.value));
-    rerender();
+    if (!num.value.trim()) return;
+    commit(num.value);
   });
+
+  num.addEventListener('blur', () => {
+    if (!num.value.trim()) {
+      commit(range.value, false);
+      return;
+    }
+    commit(num.value);
+  });
+
+  const field = registry.registerControl(parent, row, label, 'slider', (val) => commit(val, false), fieldOverride);
   row.appendChild(lab);
   row.appendChild(range);
   row.appendChild(num);
   parent.appendChild(row);
+  return field;
 }
 
-function select(parent: HTMLElement, label: string, options: string[], value: string, onChange: (v: string) => void, rerender: () => void, tooltip?: string) {
+function select(
+  parent: HTMLElement,
+  label: string,
+  options: string[],
+  value: string,
+  onChange: (v: string) => void,
+  rerender: () => void,
+  tooltip?: string,
+  fieldOverride?: string
+) {
+  const registry = getActiveRegistry();
   const row = document.createElement('div');
   row.className = 'row';
   row.dataset.type = 'select';
   row.dataset.defaultValue = String(value);
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) { lab.title = tooltip + ' — Double‑click label to reset'; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
+  if (tooltip) {
+    lab.title = tooltip + ' — Double‑click label to reset';
+    const hi = document.createElement('span');
+    hi.className = 'help-icon';
+    hi.textContent = '?';
+    hi.title = tooltip;
+    lab.appendChild(hi);
+  }
   lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const sel = document.createElement('select');
   for (const opt of options) {
@@ -1284,19 +1819,46 @@ function select(parent: HTMLElement, label: string, options: string[], value: st
     onChange(sel.value);
     rerender();
   });
+
+  const setValue = (val: unknown) => {
+    if (val === undefined || val === null) return;
+    const str = String(val);
+    const opts = Array.from(sel.options).map((o) => o.value);
+    if (!opts.includes(str)) return;
+    sel.value = str;
+  };
+
+  const field = registry.registerControl(parent, row, label, 'select', setValue, fieldOverride);
   row.appendChild(lab);
   row.appendChild(sel);
   parent.appendChild(row);
+  return field;
 }
 
-function checkbox(parent: HTMLElement, label: string, value: boolean, onChange: (v: boolean) => void, rerender: () => void, tooltip?: string) {
+function checkbox(
+  parent: HTMLElement,
+  label: string,
+  value: boolean,
+  onChange: (v: boolean) => void,
+  rerender: () => void,
+  tooltip?: string,
+  fieldOverride?: string
+) {
+  const registry = getActiveRegistry();
   const row = document.createElement('div');
   row.className = 'row';
   row.dataset.type = 'checkbox';
   row.dataset.defaultValue = String(!!value);
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) { lab.title = tooltip + ' — Double‑click label to reset'; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
+  if (tooltip) {
+    lab.title = tooltip + ' — Double‑click label to reset';
+    const hi = document.createElement('span');
+    hi.className = 'help-icon';
+    hi.textContent = '?';
+    hi.title = tooltip;
+    lab.appendChild(hi);
+  }
   lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const input = document.createElement('input');
   input.type = 'checkbox';
@@ -1305,38 +1867,80 @@ function checkbox(parent: HTMLElement, label: string, value: boolean, onChange: 
     onChange(input.checked);
     rerender();
   });
+  const field = registry.registerControl(parent, row, label, 'checkbox', (val) => {
+    input.checked = !!val;
+  }, fieldOverride);
   row.appendChild(lab);
-  // span to align
   const span = document.createElement('span');
   span.appendChild(input);
   row.appendChild(span);
   parent.appendChild(row);
+  return field;
 }
 
-function colorPicker(parent: HTMLElement, label: string, value: string, onChange: (hex: string) => void, rerender: () => void, tooltip?: string) {
+function colorPicker(
+  parent: HTMLElement,
+  label: string,
+  value: string,
+  onChange: (hex: string) => void,
+  rerender: () => void,
+  tooltip?: string,
+  fieldOverride?: string
+) {
+  const registry = getActiveRegistry();
   const row = document.createElement('div');
   row.className = 'row';
   row.dataset.type = 'color';
-  row.dataset.defaultValue = value;
+  const normalize = (val: unknown) => {
+    if (typeof val === 'number') {
+      return '#' + Math.max(0, Math.min(0xffffff, Math.floor(val))).toString(16).padStart(6, '0');
+    }
+    if (typeof val === 'string') {
+      return val.startsWith('#') ? val : `#${val}`;
+    }
+    return value;
+  };
+  const initial = normalize(value);
+  row.dataset.defaultValue = initial;
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) { lab.title = tooltip + ' — Double‑click label to reset'; const hi = document.createElement('span'); hi.className = 'help-icon'; hi.textContent = '?'; hi.title = tooltip; lab.appendChild(hi); }
+  if (tooltip) {
+    lab.title = tooltip + ' — Double‑click label to reset';
+    const hi = document.createElement('span');
+    hi.className = 'help-icon';
+    hi.textContent = '?';
+    hi.title = tooltip;
+    lab.appendChild(hi);
+  }
   lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const input = document.createElement('input');
   input.type = 'color';
-  input.value = value;
+  input.value = initial;
   input.addEventListener('input', () => {
     onChange(input.value);
     rerender();
   });
+
+  const field = registry.registerControl(parent, row, label, 'color', (val) => {
+    input.value = normalize(val);
+  }, fieldOverride);
   row.appendChild(lab);
   const span = document.createElement('span');
   span.appendChild(input);
   row.appendChild(span);
   parent.appendChild(row);
+  return field;
 }
 
-function textRow(parent: HTMLElement, label: string, value: string, onChange: (v: string) => void, tooltip?: string) {
+function textRow(
+  parent: HTMLElement,
+  label: string,
+  value: string,
+  onChange: (v: string) => void,
+  tooltip?: string,
+  fieldOverride?: string
+) {
+  const registry = getActiveRegistry();
   const row = document.createElement('div');
   row.className = 'row';
   row.dataset.type = 'text';
@@ -1350,119 +1954,211 @@ function textRow(parent: HTMLElement, label: string, value: string, onChange: (v
   input.value = value || '';
   input.placeholder = 'http(s):// or relative path';
   input.addEventListener('change', () => { onChange(input.value); });
+  const field = registry.registerControl(parent, row, label, 'text', (val) => {
+    input.value = val == null ? '' : String(val);
+  }, fieldOverride);
   row.appendChild(lab);
   const span = document.createElement('span');
   span.appendChild(input);
   row.appendChild(span);
   parent.appendChild(row);
+  return field;
 }
 
-function refreshInputs(root: HTMLElement, params: SwordParams) {
-  // Sync number/range/select values to current state
-  const map: Record<string, number | string | boolean> = {
-    'Length': params.blade.length,
-    'Base Width': params.blade.baseWidth,
-    'Tip Width': params.blade.tipWidth,
-    'Tip Shape': (params.blade.tipShape ?? 'pointed'),
-    'Leaf Bulge': (params.blade.tipBulge ?? 0.2),
-    'Cross Section': (params.blade.crossSection ?? 'flat'),
-    'Edge Bevel': (params.blade.bevel ?? 0.5),
-    'Blade Thickness': params.blade.thickness,
-    'Left Thickness': params.blade.thicknessLeft ?? params.blade.thickness,
-    'Right Thickness': params.blade.thicknessRight ?? params.blade.thickness,
-    'Curvature': params.blade.curvature,
-    'Base Angle': (params.blade.baseAngle ?? 0) * 180/Math.PI,
-    'Sori Profile': params.blade.soriProfile ?? 'torii',
-    'Sori Bias': params.blade.soriBias ?? 0.8,
-    'Kissaki Length': params.blade.kissakiLength ?? 0,
-    'Kissaki Round': params.blade.kissakiRoundness ?? 0.5,
-    'Edge Type': params.blade.edgeType ?? 'double',
-    'Hamon Enabled': params.blade.hamonEnabled ?? false,
-    'Hamon Width': params.blade.hamonWidth ?? 0.02,
-    'Hamon Amp': params.blade.hamonAmplitude ?? 0.008,
-    'Hamon Freq': params.blade.hamonFrequency ?? 6,
-    'Hamon Side': params.blade.hamonSide ?? 'auto',
-    'Asymmetry': params.blade.asymmetry ?? 0,
-    'Chaos': params.blade.chaos ?? 0,
-    'Serration Pattern': (params.blade as any).serrationPattern ?? 'sine',
-    'Serration Seed': (params.blade as any).serrationSeed ?? 1337,
-    'Fuller Mode': (params.blade as any).fullerMode ?? 'overlay',
-    'Fuller Profile': (params.blade as any).fullerProfile ?? 'u',
-    'Fuller Width': (params.blade as any).fullerWidth ?? 0,
-    'Fuller Inset': (params.blade as any).fullerInset ?? (params.blade.fullerDepth ?? 0),
-    'Enable Fullers': params.blade.fullerEnabled ?? false,
-    'Fuller Depth': params.blade.fullerDepth ?? 0,
-    'Fuller Length': params.blade.fullerLength ?? 0,
-    'Fuller Count': params.blade.fullerCount ?? 1,
-    'Serration Left': params.blade.serrationAmplitudeLeft ?? (params.blade.serrationAmplitude ?? 0),
-    'Serration Right': params.blade.serrationAmplitudeRight ?? (params.blade.serrationAmplitude ?? 0),
-    'Serration Freq': params.blade.serrationFrequency ?? 0,
-    'Stylization': (params as any).styleFactor ?? 0,
-    'Taper Ratio': params.blade.baseWidth > 0 ? (1 - (params.blade.tipWidth / params.blade.baseWidth)) : 0,
-    'Blade Detail': params.blade.sweepSegments ?? 128,
-    'Width': params.guard.width,
-    'Guard Thickness': params.guard.thickness,
-    'Curve': params.guard.curve,
-    'Tilt': params.guard.tilt,
-    'Style_g': params.guard.style,
-    'Asymmetric Arms': params.guard.asymmetricArms ?? false,
-    'Arm Asymmetry': params.guard.asymmetry ?? 0,
-    'Guard Detail': params.guard.curveSegments ?? 12,
-    'Habaki': params.guard.habakiEnabled ?? false,
-    'Habaki Height': params.guard.habakiHeight ?? 0.06,
-    'Habaki Margin': params.guard.habakiMargin ?? 0.01,
-    'Guard Height': params.guard.heightOffset ?? 0,
-    'Quillon Count': params.guard.quillonCount ?? 0,
-    'Quillon Length': params.guard.quillonLength ?? 0.25,
-    'Ornamentation': params.guard.ornamentation ?? 0,
-    'Tip Sharpness': params.guard.tipSharpness ?? 0.5,
-    'Cutouts': params.guard.cutoutCount ?? 0,
-    'Cutout Radius': params.guard.cutoutRadius ?? 0.5,
-    'Length_h': params.handle.length,
-    'Radius Top': params.handle.radiusTop,
-    'Radius Bottom': params.handle.radiusBottom,
-    'Ridges': params.handle.segmentation,
-    'Ridge Count': params.handle.segmentationCount ?? 8,
-    'Wrap Enabled': params.handle.wrapEnabled ?? false,
-    'Wrap Turns': params.handle.wrapTurns ?? 6,
-    'Wrap Depth': params.handle.wrapDepth ?? 0.015,
-    'Handle Sides': params.handle.phiSegments ?? 64,
-    'Oval Ratio': params.handle.ovalRatio ?? 1,
-    'Flare': params.handle.flare ?? 0,
-    'Handle Curvature': params.handle.curvature ?? 0,
-    'Tang Visible': params.handle.tangVisible ?? false,
-    'Tang Width': params.handle.tangWidth ?? 0.05,
-    'Tang Thickness': params.handle.tangThickness ?? 0.02,
-    'Wrap Texture': params.handle.wrapTexture ?? false,
-    'Wrap Tex Scale': params.handle.wrapTexScale ?? 10,
-    'Wrap Tex Angle': ((params.handle.wrapTexAngle ?? (Math.PI/4)) * 180/Math.PI),
-    'Style_p': params.pommel.style,
-    'Size': params.pommel.size,
-    'Elongation': params.pommel.elongation,
-    'Morph': params.pommel.shapeMorph
-    ,
-    'Offset X': params.pommel.offsetX ?? 0,
-    'Offset Y': params.pommel.offsetY ?? 0,
-    'Facet Count': params.pommel.facetCount ?? 32,
-    'Spike Length': params.pommel.spikeLength ?? 1.0,
-    'Balance': (params.pommel as any).balance ?? 0
-  } as any;
-  // This is a simple best-effort refresher; in a larger app we’d bind per-field ids.
-  const inputs = root.querySelectorAll('input, select');
-  inputs.forEach((inp) => {
-    const label = inp.closest('.row')?.querySelector('label')?.textContent || '';
-    let key = label;
-    if (label === 'Thickness') key = 'Thickness';
-    if (label === 'Style') key = 'Style_g';
-    if (label === 'Length') key = 'Length';
-    const v = (map as any)[key];
-    if (v === undefined) return;
-    if (inp instanceof HTMLInputElement && inp.type === 'checkbox') {
-      inp.checked = !!v;
-    } else if (inp instanceof HTMLInputElement || inp instanceof HTMLSelectElement) {
-      (inp as any).value = String(v);
+function refreshInputs(registry: ControlRegistry, params: SwordParams) {
+  const set = (section: string, label: string, value: number | string | boolean) => {
+    registry.setValue(section, label, value);
+  };
+  const toDeg = (rad: number | undefined) => ((rad ?? 0) * 180) / Math.PI;
+  const blade = params.blade as typeof params.blade & Record<string, any>;
+  const guard = params.guard as typeof params.guard & Record<string, any>;
+  const handle = params.handle as typeof params.handle & Record<string, any>;
+  const pommel = params.pommel as typeof params.pommel & Record<string, any>;
+  const extras = params as Record<string, any>;
+  const ratios = extras.ratios ?? {};
+
+  const getTaper = (): [number, number, number] => {
+    const pts = blade.thicknessProfile?.points as Array<[number, number]> | undefined;
+    if (!pts || pts.length < 2) return [100, 100, 100];
+    const base = Math.round((pts[0]?.[1] ?? 1) * 100);
+    const tip = Math.round((pts[pts.length - 1]?.[1] ?? 1) * 100);
+    let mid = 100;
+    for (const [t, s] of pts) {
+      if (t >= 0.5 && t <= 0.7) {
+        mid = Math.round(s * 100);
+        break;
+      }
     }
-  });
+    return [base, mid, tip];
+  };
+  const [taperBase, taperMid, taperTip] = getTaper();
+
+  const guardExtras = (guard.extras ?? []) as any[];
+  const guardExtra = (kind: string) => guardExtras.find((e: any) => e.kind === kind);
+  const hasGuardExtra = (kind: string) => guardExtras.some((e: any) => e.kind === kind);
+  const sideRing = guardExtra('sideRing');
+  const loopExtra = guardExtra('loop');
+
+  const handleLayersList = (handle.handleLayers ?? []) as any[];
+  const findHandleLayer = (kind: string, predicate?: (layer: any) => boolean) => handleLayersList.find((layer) => layer.kind === kind && (!predicate || predicate(layer)));
+  const crisscross = findHandleLayer('wrap', (layer) => layer.wrapPattern === 'crisscross');
+  const ringLayers = handleLayersList.filter((layer) => layer.kind === 'ring');
+  const firstRing = ringLayers[0];
+  const menukiLayers = (handle.menuki ?? []) as any[];
+  const rivetLayers = (handle.rivets ?? []) as any[];
+
+  const sections: Record<string, Record<string, number | string | boolean>> = {
+    blade: {
+      'Length': blade.length,
+      'Base Width': blade.baseWidth,
+      'Tip Width': blade.tipWidth,
+      'Tip Shape': blade.tipShape ?? 'pointed',
+      'Leaf Bulge': blade.tipBulge ?? 0.2,
+      'Cross Section': blade.crossSection ?? 'flat',
+      'Edge Bevel': blade.bevel ?? 0.5,
+      'Blade Thickness': blade.thickness,
+      'Left Thickness': blade.thicknessLeft ?? blade.thickness,
+      'Right Thickness': blade.thicknessRight ?? blade.thickness,
+      'Curvature': blade.curvature,
+      'Base Angle': toDeg(blade.baseAngle),
+      'Sori Profile': blade.soriProfile ?? 'torii',
+      'Sori Bias': blade.soriBias ?? 0.8,
+      'Kissaki Length': blade.kissakiLength ?? 0,
+      'Kissaki Round': blade.kissakiRoundness ?? 0.5,
+      'Tip Ramp %': Math.round((blade.tipRampStart ?? 0) * 100),
+      'Edge Type': blade.edgeType ?? 'double',
+      'Hamon Enabled': blade.hamonEnabled ?? false,
+      'Hamon Width': blade.hamonWidth ?? 0.02,
+      'Hamon Amp': blade.hamonAmplitude ?? 0.008,
+      'Hamon Freq': blade.hamonFrequency ?? 6,
+      'Hamon Side': blade.hamonSide ?? 'auto',
+      'Asymmetry': blade.asymmetry ?? 0,
+      'Chaos': blade.chaos ?? 0,
+      'Serration Pattern': blade.serrationPattern ?? blade.serrationMode ?? 'sine',
+      'Serration Seed': blade.serrationSeed ?? 1337,
+      'Fuller Mode': blade.fullerMode ?? 'overlay',
+      'Fuller Profile': blade.fullerProfile ?? 'u',
+      'Fuller Width': blade.fullerWidth ?? 0,
+      'Fuller Inset': blade.fullerInset ?? (blade.fullerDepth ?? 0),
+      'Enable Fullers': blade.fullerEnabled ?? false,
+      'Fuller Depth': blade.fullerDepth ?? 0,
+      'Fuller Length': blade.fullerLength ?? 0,
+      'Fuller Count': blade.fullerCount ?? 1,
+      'Serration Left': blade.serrationAmplitudeLeft ?? blade.serrationAmplitude ?? 0,
+      'Serration Right': blade.serrationAmplitudeRight ?? blade.serrationAmplitude ?? 0,
+      'Serration Freq': blade.serrationFrequency ?? 0,
+      'Serration Sharpness': (blade as any).serrationSharpness ?? 0,
+      'Serration Lean L': (blade as any).serrationLeanLeft ?? 0,
+      'Serration Lean R': (blade as any).serrationLeanRight ?? 0,
+      'Taper Base %': taperBase,
+      'Taper Mid %': taperMid,
+      'Taper Tip %': taperTip,
+      'Ricasso %': Math.round((blade.ricassoLength ?? 0) * 100),
+      'False Edge %': Math.round((blade.falseEdgeLength ?? 0) * 100),
+      'False Edge Depth': blade.falseEdgeDepth ?? 0,
+      'Twist Angle': toDeg(blade.twistAngle ?? 0),
+    },
+    guard: {
+      'Width': guard.width,
+      'Guard Thickness': guard.thickness,
+      'Curve': guard.curve,
+      'Tilt': guard.tilt,
+      'Style': guard.style,
+      'Asymmetric Arms': guard.asymmetricArms ?? false,
+      'Arm Asymmetry': guard.asymmetry ?? 0,
+      'Guard Detail': guard.curveSegments ?? 12,
+      'Habaki': guard.habakiEnabled ?? false,
+      'Habaki Height': guard.habakiHeight ?? 0.06,
+      'Habaki Margin': guard.habakiMargin ?? 0.01,
+      'Guard Height': guard.heightOffset ?? 0,
+      'Quillon Count': guard.quillonCount ?? 0,
+      'Quillon Length': guard.quillonLength ?? 0.25,
+      'Ornamentation': guard.ornamentation ?? 0,
+      'Tip Sharpness': guard.tipSharpness ?? 0.5,
+      'Cutouts': guard.cutoutCount ?? 0,
+      'Cutout Radius': guard.cutoutRadius ?? 0.5,
+      'Blend Fillet': guard.guardBlendFillet ?? 0,
+      'Fillet Style': guard.guardBlendFilletStyle ?? 'box',
+      'Finger Guard': hasGuardExtra('fingerGuard'),
+      'Side Rings': hasGuardExtra('sideRing'),
+      'Ring Radius': (sideRing?.radius ?? 0.12),
+      'Ring Thick': (sideRing?.thickness ?? 0.03),
+      'Ring OffsetY': (sideRing?.offsetY ?? 0),
+      'Loops': hasGuardExtra('loop'),
+      'Loop Radius': (loopExtra?.radius ?? 0.12),
+      'Loop Thick': (loopExtra?.thickness ?? 0.02),
+      'Loop OffsetY': (loopExtra?.offsetY ?? 0),
+      'Basket Rods': guard.basketRodCount ?? 12,
+      'Basket Rod Thick': guard.basketRodRadius ?? 0.02,
+      'Basket Rings': guard.basketRingCount ?? 1,
+      'Ring Thickness': guard.basketRingThickness ?? 0.012,
+      'Ring Radius +': guard.basketRingRadiusAdd ?? 0,
+    },
+    handle: {
+      'Length': handle.length,
+      'Radius Top': handle.radiusTop,
+      'Radius Bottom': handle.radiusBottom,
+      'Ridges': handle.segmentation ?? false,
+      'Ridge Count': handle.segmentationCount ?? 8,
+      'Wrap Enabled': handle.wrapEnabled ?? false,
+      'Wrap Turns': handle.wrapTurns ?? 6,
+      'Wrap Depth': handle.wrapDepth ?? 0.015,
+      'Handle Sides': handle.phiSegments ?? 64,
+      'Oval Ratio': handle.ovalRatio ?? 1,
+      'Flare': handle.flare ?? 0,
+      'Handle Curvature': handle.curvature ?? 0,
+      'Tang Visible': handle.tangVisible ?? false,
+      'Tang Width': handle.tangWidth ?? 0.05,
+      'Tang Thickness': handle.tangThickness ?? 0.02,
+      'Wrap Texture': handle.wrapTexture ?? false,
+      'Wrap Tex Scale': handle.wrapTexScale ?? 10,
+      'Wrap Tex Angle': toDeg(handle.wrapTexAngle ?? Math.PI / 4),
+      'Crisscross Wrap Layer': !!crisscross,
+      'Wrap Turns L': Math.round(crisscross?.turns ?? 7),
+      'Wrap Y0 %': Math.round((crisscross?.y0Frac ?? 0) * 100),
+      'Wrap Len %': Math.round((crisscross?.lengthFrac ?? 1) * 100),
+      'Handle Ring': ringLayers.length > 0,
+      'Ring Y %': Math.round((firstRing?.y0Frac ?? 0.5) * 100),
+      'Ring Radius +': firstRing?.radiusAdd ?? 0.0,
+      'Rings Count': ringLayers.length,
+      'Menuki': menukiLayers.length > 0,
+      'Rivets': rivetLayers.length > 0,
+      'Rivets Count': Math.round(rivetLayers[0]?.count ?? 8),
+      'Rivets Y %': Math.round((rivetLayers[0]?.ringFrac ?? 0.3) * 100),
+      'Rivet Size': rivetLayers[0]?.radius ?? 0.01,
+    },
+    pommel: {
+      'Style': pommel.style,
+      'Size': pommel.size,
+      'Elongation': pommel.elongation,
+      'Morph': pommel.shapeMorph,
+      'Offset X': pommel.offsetX ?? 0,
+      'Offset Y': pommel.offsetY ?? 0,
+      'Facet Count': pommel.facetCount ?? 32,
+      'Spike Length': pommel.spikeLength ?? 1.0,
+      'Balance': pommel.balance ?? 0,
+      'Ring Inner R': pommel.ringInnerRadius ?? 0.08,
+      'Crown Spikes': pommel.crownSpikes ?? 8,
+      'Crown Sharp': pommel.crownSharpness ?? 0.6,
+    },
+    other: {
+      'Stylization': extras.styleFactor ?? 0,
+      'Taper Ratio': blade.baseWidth > 0 ? 1 - (blade.tipWidth / blade.baseWidth) : 0,
+      'Blade Detail': blade.sweepSegments ?? 128,
+      'Use Ratios': extras.useRatios ?? false,
+      'Guard:Blade': ratios.guardWidthToBlade ?? 0.35,
+      'Handle:Blade': ratios.handleLengthToBlade ?? 0.3,
+      'Pommel:Blade': ratios.pommelSizeToBlade ?? 0.05,
+    },
+  };
+
+  for (const [section, entries] of Object.entries(sections)) {
+    for (const [label, value] of Object.entries(entries)) {
+      set(section, label, value);
+    }
+  }
+
+  registry.setValueByField('handle.layer-wrap-depth', crisscross?.depth ?? 0.012);
 }
 
 function assignParams(dst: SwordParams, src: SwordParams) {
@@ -1545,6 +2241,62 @@ function randomizePommel(p: SwordParams, safe: boolean) {
   p.pommel.size = safe ? r(0.12, 0.22) : r(0.08, 0.3);
   p.pommel.elongation = safe ? r(0.8, 1.3) : r(0.5, 1.6);
   p.pommel.shapeMorph = safe ? r(0.1, 0.6) : r(0, 1);
+}
+
+function presetArming(): SwordParams {
+  const p = defaultSwordParams();
+  p.blade.length = 2.6;
+  p.blade.baseWidth = 0.22;
+  p.blade.tipWidth = 0.01;
+  p.blade.tipRampStart = 0.82;
+  p.blade.kissakiLength = 0.16;
+  p.blade.kissakiRoundness = 0.05;
+  p.blade.tipShape = 'spear';
+  p.blade.crossSection = 'diamond';
+  p.blade.thickness = 0.07;
+  p.blade.thicknessLeft = 0.07;
+  p.blade.thicknessRight = 0.07;
+  p.blade.fullerEnabled = true;
+  p.blade.fullerDepth = 0.015;
+  p.blade.fullerLength = 0.55;
+  p.blade.fullerWidth = 0.05;
+  p.blade.fullerMode = 'overlay';
+  p.blade.fullerCount = 1;
+  p.blade.chaos = 0;
+  p.blade.edgeType = 'double';
+  p.blade.ricassoLength = 0.04;
+  p.blade.falseEdgeLength = 0;
+  p.blade.falseEdgeDepth = 0;
+
+  p.guard.style = 'bar';
+  p.guard.width = 1.15;
+  p.guard.thickness = 0.18;
+  p.guard.curve = 0;
+  p.guard.tilt = 0;
+  p.guard.guardBlendFillet = 0.05;
+  p.guard.guardBlendFilletStyle = 'smooth';
+  p.guard.ornamentation = 0.1;
+
+  p.handle.length = 0.85;
+  p.handle.radiusTop = 0.11;
+  p.handle.radiusBottom = 0.11;
+  p.handle.segmentation = false;
+  p.handle.wrapEnabled = true;
+  p.handle.wrapTurns = 6;
+  p.handle.wrapDepth = 0.01;
+  p.handle.wrapTexture = true;
+  p.handle.wrapTexScale = 9;
+  p.handle.wrapTexAngle = Math.PI / 6;
+  (p.handle as any).ovalRatio = 1.1;
+
+  p.pommel.style = 'scentStopper';
+  p.pommel.size = 0.17;
+  p.pommel.elongation = 1.2;
+  p.pommel.shapeMorph = 0.25;
+  p.pommel.facetCount = 20;
+  p.pommel.balance = 0.1;
+
+  return p;
 }
 
 function presetKatana(): SwordParams {

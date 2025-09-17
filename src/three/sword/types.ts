@@ -31,6 +31,12 @@ export type BladeParams = {
   serrationAmplitudeLeft?: number;
   /** Right edge serration amplitude override. */
   serrationAmplitudeRight?: number;
+  /** Sharpen serration waveforms toward pointier teeth (0 smooth, 1 sharp). */
+  serrationSharpness?: number;
+  /** Lean/skew serration teeth against the blade travel on the left edge (-1 back, +1 forward). */
+  serrationLeanLeft?: number;
+  /** Lean/skew serration teeth on the right edge (-1 back, +1 forward). */
+  serrationLeanRight?: number;
   /** Fuller (groove) visual depth hint for overlay mode. */
   fullerDepth?: number;
   /** Portion of blade length (0..1) occupied by fuller. */
@@ -68,6 +74,8 @@ export type BladeParams = {
   kissakiLength?: number;
   /** Easing of tip taper (0 sharp, 1 round). */
   kissakiRoundness?: number;
+  /** Fraction (0..1) where the main blade begins tapering toward the tip. 0 preserves legacy behavior (continuous taper). */
+  tipRampStart?: number;
   /** Hamon visual overlay on edges. */
   hamonEnabled?: boolean;
   /** Hamon band width across X. */

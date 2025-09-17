@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { describe, it, expect } from 'vitest'
-import { buildBladeGeometry, bendOffsetX, tipWidthWithKissaki, thicknessScaleAt, buildBladeOutlinePoints, bladeOutlineToSVG, buildHamonOverlays, buildFullerOverlays } from '../../three/sword/bladeGeometry'
+import { buildBladeGeometry, bendOffsetX, tipWidthWithKissaki, thicknessScaleAt, buildBladeOutlinePoints, bladeOutlineToSVG, buildHamonOverlays, buildFullerOverlays, serrationWave } from '../../three/sword/bladeGeometry'
 
 const baseBlade = {
   length: 2,
@@ -25,6 +25,58 @@ describe('bladeGeometry helpers', () => {
     const w1 = tipWidthWithKissaki(baseBlade, 1, baseBlade.baseWidth, baseBlade.tipWidth)
     expect(w0).toBeCloseTo(baseBlade.baseWidth, 6)
     expect(w1).toBeCloseTo(baseBlade.tipWidth, 6)
+  })
+
+  it('tipRampStart holds width until requested ramp region', () => {
+    const blade = {
+      ...baseBlade,
+      baseWidth: 0.24,
+      tipWidth: 0.01,
+      tipRampStart: 0.8,
+      kissakiLength: 0.12,
+      kissakiRoundness: 0.05,
+      tipShape: 'spear'
+    } as any
+    const mid = tipWidthWithKissaki(blade, 0.5, blade.baseWidth, blade.tipWidth)
+    const preRamp = tipWidthWithKissaki(blade, 0.79, blade.baseWidth, blade.tipWidth)
+    const postRamp = tipWidthWithKissaki(blade, 0.9, blade.baseWidth, blade.tipWidth)
+    const tip = tipWidthWithKissaki(blade, 1, blade.baseWidth, blade.tipWidth)
+    expect(mid).toBeCloseTo(blade.baseWidth, 6)
+    expect(preRamp).toBeCloseTo(blade.baseWidth, 6)
+    expect(postRamp).toBeLessThan(blade.baseWidth * 0.6)
+    expect(tip).toBeCloseTo(blade.tipWidth, 6)
+  })
+
+  it('edge thickness overrides do not collapse the spine', () => {
+    const blade = {
+      ...baseBlade,
+      thickness: 0.08,
+      thicknessLeft: 0.002,
+      thicknessRight: 0.002,
+      crossSection: 'diamond',
+      bevel: 0.6
+    } as any
+    const geo = buildBladeGeometry(blade)
+    geo.computeBoundingBox()
+    const spanZ = geo.boundingBox!.max.z - geo.boundingBox!.min.z
+    expect(spanZ).toBeGreaterThan(0.04)
+  })
+
+  it('serration sharpness accentuates waveform peaks', () => {
+    const t = 0.18
+    const smooth = serrationWave(t, 6, 1, 'sine', 0, 0, 0)
+    const sharp = serrationWave(t, 6, 1, 'sine', 0, 1, 0)
+    expect(Math.abs(sharp)).toBeGreaterThan(Math.abs(smooth))
+  })
+
+  it('serration lean skews saw-tooth direction', () => {
+    const t = 0.43
+    const neutral = serrationWave(t, 4, 1, 'saw', 0, 0, 0)
+    const forward = serrationWave(t, 4, 1, 'saw', 0, 0, 0.8)
+    const backward = serrationWave(t, 4, 1, 'saw', 0, 0, -0.8)
+    expect(Math.abs(forward - neutral)).toBeGreaterThan(0.05)
+    expect(Math.abs(backward - neutral)).toBeGreaterThan(0.05)
+    expect(Math.sign(forward - neutral)).toBe(-Math.sign(backward - neutral))
   })
 
   it('thicknessScaleAt interpolates piecewise linear profile', () => {
@@ -67,4 +119,3 @@ describe('bladeGeometry helpers', () => {
     expect(meshCount).toBeGreaterThanOrEqual(2)
   })
 })
-

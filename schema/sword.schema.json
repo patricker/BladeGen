@@ -110,8 +110,8 @@
         "serrationFrequency": {
           "type": "number",
           "minimum": 0,
-          "maximum": 40,
-          "description": "Number of sine-wave serration cycles along the blade. Effective only when amplitude > 0."
+          "maximum": 120,
+          "description": "Number of serration cycles along the blade. Effective only when amplitude > 0."
         },
         "serrationAmplitudeLeft": {
           "type": "number",
@@ -124,6 +124,24 @@
           "minimum": 0,
           "maximum": 1.666,
           "description": "Right-edge serration amplitude (overrides serrationAmplitude for right if given)."
+        },
+        "serrationSharpness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Sharpen serration peaks (0 = smooth sine-like, 1 = very pointy)."
+        },
+        "serrationLeanLeft": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Lean/skew serration teeth on the left edge (-1 leans backward toward the guard, +1 leans forward toward the tip)."
+        },
+        "serrationLeanRight": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Lean/skew serration teeth on the right edge (-1 leans backward, +1 leans forward)."
         },
         "fullerDepth": {
           "type": "number",
@@ -246,6 +264,12 @@
           "minimum": 0,
           "maximum": 1,
           "description": "Easing of tip taper within the kissaki segment (0 = sharp, 1 = very round)."
+        },
+        "tipRampStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.98,
+          "description": "Normalized distance (0..0.98) along the blade where the taper toward the tip begins. Values above 0 hold the blade at baseWidth until the final segment."
         },
         "hamonEnabled": {
           "type": "boolean",

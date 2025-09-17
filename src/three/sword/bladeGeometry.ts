@@ -34,6 +34,9 @@ export { tipWidthWithKissaki } from './math'
  */
 export { thicknessScaleAt } from './math'
 
+/** Expose serration waveform helper for tests/tools. */
+export { serrationWave } from './math'
+
 /**
  * Synthesize a blade mesh (BufferGeometry) using the provided parameters.
  *
@@ -76,9 +79,12 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     return 0
   }
 
-  const serr = (t:number, freq:number, amp:number, pattern: BladeParams['serrationPattern'], seed:number) => serrationWave(t, freq, amp, pattern, seed)
   const serPat = b.serrationPattern ?? 'sine'
   const serSeed = (b.serrationSeed ?? 1337)
+  const sharp = THREE.MathUtils.clamp((b as any).serrationSharpness ?? 0, 0, 1)
+  const biasLeft = THREE.MathUtils.clamp((b as any).serrationLeanLeft ?? 0, -1, 1)
+  const biasRight = THREE.MathUtils.clamp((b as any).serrationLeanRight ?? 0, -1, 1)
+  const serr = (t:number, freq:number, amp:number, bias:number, seedOffset = 0) => serrationWave(t, freq, amp, serPat, serSeed + seedOffset, sharp, bias)
 
   const wantCarve = (b.fullerMode ?? 'overlay') === 'carve' && (b.fullerEnabled ?? false) && (b.fullerLength ?? 0) > 0 && (b.fullerInset ?? b.fullerDepth ?? 0) > 0
   const carveWidth = (b.fullerWidth && b.fullerWidth > 0) ? b.fullerWidth : (b.baseWidth || 0.25) * 0.3
@@ -95,8 +101,8 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     const y = t * L
     let w = tipWidthWithKissaki(b, t, baseW, tipW)
     if (ricassoFrac > 0 && t <= ricassoFrac) w = baseW
-    const serrL = (ricassoFrac > 0 && t <= ricassoFrac) ? 0 : (serr(t, serrFreq, serrAmpL, serPat, serSeed) * (1 - t))
-    const serrR = (ricassoFrac > 0 && t <= ricassoFrac) ? 0 : (serr(t, serrFreq, serrAmpR, serPat, serSeed) * (1 - t))
+    const serrL = (ricassoFrac > 0 && t <= ricassoFrac) ? 0 : (serr(t, serrFreq, serrAmpL, biasLeft) * (1 - t))
+    const serrR = (ricassoFrac > 0 && t <= ricassoFrac) ? 0 : (serr(t, serrFreq, serrAmpR, biasRight, 7) * (1 - t))
     const c1 = Math.sin(t * Math.PI * 16.0 + 1.3)
     const c2 = Math.sin(t * Math.PI * 9.7 + 0.6)
     const chaosOffset = (c1 * 0.6 + c2 * 0.4) * chaos * 0.08 * baseW * (1.0 - t * 0.6)
@@ -125,10 +131,16 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     const xl = -leftHalf + bend
     const xr = +rightHalf + bend
     const tScale = thicknessScaleAt(b, t)
-    const halfEdgeL = (TL0 * tScale) * 0.5
-    const halfEdgeR = (TR0 * tScale) * 0.5
+    const widthRatio = THREE.MathUtils.clamp(w / Math.max(0.0001, baseW), 0, 1)
+    const tipThicknessFactor = Math.max(0.05, Math.pow(widthRatio, 0.65))
+    const rawHalfEdgeL = (TL0 * tScale) * 0.5
+    const rawHalfEdgeR = (TR0 * tScale) * 0.5
+    const halfEdgeL = Math.max(0.0005, rawHalfEdgeL * tipThicknessFactor)
+    const halfEdgeR = Math.max(0.0005, rawHalfEdgeR * tipThicknessFactor)
     const edgeMidHalf = 0.5 * (halfEdgeL + halfEdgeR)
-    const centerHalf = edgeMidHalf * (1 + 2.0 * bevel)
+    const baseSpineTarget = (b.thickness ?? ((TL0 + TR0) * 0.5)) * 0.5 * tScale * tipThicknessFactor
+    const baseSpineHalf = Math.max(edgeMidHalf + 0.0005, baseSpineTarget)
+    const centerHalf = Math.max(baseSpineHalf, edgeMidHalf * (1 + 2.0 * bevel))
 
     const twist = (b.twistAngle ?? 0) * t
     const cosT = Math.cos(twist), sinT = Math.sin(twist)
@@ -359,13 +371,16 @@ export function buildBladeOutlinePoints(b: BladeParams): THREE.Vector2[] {
   const serrFreq = b.serrationFrequency ?? 0
   const serPat = b.serrationPattern ?? 'sine'
   const serSeed = b.serrationSeed ?? 1337
-  const serr = (t:number, freq:number, amp:number) => serrationWave(t, freq, amp, serPat, serSeed)
+  const sharpOutline = THREE.MathUtils.clamp((b as any).serrationSharpness ?? 0, 0, 1)
+  const biasOutlineL = THREE.MathUtils.clamp((b as any).serrationLeanLeft ?? 0, -1, 1)
+  const biasOutlineR = THREE.MathUtils.clamp((b as any).serrationLeanRight ?? 0, -1, 1)
+  const serr = (t:number, freq:number, amp:number, bias:number, offset = 0) => serrationWave(t, freq, amp, serPat, serSeed + offset, sharpOutline, bias)
   const pts: THREE.Vector2[] = []
   for (let i = 0; i <= steps; i++) {
     const t = i / steps
     const y = t * length
     const w = tipWidthWithKissaki(b, t, baseW, tipW)
-    const serrR = serr(t, serrFreq, serrAmpR) * (1 - t)
+    const serrR = serr(t, serrFreq, serrAmpR, biasOutlineR) * (1 - t)
     const half = Math.max(0.001, w * 0.5)
     const asym = (b.asymmetry ?? 0)
     let rightHalf = Math.max(0.0005, (half + serrR) * (1 + 0.5 * asym))
@@ -376,7 +391,7 @@ export function buildBladeOutlinePoints(b: BladeParams): THREE.Vector2[] {
     const t = i / steps
     const y = t * length
     const w = tipWidthWithKissaki(b, t, baseW, tipW)
-    const serrL = serr(t, serrFreq, serrAmpL) * (1 - t)
+    const serrL = serr(t, serrFreq, serrAmpL, biasOutlineL, 7) * (1 - t)
     const half = Math.max(0.001, w * 0.5)
     const asym = (b.asymmetry ?? 0)
     let leftHalf = Math.max(0.0005, (half + serrL) * (1 - 0.5 * asym))

@@ -29,17 +29,24 @@ export function bendOffsetX(b: BladeParams, y: number, L: number): number {
  * segment controlling the final taper curve.
  */
 export function tipWidthWithKissaki(b: BladeParams, t: number, baseW: number, tipW: number): number {
-  const kf = THREE.MathUtils.clamp(b.kissakiLength ?? 0, 0, 0.35)
+  const rampStart = THREE.MathUtils.clamp(b.tipRampStart ?? 0, 0, 0.98)
+  const span = 1 - rampStart
+  const rawKf = THREE.MathUtils.clamp(b.kissakiLength ?? 0, 0, 0.35)
+  const localKf = span > 1e-6 ? Math.min(1, rawKf / span) : 0
+  const localT = span > 1e-6 ? THREE.MathUtils.clamp((t - rampStart) / span, 0, 1) : 1
+
   let w: number
-  if (kf <= 1e-6) {
-    w = baseW + (tipW - baseW) * t
+  if (rampStart > 1e-6 && t < rampStart) {
+    w = baseW
+  } else if (localKf <= 1e-6) {
+    w = baseW + (tipW - baseW) * localT
   } else {
-    const split = 1 - kf
+    const split = Math.max(0, 1 - localKf)
     const midW = baseW + (tipW - baseW) * split
-    if (t <= split) {
-      w = baseW + (midW - baseW) * (t / Math.max(1e-6, split))
+    if (split > 1e-6 && localT <= split) {
+      w = baseW + (midW - baseW) * (localT / split)
     } else {
-      const u = (t - split) / Math.max(1e-6, kf)
+      const u = (localT - split) / Math.max(1e-6, localKf)
       let r = THREE.MathUtils.clamp(b.kissakiRoundness ?? 0.5, 0, 1)
       if (b.tipShape === 'rounded') r = 1
       let expo = THREE.MathUtils.lerp(0.5, 3.0, 1 - r)
@@ -76,20 +83,57 @@ export function thicknessScaleAt(b: BladeParams, t: number): number {
 }
 
 /** Serration waveforms used by blade edge features. */
-export function serrationWave(t: number, freq: number, amp: number, pattern: BladeParams['serrationPattern'], seed: number): number {
+export function serrationWave(
+  t: number,
+  freq: number,
+  amp: number,
+  pattern: BladeParams['serrationPattern'],
+  seed: number,
+  sharpness = 0,
+  bias = 0
+): number {
   if (!amp || !freq) return 0
-  const ph = t * Math.PI * freq
+  const sharp = THREE.MathUtils.clamp(sharpness, 0, 1)
+  const biasClamped = THREE.MathUtils.clamp(bias, -1, 1)
+  const phase = biasClamped * Math.PI * 0.5
+  const ph = t * Math.PI * freq + phase
+
+  let value: number
   switch (pattern) {
     case 'saw': {
       const k = ph / Math.PI
-      return amp * (2 * (k - Math.floor(k + 0.5)))
+      const frac = k - Math.floor(k)
+      const skew = THREE.MathUtils.clamp(0.5 + 0.45 * biasClamped, 0.05, 0.95)
+      let normalized: number
+      if (frac <= skew) {
+        normalized = frac / Math.max(skew, 1e-6)
+      } else {
+        normalized = 1 - (frac - skew) / Math.max(1e-6, 1 - skew)
+      }
+      value = normalized * 2 - 1
+      break
     }
-    case 'scallop':
-      return amp * (1 - Math.abs(Math.sin(ph)))
-    case 'random':
-      return amp * (Math.sin(ph * 1.7 + seed * 0.1) + Math.sin(ph * 2.3 + seed * 0.2)) * 0.5
-    default:
-      return amp * Math.sin(ph)
+    case 'scallop': {
+      const s = Math.sin(ph)
+      value = 1 - Math.abs(s)
+      value = value * 2 - 1
+      break
+    }
+    case 'random': {
+      const a = Math.sin(ph * 1.7 + seed * 0.1)
+      const b = Math.sin(ph * 2.3 + seed * 0.2)
+      value = (a + b) * 0.5
+      break
+    }
+    default: {
+      value = Math.sin(ph)
+    }
   }
-}
 
+  if (sharp > 0) {
+    const pow = 1 - sharp * 0.7
+    value = Math.sign(value) * Math.pow(Math.abs(value), pow)
+  }
+
+  return amp * value
+}

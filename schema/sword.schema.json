@@ -1821,9 +1821,12 @@
         "blade": {
           "color": "#b9c6ff",
           "metalness": 0.9,
-          "roughness": 0.25,
+          "roughness": 0.22,
           "clearcoat": 0.2,
-          "clearcoatRoughness": 0.4,
+          "clearcoatRoughness": 0.32,
+          "envMapIntensity": 1.4,
+          "anisotropy": 0.3,
+          "anisotropyRotation": 0.1,
           "preset": "Steel",
           "bumpEnabled": false,
           "bumpScale": 0.02,
@@ -1833,9 +1836,10 @@
         "guard": {
           "color": "#8892b0",
           "metalness": 0.6,
-          "roughness": 0.45,
+          "roughness": 0.4,
           "clearcoat": 0.0,
           "clearcoatRoughness": 0.5,
+          "anisotropy": 0.25,
           "preset": "None",
           "bumpEnabled": false,
           "bumpScale": 0.02,
@@ -1844,10 +1848,12 @@
         },
         "handle": {
           "color": "#5a6b78",
-          "metalness": 0.1,
-          "roughness": 0.85,
+          "metalness": 0.05,
+          "roughness": 0.68,
           "clearcoat": 0.0,
           "clearcoatRoughness": 0.6,
+          "sheen": 0.24,
+          "sheenColor": "#6b4f3a",
           "preset": "Leather",
           "bumpEnabled": true,
           "bumpScale": 0.01,
@@ -1857,15 +1863,47 @@
         "pommel": {
           "color": "#9aa4b2",
           "metalness": 0.75,
-          "roughness": 0.35,
+          "roughness": 0.32,
           "clearcoat": 0.0,
           "clearcoatRoughness": 0.5,
+          "anisotropy": 0.2,
           "preset": "Iron",
           "bumpEnabled": false,
           "bumpScale": 0.02,
           "bumpNoiseScale": 8,
           "bumpSeed": 1
-        }
+        },
+        "variants": [
+          {
+            "id": "winter-steel",
+            "name": "Winter Steel",
+            "description": "Bright polish with gilt fittings",
+            "parts": {
+              "blade": {
+                "color": "#eef4ff",
+                "metalness": 0.95,
+                "roughness": 0.15,
+                "clearcoat": 0.32,
+                "clearcoatRoughness": 0.28,
+                "envMapIntensity": 1.6,
+                "anisotropy": 0.36,
+                "anisotropyRotation": 0.2
+              },
+              "guard": {
+                "color": "#c9a347",
+                "metalness": 0.82,
+                "roughness": 0.32,
+                "anisotropy": 0.3
+              },
+              "pommel": {
+                "color": "#c9a347",
+                "metalness": 0.82,
+                "roughness": 0.32,
+                "anisotropy": 0.28
+              }
+            }
+          }
+        ]
       },
       "render": {
         "exposure": 1.0,

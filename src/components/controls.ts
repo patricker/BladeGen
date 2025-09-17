@@ -383,6 +383,72 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       ]
     },
     {
+      id: 'gladius',
+      label: 'Gladius',
+      build: presetGladius,
+      materials: {
+        blade: { color: '#f2f5ff', metalness: 0.93, roughness: 0.18, clearcoat: 0.18, clearcoatRoughness: 0.3, envMapIntensity: 1.35, anisotropy: 0.22, anisotropyRotation: 0.08 },
+        guard: { color: '#d1a660', metalness: 0.78, roughness: 0.36, anisotropy: 0.18 },
+        handle: { color: '#6d4524', metalness: 0.05, roughness: 0.6, sheen: 0.28, sheenColor: '#7b512b', bumpEnabled: true, bumpScale: 0.012, bumpNoiseScale: 8 },
+        pommel: { color: '#d1a660', metalness: 0.78, roughness: 0.38, anisotropy: 0.2 }
+      },
+      variants: [
+        {
+          name: 'Legion Standard',
+          description: 'Bright blade with bone grip and bronze hardware.',
+          parts: {
+            blade: { color: '#fdfdf8', metalness: 0.95, roughness: 0.16, envMapIntensity: 1.5, anisotropy: 0.24 },
+            handle: { color: '#e8d9b7', metalness: 0.02, roughness: 0.58, sheen: 0.22, sheenColor: '#f3e9ce', bumpEnabled: false },
+            guard: { color: '#e4b972', metalness: 0.86, roughness: 0.32 },
+            pommel: { color: '#e4b972', metalness: 0.86, roughness: 0.34 }
+          }
+        },
+        {
+          name: 'Arena Ember',
+          description: 'Heat-blued blade with charred leather grip.',
+          parts: {
+            blade: { color: '#5c6599', metalness: 0.7, roughness: 0.22, emissiveColor: '#ff6b3a', emissiveIntensity: 0.6, anisotropy: 0.18 },
+            handle: { color: '#2a1a16', roughness: 0.72, sheen: 0.14 },
+            guard: { color: '#3f2a22', metalness: 0.3, roughness: 0.52 },
+            pommel: { color: '#3f2a22', metalness: 0.3, roughness: 0.52 }
+          }
+        }
+      ]
+    },
+    {
+      id: 'jian',
+      label: 'Jian',
+      build: presetJian,
+      materials: {
+        blade: { color: '#e8f0ff', metalness: 0.9, roughness: 0.2, clearcoat: 0.18, clearcoatRoughness: 0.32, envMapIntensity: 1.3, anisotropy: 0.24, anisotropyRotation: 0.12 },
+        guard: { color: '#ad9969', metalness: 0.7, roughness: 0.38, anisotropy: 0.26 },
+        handle: { color: '#2e342f', metalness: 0.08, roughness: 0.6, sheen: 0.22, sheenColor: '#425447' },
+        pommel: { color: '#ad9969', metalness: 0.7, roughness: 0.36, anisotropy: 0.2 }
+      },
+      variants: [
+        {
+          name: 'Scholar\'s River',
+          description: 'Blued blade with jade fittings.',
+          parts: {
+            blade: { color: '#b9d7ff', emissiveColor: '#53c5ff', emissiveIntensity: 0.4, anisotropy: 0.3, anisotropyRotation: 0.2 },
+            guard: { color: '#5b8872', metalness: 0.55, roughness: 0.32 },
+            pommel: { color: '#5b8872', metalness: 0.55, roughness: 0.32 },
+            handle: { color: '#1e2a25', roughness: 0.55 }
+          }
+        },
+        {
+          name: 'Imperial Sunset',
+          description: 'Gilt fittings and a warm mirror polish.',
+          parts: {
+            blade: { color: '#f6ede0', metalness: 0.88, roughness: 0.18, envMapIntensity: 1.5 },
+            guard: { color: '#e8b055', metalness: 0.9, roughness: 0.3 },
+            pommel: { color: '#e8b055', metalness: 0.9, roughness: 0.3 },
+            handle: { color: '#3f2116', roughness: 0.64, sheen: 0.24 }
+          }
+        }
+      ]
+    },
+    {
       id: 'claymore',
       label: 'Claymore',
       build: presetClaymore,
@@ -522,13 +588,48 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         envIntensity: 1.2,
         exposure: 0.95
       }
+    },
+    {
+      id: 'sabre',
+      label: 'Sabre',
+      build: presetSabre,
+      materials: {
+        blade: { color: '#e0ebff', metalness: 0.9, roughness: 0.2, clearcoat: 0.2, clearcoatRoughness: 0.34, envMapIntensity: 1.4, anisotropy: 0.28, anisotropyRotation: 0.25 },
+        guard: { color: '#b7c3d9', metalness: 0.82, roughness: 0.3, anisotropy: 0.48, anisotropyRotation: 1.2 },
+        handle: { color: '#3b2e2e', metalness: 0.08, roughness: 0.56, sheen: 0.24, sheenColor: '#523c3c' },
+        pommel: { color: '#b7c3d9', metalness: 0.82, roughness: 0.32, anisotropy: 0.46 }
+      },
+      variants: [
+        {
+          name: 'Cavalry Shine',
+          description: 'Highly polished cup hilt with leather grip.',
+          parts: {
+            blade: { color: '#f5f8ff', metalness: 0.96, roughness: 0.14, envMapIntensity: 1.65, anisotropy: 0.34 },
+            guard: { color: '#dde8ff', metalness: 0.95, roughness: 0.24, anisotropy: 0.5 },
+            handle: { color: '#36261b', roughness: 0.6, sheen: 0.26, sheenColor: '#5a3c22' }
+          }
+        },
+        {
+          name: 'Officer\'s Dress',
+          description: 'Gold-plated guard with dark sharkskin grip.',
+          parts: {
+            guard: { color: '#e2b55a', metalness: 0.9, roughness: 0.32, anisotropy: 0.3 },
+            pommel: { color: '#e2b55a', metalness: 0.9, roughness: 0.32, anisotropy: 0.3 },
+            handle: { color: '#1b1f23', roughness: 0.52, sheen: 0.28, sheenColor: '#3f4d5c' },
+            blade: { color: '#dbe5ff', metalness: 0.88, roughness: 0.18, anisotropy: 0.26 }
+          }
+        }
+      ]
     }
   ];
 
   const matVariants: MaterialVariant[] = [];
+  let currentVariantId: string | null = null;
+  let baseSnapshot: Record<Part, MatExt> | null = null;
   let matPart: Part = 'blade';
   let raf = 0; let needs = false;
   let renderVariantList = () => {};
+  let syncLookDropdown = () => {};
   const applyMaterialStateToRenderer = (part: Part, state: MatExt) => {
     if (!render) return;
     const col = parseInt((state.color || '#ffffff').replace('#','0x'));
@@ -556,6 +657,66 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       anisotropy: state.anisotropy,
       anisotropyRotation: state.anisotropyRotation
     });
+  };
+
+  const cloneMaterial = (src: MatExt): MatExt => JSON.parse(JSON.stringify(src));
+
+  const applyLook = (variantId: string | null) => {
+    if (variantId === currentVariantId) {
+      syncLookDropdown();
+      return;
+    }
+
+    if (variantId === null) {
+      if (currentVariantId !== null && baseSnapshot) {
+        for (const part of PARTS) {
+          matState[part] = cloneMaterial(baseSnapshot[part]);
+          applyMaterialStateToRenderer(part, matState[part]);
+        }
+      }
+      currentVariantId = null;
+      baseSnapshot = null;
+      lookSel.value = BASE_LOOK_VALUE;
+      syncMaterialInputs(matPart);
+      renderVariantList();
+      syncLookDropdown();
+      rerender();
+      return;
+    }
+
+    const variant = matVariants.find((v) => v.id === variantId);
+    if (!variant) return;
+
+    if (currentVariantId === null) {
+      baseSnapshot = PARTS.reduce((acc, part) => {
+        acc[part] = cloneMaterial(matState[part]);
+        return acc;
+      }, {} as Record<Part, MatExt>);
+    }
+
+    const baseSource = baseSnapshot ?? PARTS.reduce((acc, part) => {
+      acc[part] = cloneMaterial(matState[part]);
+      return acc;
+    }, {} as Record<Part, MatExt>);
+
+    for (const part of PARTS) {
+      matState[part] = cloneMaterial(baseSource[part]);
+      applyMaterialStateToRenderer(part, matState[part]);
+    }
+
+    for (const part of Object.keys(variant.parts || {}) as Part[]) {
+      const overrides = variant.parts[part];
+      if (!overrides) continue;
+      matState[part] = { ...cloneMaterial(matState[part]), ...JSON.parse(JSON.stringify(overrides)) } as MatExt;
+      applyMaterialStateToRenderer(part, matState[part]);
+    }
+
+    currentVariantId = variant.id;
+    lookSel.value = variant.id;
+    syncMaterialInputs(matPart);
+    renderVariantList();
+    syncLookDropdown();
+    rerender();
   };
 
   type VariantExportConfig = {
@@ -662,6 +823,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   }
   toolbar.appendChild(presetSel);
 
+  const BASE_LOOK_VALUE = '__base';
+  const lookSel = document.createElement('select');
+  lookSel.className = 'look-select';
+  lookSel.style.marginLeft = '8px';
+  lookSel.disabled = true;
+  lookSel.appendChild(new Option('Look: Base', BASE_LOOK_VALUE));
+  toolbar.appendChild(lookSel);
+
   const btnSave = document.createElement('button');
   btnSave.textContent = 'Save Preset';
   toolbar.appendChild(btnSave);
@@ -675,6 +844,11 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   btnRandomSafe.textContent = 'Randomize (safe)';
   btnRandomSafe.classList.add('model-only');
   toolbar.appendChild(btnRandomSafe);
+
+  lookSel.addEventListener('change', () => {
+    const value = lookSel.value === BASE_LOOK_VALUE ? null : lookSel.value;
+    applyLook(value);
+  });
 
   // Export dropdown (combo button)
   const exportWrap = document.createElement('div');
@@ -1113,6 +1287,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         empty.style.opacity = '0.7';
         variantList.appendChild(empty);
         clearVariantsBtn.disabled = true;
+        syncLookDropdown();
         return;
       }
       clearVariantsBtn.disabled = false;
@@ -1141,17 +1316,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         actions.style.gap = '4px';
         const applyBtn = document.createElement('button');
         applyBtn.textContent = 'Apply';
-        applyBtn.addEventListener('click', () => {
-          const parts: Part[] = ['blade','guard','handle','pommel'];
-          for (const part of parts) {
-            const next = variant.parts[part];
-            if (!next) continue;
-            matState[part] = JSON.parse(JSON.stringify(next));
-            applyMaterialStateToRenderer(part, matState[part]);
-          }
-          syncMaterialInputs(matPart);
-          syncUi();
-        });
+        applyBtn.addEventListener('click', () => { applyLook(variant.id); });
         const updateBtn = document.createElement('button');
         updateBtn.textContent = 'Update';
         updateBtn.title = 'Overwrite with current materials';
@@ -1162,7 +1327,11 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
             handle: JSON.parse(JSON.stringify(matState.handle)),
             pommel: JSON.parse(JSON.stringify(matState.pommel))
           };
-          renderVariantList();
+          if (currentVariantId === variant.id) {
+            applyLook(variant.id);
+          } else {
+            renderVariantList();
+          }
         });
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = '✕';
@@ -1170,7 +1339,11 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         deleteBtn.addEventListener('click', () => {
           const idx = matVariants.findIndex((v) => v.id === variant.id);
           if (idx >= 0) matVariants.splice(idx, 1);
-          renderVariantList();
+          if (currentVariantId === variant.id) {
+            applyLook(null);
+          } else {
+            renderVariantList();
+          }
         });
         actions.appendChild(applyBtn);
         actions.appendChild(updateBtn);
@@ -1178,6 +1351,19 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         row.appendChild(actions);
         variantList.appendChild(row);
       }
+      syncLookDropdown();
+    };
+
+    syncLookDropdown = () => {
+      lookSel.innerHTML = '';
+      const baseOption = new Option('Look: Base', BASE_LOOK_VALUE);
+      lookSel.appendChild(baseOption);
+      for (const variant of matVariants) {
+        const opt = new Option(variant.name, variant.id);
+        lookSel.appendChild(opt);
+      }
+      lookSel.disabled = matVariants.length === 0;
+      lookSel.value = currentVariantId ?? BASE_LOOK_VALUE;
     };
 
     const captureVariant = () => {
@@ -1200,7 +1386,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       if (!matVariants.length) return;
       if (!confirm('Remove all saved variants?')) return;
       matVariants.splice(0, matVariants.length);
-      renderVariantList();
+      applyLook(null);
     });
 
     renderVariantList();
@@ -1885,6 +2071,8 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       applyMaterialStateToRenderer(part, merged);
     }
 
+    currentVariantId = null;
+    baseSnapshot = null;
     matVariants.splice(0, matVariants.length);
     if (entry.variants?.length) {
       for (const variant of entry.variants) {
@@ -1909,6 +2097,9 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         }
       }
     }
+
+    renderVariantList();
+    lookSel.value = BASE_LOOK_VALUE;
 
     if (render) {
       if (entry.render) {
@@ -2070,6 +2261,9 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         }
       }));
     }
+    if (currentVariantId) {
+      materialsOut.activeVariant = currentVariantId;
+    }
     const payload = {
       $schema: 'schema/sword.schema.json',
       version: 3,
@@ -2127,8 +2321,10 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
           matState[part] = { ...matState[part], ...m };
           applyMaterialStateToRenderer(part, matState[part]);
         }
+        currentVariantId = null;
+        baseSnapshot = null;
+        matVariants.splice(0, matVariants.length);
         if (Array.isArray(obj.materials.variants)) {
-          matVariants.splice(0, matVariants.length);
           for (const entry of obj.materials.variants) {
             if (!entry || typeof entry !== 'object' || typeof entry.name !== 'string') continue;
             const partsMap: Partial<Record<Part, MatExt>> = {};
@@ -2145,7 +2341,15 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
               parts: partsMap
             });
           }
-          renderVariantList();
+        }
+        renderVariantList();
+        const activeVariantId = typeof obj.materials.activeVariant === 'string' ? obj.materials.activeVariant : null;
+        if (activeVariantId) {
+          applyLook(activeVariantId);
+        } else {
+          currentVariantId = null;
+          baseSnapshot = null;
+          syncLookDropdown();
         }
       }
       if (obj?.render && render) {
@@ -2956,6 +3160,95 @@ function presetArming(): SwordParams {
   return p;
 }
 
+function presetJian(): SwordParams {
+  const p = defaultSwordParams();
+  p.blade.length = 2.9;
+  p.blade.baseWidth = 0.19;
+  p.blade.tipWidth = 0.04;
+  p.blade.tipRampStart = 0.78;
+  p.blade.crossSection = 'diamond';
+  p.blade.bevel = 0.45;
+  p.blade.fullerEnabled = true;
+  p.blade.fullerDepth = 0.012;
+  p.blade.fullerLength = 0.55;
+  p.blade.fullerWidth = 0.035;
+  p.blade.fullerMode = 'overlay';
+  p.blade.fullerCount = 1;
+  p.blade.chaos = 0;
+  p.blade.edgeType = 'double';
+  p.blade.thickness = 0.065;
+  p.blade.thicknessLeft = 0.065;
+  p.blade.thicknessRight = 0.065;
+
+  p.guard.style = 'bar';
+  p.guard.width = 0.42;
+  p.guard.thickness = 0.14;
+  p.guard.curve = 0.05;
+  p.guard.tilt = 0;
+  p.guard.guardBlendFillet = 0.12;
+  p.guard.guardBlendFilletStyle = 'smooth';
+  p.guard.ornamentation = 0.25;
+
+  p.handle.length = 0.8;
+  p.handle.radiusTop = 0.115;
+  p.handle.radiusBottom = 0.11;
+  p.handle.segmentation = false;
+  p.handle.wrapEnabled = false;
+  (p.handle as any).ovalRatio = 1.05;
+
+  p.pommel.style = 'ring';
+  p.pommel.size = 0.15;
+  p.pommel.elongation = 1.05;
+  p.pommel.shapeMorph = 0.2;
+  p.pommel.ringInnerRadius = 0.06;
+  p.pommel.balance = 0.08;
+
+  return p;
+}
+
+function presetGladius(): SwordParams {
+  const p = defaultSwordParams();
+  p.blade.length = 2.2;
+  p.blade.baseWidth = 0.28;
+  p.blade.tipWidth = 0.12;
+  p.blade.tipShape = 'leaf';
+  p.blade.tipBulge = 0.65;
+  p.blade.tipRampStart = 0.46;
+  p.blade.crossSection = 'lenticular';
+  p.blade.bevel = 0.55;
+  p.blade.fullerEnabled = true;
+  p.blade.fullerDepth = 0.014;
+  p.blade.fullerLength = 0.58;
+  p.blade.fullerWidth = 0.04;
+  p.blade.fullerMode = 'overlay';
+  p.blade.fullerCount = 1;
+  p.blade.edgeType = 'double';
+  p.blade.sweepSegments = 88;
+
+  p.guard.style = 'disk';
+  p.guard.width = 0.48;
+  p.guard.thickness = 0.18;
+  p.guard.curve = 0.12;
+  p.guard.guardBlendFillet = 0.18;
+  p.guard.guardBlendFilletStyle = 'smooth';
+
+  p.handle.length = 0.7;
+  p.handle.radiusTop = 0.14;
+  p.handle.radiusBottom = 0.13;
+  p.handle.segmentation = true;
+  (p.handle as any).segmentationCount = 6;
+  (p.handle as any).flare = 0.04;
+  p.handle.wrapEnabled = false;
+
+  p.pommel.style = 'orb';
+  p.pommel.size = 0.2;
+  p.pommel.elongation = 0.9;
+  p.pommel.shapeMorph = 0.35;
+  (p.pommel as any).balance = 0.12;
+
+  return p;
+}
+
 function presetKatana(): SwordParams {
   const p = defaultSwordParams();
   // Katana: curved, single-edged look, slender blade, tsuba disk guard, long wrapped handle
@@ -3029,6 +3322,56 @@ function presetLightsaber(): SwordParams {
   p.pommel.elongation = 1.05;
   p.pommel.shapeMorph = 0.15;
   p.pommel.balance = 0.05;
+
+  return p;
+}
+
+function presetSabre(): SwordParams {
+  const p = defaultSwordParams();
+  p.blade.length = 3.2;
+  p.blade.baseWidth = 0.19;
+  p.blade.tipWidth = 0.06;
+  p.blade.curvature = 0.32;
+  p.blade.edgeType = 'single';
+  p.blade.crossSection = 'lenticular';
+  p.blade.bevel = 0.6;
+  p.blade.thickness = 0.07;
+  p.blade.thicknessLeft = 0.09;
+  p.blade.thicknessRight = 0.04;
+  p.blade.tipRampStart = 0.7;
+  p.blade.fullerEnabled = true;
+  p.blade.fullerDepth = 0.012;
+  p.blade.fullerLength = 0.5;
+  p.blade.fullerMode = 'overlay';
+  p.blade.fullerCount = 1;
+  p.blade.ricassoLength = 0.03;
+
+  p.guard.style = 'knucklebow';
+  p.guard.width = 0.75;
+  p.guard.thickness = 0.14;
+  p.guard.curve = 0.25;
+  p.guard.guardBlendFillet = 0.15;
+  p.guard.guardBlendFilletStyle = 'smooth';
+  (p.guard as any).basketRodCount = 14;
+  (p.guard as any).basketRodRadius = 0.018;
+  (p.guard as any).basketRingCount = 1;
+
+  p.handle.length = 0.95;
+  p.handle.radiusTop = 0.12;
+  p.handle.radiusBottom = 0.11;
+  p.handle.wrapEnabled = true;
+  p.handle.wrapTurns = 7;
+  p.handle.wrapDepth = 0.011;
+  p.handle.wrapTexture = true;
+  p.handle.wrapTexScale = 8;
+  p.handle.wrapTexAngle = Math.PI / 5;
+  (p.handle as any).ovalRatio = 1.18;
+
+  p.pommel.style = 'wheel';
+  p.pommel.size = 0.17;
+  p.pommel.elongation = 1.1;
+  p.pommel.shapeMorph = 0.22;
+  (p.pommel as any).balance = 0.12;
 
   return p;
 }

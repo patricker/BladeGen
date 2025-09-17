@@ -32,8 +32,11 @@ Parametric sword generator and renderer for the web.
 | --- | --- |
 | **Katana** | Lenticular single-edge blade, hamon overlay, brushed anisotropic polish with “Winter Steel” and “Midnight Oni” variants. |
 | **Arming Sword** | Classic cruciform proportions, fuller and scent-stopper pommel with “Tournament Bright” / “Battleworn” material variants. |
+| **Gladius** | Leaf-shaped Roman short sword with “Legion Standard” and “Arena Ember” looks. |
+| **Jian** | Straight double-edged blade with mirrored polish and “Scholar’s River” / “Imperial Sunset” looks. |
 | **Claymore** | Two-handed greatsword with flared guard, leather grip, and bronze/dark runic variants that showcase emissive accents. |
 | **Rapier** | Swept/claw guard with high anisotropy and polished or blackened variant looks. |
+| **Sabre** | Curved single-edge cavalry blade featuring “Cavalry Shine” and “Officer’s Dress” variants. |
 | **Demon Blade** | Aggressive serrations, emissive arcane base material plus molten and voidglass variants. |
 | **Lightsaber** | Energy blade using transmission + emissive glow, auto-bloom tuning, and cyan/green/red/purple crystal variants. |
 

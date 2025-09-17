@@ -36,7 +36,7 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
  - [ ] Damascus blade look: procedural or texture‑driven maps; expose as a blade material preset.
 
 ## Accessories
-- [ ] Scabbard generator (throat/locket/chape) matching blade profile + sword knot/tassel; simple rope curve with idle.
+- [x] Scabbard generator (throat/locket/chape) matching blade profile + sword knot/tassel; simple rope curve with idle.
 
 ## UX
 - [ ] Archetype‑first start screen (family presets grid).

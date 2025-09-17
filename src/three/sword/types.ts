@@ -327,6 +327,67 @@ export type PommelParams = {
   peenShape?: 'dome' | 'block';
 };
 
+export type ScabbardParams = {
+  /** Enable scabbard geometry generation. */
+  enabled: boolean;
+  /** Extra clearance added to blade half-width along ±X. */
+  bodyMargin: number;
+  /** Target overall thickness across ±Z for the scabbard shell. */
+  bodyThickness: number;
+  /** Fraction of blade length extending past the tip for the chape. */
+  tipExtension: number;
+  /** Fraction of blade length reserved for the throat collar near the mouth. */
+  throatLength: number;
+  /** Scale multiplier applied at the throat (1 = same as body). */
+  throatScale: number;
+  /** Offset fraction from the mouth to place the locket band. */
+  locketOffset: number;
+  /** Fractional length of the locket band along the scabbard body. */
+  locketLength: number;
+  /** Scale multiplier applied to the locket band swell. */
+  locketScale: number;
+  /** Fractional length toward the tip where the chape taper begins. */
+  chapeLength: number;
+  /** Target scale at the extreme chape tip (0 narrower, 1 same as body). */
+  chapeScale: number;
+  /** 0 → hard-edged rectangular profile, 1 → round. */
+  bodyRoundness: number;
+  /** Lateral offset of the scabbard relative to the blade centerline. */
+  offsetX: number;
+  /** Thickness offset pushing the scabbard toward/away from camera. */
+  offsetZ: number;
+  /** Rotation around Z (radians) to give the scabbard a hanging cant. */
+  hangAngle: number;
+};
+
+export type TasselParams = {
+  /** Enable tassel/knot geometry. */
+  enabled: boolean;
+  /** Attachment target. */
+  attachTo: 'guard' | 'scabbard';
+  /** Normalized offset (0 mouth, 1 tip) when attaching to the scabbard. */
+  anchorOffset: number;
+  /** Rope length as a fraction of blade length. */
+  length: number;
+  /** Vertical sag factor (0 taut, 1 fully drooped). */
+  droop: number;
+  /** Sideways sway factor (-1 left, +1 right). */
+  sway: number;
+  /** Rope diameter in scene units. */
+  thickness: number;
+  /** Radius of the knot/terminal bulb. */
+  tuftSize: number;
+  /** Length of the tassel fringe. */
+  tuftLength: number;
+  /** Number of fringe strands cloned around the tip. */
+  strands: number;
+};
+
+export type AccessoriesParams = {
+  scabbard: ScabbardParams;
+  tassel: TasselParams;
+};
+
 export type SwordParams = {
   /** All per-part geometry parameters used to synthesize the sword. */
   blade: BladeParams;
@@ -340,4 +401,6 @@ export type SwordParams = {
   /** Optional ratio-based sizing helpers. */
   useRatios?: boolean;
   ratios?: { guardWidthToBlade?: number; handleLengthToBlade?: number; pommelSizeToBlade?: number };
+  /** Optional accessories such as scabbards and tassels. */
+  accessories?: AccessoriesParams;
 };

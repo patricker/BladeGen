@@ -67,14 +67,14 @@ export type RenderHooks = {
   setOutline: (enabled: boolean, strength?: number, thickness?: number, colorHex?: number) => void
   setInkOutline: (enabled: boolean, thickness?: number, colorHex?: number) => void
   setEnvIntensity: (v: number) => void
-  setPartColor: (part: 'blade'|'guard'|'handle'|'pommel', hex: number) => void
-  setPartMetalness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void
-  setPartRoughness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void
-  setPartClearcoat: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void
-  setPartClearcoatRoughness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void
+  setPartColor: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', hex: number) => void
+  setPartMetalness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => void
+  setPartRoughness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => void
+  setPartClearcoat: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => void
+  setPartClearcoatRoughness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => void
   setDPRCap: (cap: number) => void
   setBladeGradientWear: (enabled: boolean, baseHex?: number, edgeHex?: number, edgeFade?: number, wear?: number) => void
-  setPartBump: (part: 'blade'|'guard'|'handle'|'pommel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => void
+  setPartBump: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => void
 }
 
 export function setupScene(canvas: HTMLCanvasElement) {
@@ -614,7 +614,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
     },
     // setBladeGradientWear is defined below with an internal builder
     // Procedural bump/noise on selected part
-    setPartBump: (part: 'blade'|'guard'|'handle'|'pommel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => {
+    setPartBump: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => {
       const apply = (obj?: THREE.Object3D|null) => {
         if (!obj) return; obj.traverse((o)=>{
           const mat = (o as any).material as any; if (!mat) return;
@@ -631,6 +631,8 @@ export function setupScene(canvas: HTMLCanvasElement) {
       if (part === 'guard') { apply(sword.guardMesh); apply((sword as any)['guardGroup']); }
       if (part === 'handle') apply(sword.handleMesh);
       if (part === 'pommel') apply(sword.pommelMesh);
+      if (part === 'scabbard') apply((sword as any).scabbardGroup);
+      if (part === 'tassel') apply((sword as any).tasselGroup);
     },
     // Blade gradient/wear overlay (visible, no z-fight)
     setBladeGradientWear: (() => {
@@ -691,7 +693,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
       });
     },
     // Material base controls per part
-    setPartColor: (part: 'blade'|'guard'|'handle'|'pommel', hex: number) => {
+    setPartColor: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', hex: number) => {
       const apply = (mesh?: THREE.Object3D | null) => {
         if (!mesh) return;
         mesh.traverse((o) => {
@@ -703,8 +705,10 @@ export function setupScene(canvas: HTMLCanvasElement) {
       if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
       if (part === 'handle') apply(sword.handleMesh);
       if (part === 'pommel') apply(sword.pommelMesh);
+      if (part === 'scabbard') apply((sword as any).scabbardGroup);
+      if (part === 'tassel') apply((sword as any).tasselGroup);
     },
-    setPartMetalness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => {
+    setPartMetalness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => {
       const apply = (mesh?: THREE.Object3D | null) => {
         if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'metalness' in m) m.metalness = v; });
       };
@@ -712,8 +716,10 @@ export function setupScene(canvas: HTMLCanvasElement) {
       if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
       if (part === 'handle') apply(sword.handleMesh);
       if (part === 'pommel') apply(sword.pommelMesh);
+      if (part === 'scabbard') apply((sword as any).scabbardGroup);
+      if (part === 'tassel') apply((sword as any).tasselGroup);
     },
-    setPartRoughness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => {
+    setPartRoughness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => {
       const apply = (mesh?: THREE.Object3D | null) => {
         if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'roughness' in m) m.roughness = v; });
       };
@@ -721,8 +727,10 @@ export function setupScene(canvas: HTMLCanvasElement) {
       if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
       if (part === 'handle') apply(sword.handleMesh);
       if (part === 'pommel') apply(sword.pommelMesh);
+      if (part === 'scabbard') apply((sword as any).scabbardGroup);
+      if (part === 'tassel') apply((sword as any).tasselGroup);
     },
-    setPartClearcoat: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => {
+    setPartClearcoat: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => {
       const apply = (mesh?: THREE.Object3D | null) => {
         if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'clearcoat' in m) m.clearcoat = v; });
       };
@@ -730,8 +738,10 @@ export function setupScene(canvas: HTMLCanvasElement) {
       if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
       if (part === 'handle') apply(sword.handleMesh);
       if (part === 'pommel') apply(sword.pommelMesh);
+      if (part === 'scabbard') apply((sword as any).scabbardGroup);
+      if (part === 'tassel') apply((sword as any).tasselGroup);
     },
-    setPartClearcoatRoughness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => {
+    setPartClearcoatRoughness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => {
       const apply = (mesh?: THREE.Object3D | null) => {
         if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'clearcoatRoughness' in m) m.clearcoatRoughness = v; });
       };
@@ -739,6 +749,8 @@ export function setupScene(canvas: HTMLCanvasElement) {
       if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
       if (part === 'handle') apply(sword.handleMesh);
       if (part === 'pommel') apply(sword.pommelMesh);
+      if (part === 'scabbard') apply((sword as any).scabbardGroup);
+      if (part === 'tassel') apply((sword as any).tasselGroup);
     },
     setDPRCap: (cap: number) => {
       (renderer as any)._dprCap = cap;

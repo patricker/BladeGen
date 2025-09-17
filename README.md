@@ -21,6 +21,7 @@ Parametric sword generator and renderer for the web.
 - Guard styles: bar/winged/claw/disk plus knucklebow, swept, basket, and extras
 - Handle layers: wrap/crisscross/rings/inlays, menuki and rivets
 - Pommel variants: orb/disk/spike plus wheel, ring, scent-stopper, crown
+- Accessories: optional scabbard builder (throat/locket/chape) with tassel/sword knot controls
 - Materials system (MeshPhysicalMaterial) with transmission/emissive/anisotropy controls plus preset Looks
 - Render tab: tone mapping, environment presets, outline/bloom/vignette, gradient/wear
 - Exports: `.glb` (GLTF), `.obj`, `.stl`, and SVG blueprint

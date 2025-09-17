@@ -12,12 +12,12 @@
     },
     "version": {
       "type": "integer",
-      "const": 3,
-      "description": "Document format version (3 adds blade curve/width profiles, advanced fuller slots, hollow grind, waviness, and guard/handle/pommel expansions)."
+      "const": 4,
+      "description": "Document format version (4 introduces accessories/scabbards, tassels, and material slots for them in addition to v3's blade profile and fuller upgrades)."
     },
     "model": {
       "$ref": "#/$defs/SwordParams",
-      "description": "All geometry knobs of the sword. These values generate the meshes for blade, guard, handle, and pommel."
+      "description": "All geometry knobs of the sword. These values generate the meshes for blade, guard, handle, pommel, and optional accessories (scabbard/tassel)."
     },
     "materials": {
       "type": "object",
@@ -39,6 +39,14 @@
         "pommel": {
           "$ref": "#/$defs/MaterialState",
           "description": "Pommel/butt material state."
+        },
+        "scabbard": {
+          "$ref": "#/$defs/MaterialState",
+          "description": "Scabbard sheath material state."
+        },
+        "tassel": {
+          "$ref": "#/$defs/MaterialState",
+          "description": "Tassel/cord material state."
         },
         "variants": {
           "type": "array",
@@ -67,7 +75,9 @@
                   "blade": { "$ref": "#/$defs/MaterialState" },
                   "guard": { "$ref": "#/$defs/MaterialState" },
                   "handle": { "$ref": "#/$defs/MaterialState" },
-                  "pommel": { "$ref": "#/$defs/MaterialState" }
+                  "pommel": { "$ref": "#/$defs/MaterialState" },
+                  "scabbard": { "$ref": "#/$defs/MaterialState" },
+                  "tassel": { "$ref": "#/$defs/MaterialState" }
                 },
                 "minProperties": 1
               }
@@ -1419,6 +1429,10 @@
           "$ref": "#/$defs/PommelParams",
           "description": "Pommel geometry parameters."
         },
+        "accessories": {
+          "$ref": "#/$defs/AccessoriesParams",
+          "description": "Accessory geometry such as scabbards and tassels."
+        },
         "hiltEnabled": {
           "type": "boolean",
           "description": "When false, omit guard, handle and pommel to render a blade-only model."
@@ -1458,6 +1472,87 @@
         "guard",
         "handle",
         "pommel"
+      ]
+    },
+    "AccessoriesParams": {
+      "type": "object",
+      "title": "Accessories Parameters",
+      "description": "Accessory companions such as scabbards and tassels rendered alongside the sword.",
+      "additionalProperties": false,
+      "properties": {
+        "scabbard": { "$ref": "#/$defs/ScabbardParams" },
+        "tassel": { "$ref": "#/$defs/TasselParams" }
+      },
+      "required": ["scabbard", "tassel"]
+    },
+    "ScabbardParams": {
+      "type": "object",
+      "title": "Scabbard Parameters",
+      "description": "Controls the companion scabbard sheath that follows the blade profile.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Enable scabbard generation." },
+        "bodyMargin": { "type": "number", "minimum": 0.002, "maximum": 0.4, "description": "Extra clearance added around the blade width (scene units)." },
+        "bodyThickness": { "type": "number", "minimum": 0.02, "maximum": 0.8, "description": "Overall thickness of the sheath across ±Z." },
+        "tipExtension": { "type": "number", "minimum": 0, "maximum": 0.5, "description": "Fraction of blade length the scabbard extends beyond the tip." },
+        "throatLength": { "type": "number", "minimum": 0, "maximum": 0.5, "description": "Mouth/throat collar length as a fraction of blade length." },
+        "throatScale": { "type": "number", "minimum": 1, "maximum": 3, "description": "Scale multiplier applied across the throat segment." },
+        "locketOffset": { "type": "number", "minimum": 0, "maximum": 0.9, "description": "Offset from the mouth to position the locket band (fraction of blade length)." },
+        "locketLength": { "type": "number", "minimum": 0, "maximum": 0.6, "description": "Length of the locket band swell (fraction of blade length)." },
+        "locketScale": { "type": "number", "minimum": 1, "maximum": 2.5, "description": "Scale multiplier for the locket swell." },
+        "chapeLength": { "type": "number", "minimum": 0.01, "maximum": 0.7, "description": "Fraction of the scabbard body tapered into the chape tip." },
+        "chapeScale": { "type": "number", "minimum": 0.1, "maximum": 1, "description": "Width/thickness multiplier at the chape tip." },
+        "bodyRoundness": { "type": "number", "minimum": 0, "maximum": 1, "description": "Blend between hard-edged (0) and round (1) scabbard cross-section." },
+        "offsetX": { "type": "number", "minimum": -1, "maximum": 1, "description": "Lateral offset applied to the scabbard centerline." },
+        "offsetZ": { "type": "number", "minimum": -1, "maximum": 1, "description": "Thickness offset (toward/away from camera)." },
+        "hangAngle": { "type": "number", "minimum": -1.5708, "maximum": 1.5708, "description": "Rotation about Z in radians giving the scabbard a hanging cant." }
+      },
+      "required": [
+        "enabled",
+        "bodyMargin",
+        "bodyThickness",
+        "tipExtension",
+        "throatLength",
+        "throatScale",
+        "locketOffset",
+        "locketLength",
+        "locketScale",
+        "chapeLength",
+        "chapeScale",
+        "bodyRoundness",
+        "offsetX",
+        "offsetZ",
+        "hangAngle"
+      ]
+    },
+    "TasselParams": {
+      "type": "object",
+      "title": "Tassel Parameters",
+      "description": "Controls the decorative tassel or sword knot.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Enable tassel generation." },
+        "attachTo": { "type": "string", "enum": ["guard", "scabbard"], "description": "Attachment anchor for the tassel." },
+        "anchorOffset": { "type": "number", "minimum": 0, "maximum": 1, "description": "Normalized offset along the scabbard when attachTo='scabbard'." },
+        "length": { "type": "number", "minimum": 0.05, "maximum": 2.5, "description": "Total rope length expressed as a fraction of blade length." },
+        "droop": { "type": "number", "minimum": 0, "maximum": 1, "description": "Vertical sag factor (0 taut, 1 fully drooped)." },
+        "sway": { "type": "number", "minimum": -1, "maximum": 1, "description": "Sideways sway factor (-1 left, +1 right)." },
+        "thickness": { "type": "number", "minimum": 0.002, "maximum": 0.12, "description": "Rope diameter (scene units)." },
+        "tuftSize": { "type": "number", "minimum": 0.005, "maximum": 0.4, "description": "Radius of the tassel fringe bundle." },
+        "tuftLength": { "type": "number", "minimum": 0.01, "maximum": 0.6, "description": "Length of the tassel fringe." },
+        "strands": { "type": "integer", "minimum": 1, "maximum": 32, "description": "Number of fringe strands." }
+      },
+      "required": [
+        "enabled",
+        "attachTo",
+        "anchorOffset",
+        "length",
+        "droop",
+        "sway",
+        "thickness",
+        "tuftSize",
+        "tuftLength",
+        "strands"
       ]
     },
     "MaterialState": {

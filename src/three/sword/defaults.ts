@@ -75,6 +75,37 @@ export function defaultSwordParams(): SwordParams {
       spikeLength: 1.0,
       balance: 0,
       peenVisible: false
+    },
+    accessories: {
+      scabbard: {
+        enabled: false,
+        bodyMargin: 0.035,
+        bodyThickness: 0.12,
+        tipExtension: 0.06,
+        throatLength: 0.08,
+        throatScale: 1.12,
+        locketOffset: 0.18,
+        locketLength: 0.12,
+        locketScale: 1.05,
+        chapeLength: 0.22,
+        chapeScale: 0.45,
+        bodyRoundness: 0.5,
+        offsetX: 0.16,
+        offsetZ: -0.02,
+        hangAngle: -0.18
+      },
+      tassel: {
+        enabled: false,
+        attachTo: 'guard',
+        anchorOffset: 0.35,
+        length: 0.55,
+        droop: 0.55,
+        sway: 0.3,
+        thickness: 0.018,
+        tuftSize: 0.05,
+        tuftLength: 0.14,
+        strands: 10
+      }
     }
   };
 }

@@ -49,4 +49,17 @@ describe('SwordGenerator', () => {
     gen.updateGeometry(params as any)
     expect(gen['guardMesh' as any] || gen['guardGroup' as any]).toBeTruthy()
   })
+
+  it('builds accessories when enabled', () => {
+    const params = defaultSwordParams()
+    params.accessories.scabbard.enabled = true
+    params.accessories.tassel.enabled = true
+    params.accessories.tassel.attachTo = 'scabbard'
+    const gen = new SwordGenerator(params, { blade: {}, guard: {}, handle: {}, pommel: {}, scabbard: {}, tassel: {} } as any)
+    expect(gen.scabbardGroup).toBeTruthy()
+    expect(gen.tasselGroup).toBeTruthy()
+    params.accessories.scabbard.enabled = false
+    gen.updateGeometry(params)
+    expect(gen.scabbardGroup).toBeNull()
+  })
 })

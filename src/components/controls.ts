@@ -6,7 +6,9 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 
-type Category = 'Blade' | 'Engravings' | 'Guard' | 'Handle' | 'Pommel' | 'Other' | 'Render';
+type Part = 'blade' | 'guard' | 'handle' | 'pommel' | 'scabbard' | 'tassel';
+
+type Category = 'Blade' | 'Engravings' | 'Guard' | 'Handle' | 'Pommel' | 'Accessories' | 'Other' | 'Render';
 
 type RenderHooks = {
   setBladeVisible?: (visible: boolean, occlude?: boolean) => void;
@@ -28,7 +30,7 @@ type RenderHooks = {
   setShadowBias: (bias: number, normalBias?: number) => void;
   setShadowMapSize: (size: 512|1024|2048|4096) => void;
   setDPRCap: (cap: number) => void;
-  setPartBump: (part: 'blade'|'guard'|'handle'|'pommel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => void;
+  setPartBump: (part: Part, enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => void;
   setBladeGradientWear: (enabled: boolean, base?: number, edge?: number, edgeFade?: number, wear?: number) => void;
   setBladeMistAdvanced?: (cfg: { occlude?: boolean; lifeRate?: number; noiseAmp?: number; noiseFreqX?: number; noiseFreqZ?: number; windX?: number; windZ?: number; emission?: 'base'|'edge'|'tip'|'full'; sizeMinRatio?: number }) => void;
   setSelectiveBloom?: (enabled: boolean, strength?: number, threshold?: number, radius?: number, intensity?: number) => void;
@@ -38,11 +40,11 @@ type RenderHooks = {
   setFlameAura?: (enabled: boolean, opts?: { scale?: number; color1?: number; color2?: number; noiseScale?: number; speed?: number; intensity?: number }) => void;
   setEmbers?: (enabled: boolean, opts?: { count?: number; size?: number; color?: number }) => void;
   setMistTurbulence?: (v: number) => void;
-  setPartColor: (part: 'blade'|'guard'|'handle'|'pommel', hex: number) => void;
-  setPartMetalness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
-  setPartRoughness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
-  setPartClearcoat: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
-  setPartClearcoatRoughness: (part: 'blade'|'guard'|'handle'|'pommel', v: number) => void;
+  setPartColor: (part: Part, hex: number) => void;
+  setPartMetalness: (part: Part, v: number) => void;
+  setPartRoughness: (part: Part, v: number) => void;
+  setPartClearcoat: (part: Part, v: number) => void;
+  setPartClearcoatRoughness: (part: Part, v: number) => void;
 };
 
 type ControlType = 'slider' | 'select' | 'checkbox' | 'color' | 'text';
@@ -179,6 +181,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   const previousRegistry = activeRegistry;
   activeRegistry = registry;
   const state: SwordParams = JSON.parse(JSON.stringify(params));
+  const defaults = defaultSwordParams();
   const rstate = {
     exposure: 1.0,
     bgColor: '#0f1115',
@@ -263,7 +266,19 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     heatHaze: false,
     embers: { enabled: false, count: 120, size: 3, color: '#ffaa55' },
   };
-  type Part = 'blade'|'guard'|'handle'|'pommel';
+
+  const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+  const rstateDefaults = clone(rstate);
+  const postStateDefaults = clone(postState);
+  const atmosStateDefaults = clone(atmosState);
+  const fxStateDefaults = clone(fxState);
+  const resetStateOnly = () => {
+    Object.assign(rstate, clone(rstateDefaults));
+    Object.assign(postState, clone(postStateDefaults));
+    Object.assign(atmosState, clone(atmosStateDefaults));
+    Object.assign(fxState, clone(fxStateDefaults));
+  };
+  let resetRenderAndFx = resetStateOnly;
   type MatExt = {
     color: string; metalness: number; roughness: number; clearcoat: number; clearcoatRoughness: number; preset: string;
     bumpEnabled: boolean; bumpScale: number; bumpNoiseScale: number; bumpSeed: number;
@@ -284,9 +299,26 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       blade: { color: '#b9c6ff', metalness: 0.8, roughness: 0.25, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337, envMapIntensity: 1, anisotropy: 0, anisotropyRotation: 0 },
       guard: { color: '#8892b0', metalness: 0.6, roughness: 0.45, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337, envMapIntensity: 1, anisotropy: 0, anisotropyRotation: 0 },
       handle: { color: '#5a6b78', metalness: 0.1, roughness: 0.85, clearcoat: 0.0, clearcoatRoughness: 0.6, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337, envMapIntensity: 1, anisotropy: 0, anisotropyRotation: 0 },
-      pommel: { color: '#9aa4b2', metalness: 0.75, roughness: 0.35, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337, envMapIntensity: 1, anisotropy: 0, anisotropyRotation: 0 }
+      pommel: { color: '#9aa4b2', metalness: 0.75, roughness: 0.35, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337, envMapIntensity: 1, anisotropy: 0, anisotropyRotation: 0 },
+      scabbard: { color: '#3a2c1c', metalness: 0.2, roughness: 0.65, clearcoat: 0.05, clearcoatRoughness: 0.7, preset: 'None', bumpEnabled: false, bumpScale: 0.015, bumpNoiseScale: 9, bumpSeed: 1337, envMapIntensity: 1, anisotropy: 0.12, anisotropyRotation: 0 },
+      tassel: { color: '#7c3f1d', metalness: 0.05, roughness: 0.8, clearcoat: 0.0, clearcoatRoughness: 0.7, preset: 'None', bumpEnabled: false, bumpScale: 0.01, bumpNoiseScale: 10, bumpSeed: 777, envMapIntensity: 1, sheen: 0.35, sheenColor: '#d8a273', anisotropy: 0, anisotropyRotation: 0 }
     };
   const matDefaults: Record<Part, MatExt> = JSON.parse(JSON.stringify(matState));
+
+  const ensureAccessories = (): NonNullable<SwordParams['accessories']> => {
+    if (!state.accessories) {
+      state.accessories = JSON.parse(JSON.stringify(defaults.accessories));
+    }
+    if (!state.accessories.scabbard) {
+      state.accessories.scabbard = JSON.parse(JSON.stringify(defaults.accessories.scabbard));
+    }
+    if (!state.accessories.tassel) {
+      state.accessories.tassel = JSON.parse(JSON.stringify(defaults.accessories.tassel));
+    }
+    return state.accessories;
+  };
+  const getScabbard = () => ensureAccessories().scabbard;
+  const getTassel = () => ensureAccessories().tassel;
 
   type PresetEntry = {
     id: string;
@@ -314,7 +346,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     }>;
   };
 
-  const PARTS: Part[] = ['blade', 'guard', 'handle', 'pommel'];
+  const PARTS: Part[] = ['blade', 'guard', 'handle', 'pommel', 'scabbard', 'tassel'];
 
   const swordPresets: PresetEntry[] = [
     {
@@ -887,6 +919,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     Guard: addSection(el, 'Guard'),
     Handle: addSection(el, 'Handle'),
     Pommel: addSection(el, 'Pommel'),
+    Accessories: addSection(el, 'Accessories'),
     Other: addSection(el, 'Other'),
     Render: addSection(el, 'Render')
   };
@@ -901,6 +934,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     sections.Guard.style.display = isRender ? 'none' : '';
     sections.Handle.style.display = isRender ? 'none' : '';
     sections.Pommel.style.display = isRender ? 'none' : '';
+    sections.Accessories.style.display = isRender ? 'none' : '';
     sections.Other.style.display = isRender ? 'none' : '';
     sections.Render.style.display = isRender ? '' : 'none';
     // Hide model-only toolbar items on Render tab
@@ -916,9 +950,10 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   addShuffleButton(sections.Guard, () => { randomizeGuard(state, true); rerender(); syncUi(); });
   addShuffleButton(sections.Handle, () => { randomizeHandle(state, true); rerender(); syncUi(); });
   addShuffleButton(sections.Pommel, () => { randomizePommel(state, true); rerender(); syncUi(); });
+  addShuffleButton(sections.Accessories, () => { randomizeAccessories(state, true); rerender(); syncUi(); });
 
   // Section highlight (mouseenter/leave)
-  const highlight = (part: 'blade'|'guard'|'handle'|'pommel'|null) => {
+  const highlight = (part: Part | null) => {
     (sword as any)?.setHighlight?.(part);
   };
   sections.Blade.addEventListener('mouseenter', () => highlight('blade'));
@@ -929,6 +964,8 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   sections.Handle.addEventListener('mouseleave', () => highlight(null));
   sections.Pommel.addEventListener('mouseenter', () => highlight('pommel'));
   sections.Pommel.addEventListener('mouseleave', () => highlight(null));
+  sections.Accessories.addEventListener('mouseenter', () => highlight('scabbard'));
+  sections.Accessories.addEventListener('mouseleave', () => highlight(null));
   sections.Render.addEventListener('mouseenter', () => highlight(null));
   sections.Render.addEventListener('mouseleave', () => {});
 
@@ -1150,8 +1187,54 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       (render as any).setEmbers?.(e.enabled, { count: Math.max(1, Math.floor(e.count)), size: e.size, color: hexToInt(e.color) });
     };
 
+    resetRenderAndFx = () => {
+      resetStateOnly();
+
+      render.setExposure(rstate.exposure);
+      render.setAmbient(rstate.ambient);
+      render.setKeyIntensity(rstate.keyIntensity);
+      render.setKeyAngles(rstate.keyAz, rstate.keyEl);
+      render.setRimIntensity(rstate.rimIntensity);
+      render.setRimAngles(rstate.rimAz, rstate.rimEl);
+      render.setRimColor(parseInt(rstate.rimColor.replace('#', '0x')));
+      render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius);
+      render.setEnvIntensity(rstate.envIntensity);
+      render.setBackgroundBrightness(rstate.bgBrightness);
+      render.setBackgroundColor(parseInt(rstate.bgColor.replace('#', '0x')));
+      render.setAAMode?.(rstate.aaMode);
+      render.setShadowMapSize?.(rstate.shadowMapSize);
+
+      applyEnvMap(atmosState.envUrl, atmosState.envAsBackground);
+      (render as any).setFog?.(hexToInt(atmosState.fogColor), atmosState.fogDensity);
+      applyFresnel();
+      applyBladeVisibility();
+
+      render.setOutline(
+        postState.outlineEnabled,
+        postState.outlineStrength,
+        postState.outlineThickness,
+        parseInt(postState.outlineColor.replace('#', '0x'))
+      );
+      render.setInkOutline(postState.inkEnabled, postState.inkThickness, parseInt(postState.inkColor.replace('#', '0x')));
+      render.setVignette(postState.vignetteEnabled, postState.vignetteStrength, postState.vignetteSoftness);
+      render.setBladeGradientWear(
+        postState.bladeGradientEnabled,
+        parseInt(postState.gradBase.replace('#', '0x')),
+        parseInt(postState.gradEdge.replace('#', '0x')),
+        postState.gradFade,
+        postState.gradWear
+      );
+
+      applyInnerGlow();
+      applyMist();
+      applyFlame();
+      applyEmbers();
+      (render as any).setSelectiveBloom?.(fxState.selectiveBloom, 1.1, 0.8, 0.35, 1.0);
+      (render as any).setHeatHaze?.(fxState.heatHaze, 0.004);
+    };
+
     // Material Base (Render tab)
-    const matPartOpts = ['blade','guard','handle','pommel'] as const;
+    const matPartOpts = ['blade','guard','handle','pommel','scabbard','tassel'] as const;
     matPart = 'blade';
     const rm = rMatSec || sections.Render;
     select(rm, 'Material Part', [...matPartOpts] as unknown as string[], 'blade', (v) => { matPart = v as Part; syncMaterialInputs(matPart); }, () => {});
@@ -1321,12 +1404,11 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         updateBtn.textContent = 'Update';
         updateBtn.title = 'Overwrite with current materials';
         updateBtn.addEventListener('click', () => {
-          variant.parts = {
-            blade: JSON.parse(JSON.stringify(matState.blade)),
-            guard: JSON.parse(JSON.stringify(matState.guard)),
-            handle: JSON.parse(JSON.stringify(matState.handle)),
-            pommel: JSON.parse(JSON.stringify(matState.pommel))
-          };
+          const parts: Partial<Record<Part, MatExt>> = {};
+          for (const part of PARTS) {
+            parts[part] = JSON.parse(JSON.stringify(matState[part]));
+          }
+          variant.parts = parts;
           if (currentVariantId === variant.id) {
             applyLook(variant.id);
           } else {
@@ -1369,12 +1451,10 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const captureVariant = () => {
       const name = variantNameInput.value.trim() || `Variant ${matVariants.length + 1}`;
       const desc = variantDescInput.value.trim() || undefined;
-      const parts: Partial<Record<Part, MatExt>> = {
-        blade: JSON.parse(JSON.stringify(matState.blade)),
-        guard: JSON.parse(JSON.stringify(matState.guard)),
-        handle: JSON.parse(JSON.stringify(matState.handle)),
-        pommel: JSON.parse(JSON.stringify(matState.pommel))
-      };
+      const parts: Partial<Record<Part, MatExt>> = {};
+      for (const part of PARTS) {
+        parts[part] = JSON.parse(JSON.stringify(matState[part]));
+      }
       matVariants.push({ id: `variant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name, description: desc, parts });
       variantNameInput.value = '';
       variantDescInput.value = '';
@@ -2027,6 +2107,35 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Pommel, 'Crown Spikes', 5, 24, 1, (state.pommel as any).crownSpikes ?? 8, (v) => ((state.pommel as any).crownSpikes = Math.round(v)), rerender, 'Number of spikes for crown style.');
   slider(sections.Pommel, 'Crown Sharp', 0, 1, 0.01, (state.pommel as any).crownSharpness ?? 0.6, (v) => ((state.pommel as any).crownSharpness = v), rerender, 'Sharpness for crown style.');
 
+  const scabbard = getScabbard();
+  const tassel = getTassel();
+  checkbox(sections.Accessories, 'Scabbard Enabled', scabbard.enabled, (v) => { getScabbard().enabled = v; }, rerender, 'Toggle the scabbard sheath.');
+  slider(sections.Accessories, 'Scabbard Margin', 0.005, 0.2, 0.001, scabbard.bodyMargin, (v) => { getScabbard().bodyMargin = v; }, rerender, 'Additional clearance added around blade width.');
+  slider(sections.Accessories, 'Scabbard Thickness', 0.05, 0.6, 0.005, scabbard.bodyThickness, (v) => { getScabbard().bodyThickness = v; }, rerender, 'Overall sheath thickness.');
+  slider(sections.Accessories, 'Scabbard Tip %', 0, 50, 1, Math.round(scabbard.tipExtension * 100), (v) => { getScabbard().tipExtension = v / 100; }, rerender, 'Extension past the blade tip (% of blade length).');
+  slider(sections.Accessories, 'Throat Length %', 0, 50, 1, Math.round(scabbard.throatLength * 100), (v) => { getScabbard().throatLength = v / 100; }, rerender, 'Length of the throat collar (% of blade length).');
+  slider(sections.Accessories, 'Throat Scale', 1, 2.5, 0.01, scabbard.throatScale, (v) => { getScabbard().throatScale = v; }, rerender, 'Scales the mouth/throat collar.');
+  slider(sections.Accessories, 'Locket Offset %', 0, 90, 1, Math.round(scabbard.locketOffset * 100), (v) => { getScabbard().locketOffset = v / 100; }, rerender, 'Distance from mouth to start the locket band.');
+  slider(sections.Accessories, 'Locket Length %', 0, 60, 1, Math.round(scabbard.locketLength * 100), (v) => { getScabbard().locketLength = v / 100; }, rerender, 'Length of the locket band swell.');
+  slider(sections.Accessories, 'Locket Scale', 1, 2, 0.01, scabbard.locketScale, (v) => { getScabbard().locketScale = v; }, rerender, 'Scale multiplier for the locket swell.');
+  slider(sections.Accessories, 'Chape Length %', 5, 70, 1, Math.round(scabbard.chapeLength * 100), (v) => { getScabbard().chapeLength = v / 100; }, rerender, 'Length tapered into the chape tip.');
+  slider(sections.Accessories, 'Chape Scale', 0.1, 1, 0.01, scabbard.chapeScale, (v) => { getScabbard().chapeScale = v; }, rerender, 'Width/thickness multiplier at the chape tip.');
+  slider(sections.Accessories, 'Scabbard Roundness', 0, 1, 0.01, scabbard.bodyRoundness, (v) => { getScabbard().bodyRoundness = v; }, rerender, 'Blend between flat faces and rounded scabbard cross-section.');
+  slider(sections.Accessories, 'Scabbard Offset X', -0.4, 0.4, 0.005, scabbard.offsetX, (v) => { getScabbard().offsetX = v; }, rerender, 'Slide the scabbard sideways (scene units).');
+  slider(sections.Accessories, 'Scabbard Offset Z', -0.3, 0.3, 0.005, scabbard.offsetZ, (v) => { getScabbard().offsetZ = v; }, rerender, 'Offset the scabbard toward/away from camera.');
+  slider(sections.Accessories, 'Scabbard Hang °', -90, 90, 1, Math.round((scabbard.hangAngle * 180) / Math.PI), (v) => { getScabbard().hangAngle = (v / 180) * Math.PI; }, rerender, 'Rotate the scabbard around Z to simulate a hanging cant.');
+
+  checkbox(sections.Accessories, 'Tassel Enabled', tassel.enabled, (v) => { getTassel().enabled = v; }, rerender, 'Toggle tassel / sword knot.');
+  select(sections.Accessories, 'Tassel Attach', ['guard', 'scabbard'], tassel.attachTo, (v) => { getTassel().attachTo = v as 'guard' | 'scabbard'; }, rerender, 'Anchor the tassel to the guard or scabbard.');
+  slider(sections.Accessories, 'Tassel Anchor %', 0, 100, 1, Math.round(tassel.anchorOffset * 100), (v) => { getTassel().anchorOffset = v / 100; }, rerender, 'Position along the scabbard when attached there.');
+  slider(sections.Accessories, 'Tassel Length %', 10, 250, 1, Math.round(tassel.length * 100), (v) => { getTassel().length = v / 100; }, rerender, 'Rope length as % of blade length.');
+  slider(sections.Accessories, 'Tassel Droop', 0, 1, 0.01, tassel.droop, (v) => { getTassel().droop = v; }, rerender, 'Vertical sag of the tassel.');
+  slider(sections.Accessories, 'Tassel Sway', -1, 1, 0.01, tassel.sway, (v) => { getTassel().sway = v; }, rerender, 'Sideways sway (negative = left, positive = right).');
+  slider(sections.Accessories, 'Tassel Thickness', 0.002, 0.12, 0.001, tassel.thickness, (v) => { getTassel().thickness = v; }, rerender, 'Rope diameter.');
+  slider(sections.Accessories, 'Tuft Radius', 0.005, 0.3, 0.001, tassel.tuftSize, (v) => { getTassel().tuftSize = v; }, rerender, 'Radius of the tassel fringe bundle.');
+  slider(sections.Accessories, 'Tuft Length', 0.01, 0.6, 0.005, tassel.tuftLength, (v) => { getTassel().tuftLength = v; }, rerender, 'Length of the tassel fringe.');
+  slider(sections.Accessories, 'Tassel Strands', 1, 32, 1, tassel.strands, (v) => { getTassel().strands = Math.max(1, Math.round(v)); }, rerender, 'Number of strands in the tassel fringe.');
+
   // Other controls
   // Taper ratio helper: 0 => tip equals base; 1 => tip tapers to 0
   slider(
@@ -2062,6 +2171,8 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const next = entry.build();
     assignParams(state, next);
     matPart = 'blade';
+
+    resetRenderAndFx();
 
     for (const part of PARTS) {
       const base = JSON.parse(JSON.stringify(matDefaults[part])) as MatExt;
@@ -2163,12 +2274,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       const texCache = new TextureCache();
       const configs: VariantExportConfig[] = [];
       const ownedMaterials: THREE.Material[] = [];
-      const parts: Part[] = ['blade','guard','handle','pommel'];
+      const parts: Part[] = [...PARTS];
       const partRoots: Record<Part, THREE.Object3D | null> = {
         blade: sword.bladeMesh,
         guard: sword.guardMesh ?? (sword as any).guardGroup ?? null,
         handle: sword.handleMesh ?? (sword as any).handleGroup ?? null,
-        pommel: sword.pommelMesh
+        pommel: sword.pommelMesh,
+        scabbard: (sword as any).scabbardGroup ?? null,
+        tassel: (sword as any).tasselGroup ?? null
       };
       const gatherMeshes = (root: THREE.Object3D | null | undefined): THREE.Mesh[] => {
         if (!root) return [];
@@ -2242,23 +2355,21 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     URL.revokeObjectURL(url);
   };
   const doExportJSON = () => {
-    const materialsOut: Record<string, any> = {
-      blade: JSON.parse(JSON.stringify(matState.blade)),
-      guard: JSON.parse(JSON.stringify(matState.guard)),
-      handle: JSON.parse(JSON.stringify(matState.handle)),
-      pommel: JSON.parse(JSON.stringify(matState.pommel))
-    };
+    const materialsOut: Record<string, any> = {};
+    for (const part of PARTS) {
+      materialsOut[part] = JSON.parse(JSON.stringify(matState[part]));
+    }
     if (matVariants.length) {
       materialsOut.variants = matVariants.map((variant) => ({
         id: variant.id,
         name: variant.name,
         description: variant.description,
-        parts: {
-          blade: variant.parts.blade ? JSON.parse(JSON.stringify(variant.parts.blade)) : undefined,
-          guard: variant.parts.guard ? JSON.parse(JSON.stringify(variant.parts.guard)) : undefined,
-          handle: variant.parts.handle ? JSON.parse(JSON.stringify(variant.parts.handle)) : undefined,
-          pommel: variant.parts.pommel ? JSON.parse(JSON.stringify(variant.parts.pommel)) : undefined
-        }
+        parts: PARTS.reduce((acc, part) => {
+          if (variant.parts[part]) {
+            acc[part] = JSON.parse(JSON.stringify(variant.parts[part]));
+          }
+          return acc;
+        }, {} as Partial<Record<Part, MatExt>>)
       }));
     }
     if (currentVariantId) {
@@ -2266,7 +2377,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     }
     const payload = {
       $schema: 'schema/sword.schema.json',
-      version: 3,
+      version: 4,
       model: state,
       render: { ...rstate },
       materials: materialsOut
@@ -2315,7 +2426,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       }
       if (obj?.model) { assignParams(state, obj.model); rerender(); }
       if (obj?.materials) {
-        const parts: (keyof typeof matState)[] = ['blade','guard','handle','pommel'];
+        const parts: Part[] = [...PARTS];
         for (const part of parts) {
           const m = obj.materials[part]; if (!m) continue;
           matState[part] = { ...matState[part], ...m };
@@ -2831,12 +2942,16 @@ function refreshInputs(registry: ControlRegistry, params: SwordParams) {
     registry.setValue(section, label, value);
   };
   const toDeg = (rad: number | undefined) => ((rad ?? 0) * 180) / Math.PI;
+  const defaults = defaultSwordParams();
   const blade = params.blade as typeof params.blade & Record<string, any>;
   const guard = params.guard as typeof params.guard & Record<string, any>;
   const handle = params.handle as typeof params.handle & Record<string, any>;
   const pommel = params.pommel as typeof params.pommel & Record<string, any>;
   const extras = params as Record<string, any>;
   const ratios = extras.ratios ?? {};
+  const accessories = (params.accessories ?? defaults.accessories) as NonNullable<typeof defaults.accessories>;
+  const scabbard = (accessories.scabbard ?? defaults.accessories.scabbard) as typeof defaults.accessories.scabbard;
+  const tassel = (accessories.tassel ?? defaults.accessories.tassel) as typeof defaults.accessories.tassel;
 
   const getTaper = (): [number, number, number] => {
     const pts = blade.thicknessProfile?.points as Array<[number, number]> | undefined;
@@ -3002,6 +3117,33 @@ function refreshInputs(registry: ControlRegistry, params: SwordParams) {
       'Crown Spikes': pommel.crownSpikes ?? 8,
       'Crown Sharp': pommel.crownSharpness ?? 0.6,
     },
+    accessories: {
+      'Scabbard Enabled': scabbard.enabled ?? false,
+      'Scabbard Margin': scabbard.bodyMargin ?? defaults.accessories.scabbard.bodyMargin,
+      'Scabbard Thickness': scabbard.bodyThickness ?? defaults.accessories.scabbard.bodyThickness,
+      'Scabbard Tip %': Math.round((scabbard.tipExtension ?? 0) * 100),
+      'Throat Length %': Math.round((scabbard.throatLength ?? 0) * 100),
+      'Throat Scale': scabbard.throatScale ?? defaults.accessories.scabbard.throatScale,
+      'Locket Offset %': Math.round((scabbard.locketOffset ?? 0) * 100),
+      'Locket Length %': Math.round((scabbard.locketLength ?? 0) * 100),
+      'Locket Scale': scabbard.locketScale ?? defaults.accessories.scabbard.locketScale,
+      'Chape Length %': Math.round((scabbard.chapeLength ?? 0) * 100),
+      'Chape Scale': scabbard.chapeScale ?? defaults.accessories.scabbard.chapeScale,
+      'Scabbard Roundness': scabbard.bodyRoundness ?? defaults.accessories.scabbard.bodyRoundness,
+      'Scabbard Offset X': scabbard.offsetX ?? 0,
+      'Scabbard Offset Z': scabbard.offsetZ ?? 0,
+      'Scabbard Hang °': Math.round(toDeg(scabbard.hangAngle ?? defaults.accessories.scabbard.hangAngle)),
+      'Tassel Enabled': tassel.enabled ?? false,
+      'Tassel Attach': tassel.attachTo ?? 'guard',
+      'Tassel Anchor %': Math.round((tassel.anchorOffset ?? 0) * 100),
+      'Tassel Length %': Math.round((tassel.length ?? defaults.accessories.tassel.length) * 100),
+      'Tassel Droop': tassel.droop ?? defaults.accessories.tassel.droop,
+      'Tassel Sway': tassel.sway ?? defaults.accessories.tassel.sway,
+      'Tassel Thickness': tassel.thickness ?? defaults.accessories.tassel.thickness,
+      'Tuft Radius': tassel.tuftSize ?? defaults.accessories.tassel.tuftSize,
+      'Tuft Length': tassel.tuftLength ?? defaults.accessories.tassel.tuftLength,
+      'Tassel Strands': tassel.strands ?? defaults.accessories.tassel.strands,
+    },
     other: {
       'Stylization': extras.styleFactor ?? 0,
       'Taper Ratio': blade.baseWidth > 0 ? 1 - (blade.tipWidth / blade.baseWidth) : 0,
@@ -3027,6 +3169,30 @@ function assignParams(dst: SwordParams, src: SwordParams) {
   dst.guard = { ...dst.guard, ...src.guard } as any;
   dst.handle = { ...dst.handle, ...src.handle } as any;
   dst.pommel = { ...dst.pommel, ...src.pommel } as any;
+  if (src.hiltEnabled !== undefined) dst.hiltEnabled = src.hiltEnabled;
+  if (src.guardEnabled !== undefined) dst.guardEnabled = src.guardEnabled;
+  if (src.useRatios !== undefined) dst.useRatios = src.useRatios;
+  if (src.ratios) dst.ratios = { ...(dst.ratios ?? {}), ...src.ratios };
+  if (src.accessories) {
+    const defaults = defaultSwordParams().accessories;
+    if (!dst.accessories) {
+      dst.accessories = JSON.parse(JSON.stringify(defaults));
+    }
+    if (src.accessories.scabbard) {
+      dst.accessories!.scabbard = {
+        ...defaults.scabbard,
+        ...(dst.accessories?.scabbard ?? {}),
+        ...src.accessories.scabbard,
+      };
+    }
+    if (src.accessories.tassel) {
+      dst.accessories!.tassel = {
+        ...defaults.tassel,
+        ...(dst.accessories?.tassel ?? {}),
+        ...src.accessories.tassel,
+      };
+    }
+  }
 }
 
 function clamp(v: number, lo: number, hi: number) { return Math.min(hi, Math.max(lo, v)); }
@@ -3037,6 +3203,7 @@ function randomize(p: SwordParams, safe: boolean) {
   randomizeGuard(p, safe);
   randomizeHandle(p, safe);
   randomizePommel(p, safe);
+  randomizeAccessories(p, safe);
 }
 
 function randomizeBlade(p: SwordParams, safe: boolean) {
@@ -3102,6 +3269,49 @@ function randomizePommel(p: SwordParams, safe: boolean) {
   p.pommel.size = safe ? r(0.12, 0.22) : r(0.08, 0.3);
   p.pommel.elongation = safe ? r(0.8, 1.3) : r(0.5, 1.6);
   p.pommel.shapeMorph = safe ? r(0.1, 0.6) : r(0, 1);
+}
+
+function randomizeAccessories(p: SwordParams, safe: boolean) {
+  const defaults = defaultSwordParams();
+  if (!p.accessories) {
+    p.accessories = JSON.parse(JSON.stringify(defaults.accessories));
+  }
+  if (!p.accessories.scabbard) {
+    p.accessories.scabbard = JSON.parse(JSON.stringify(defaults.accessories.scabbard));
+  }
+  if (!p.accessories.tassel) {
+    p.accessories.tassel = JSON.parse(JSON.stringify(defaults.accessories.tassel));
+  }
+  const r = (a: number, b: number) => a + Math.random() * (b - a);
+  const scabbard = p.accessories.scabbard;
+  const tassel = p.accessories.tassel;
+
+  scabbard.enabled = Math.random() > (safe ? 0.55 : 0.35);
+  scabbard.bodyMargin = safe ? r(0.02, 0.045) : r(0.01, 0.07);
+  scabbard.bodyThickness = safe ? r(0.11, 0.22) : r(0.08, 0.32);
+  scabbard.tipExtension = safe ? r(0.02, 0.08) : r(0, 0.18);
+  scabbard.throatLength = safe ? r(0.04, 0.16) : r(0, 0.3);
+  scabbard.throatScale = safe ? r(1.05, 1.4) : r(1.0, 1.9);
+  scabbard.locketOffset = safe ? r(0.12, 0.35) : r(0.02, 0.55);
+  scabbard.locketLength = safe ? r(0.05, 0.12) : r(0.02, 0.2);
+  scabbard.locketScale = safe ? r(1.0, 1.35) : r(1.0, 1.8);
+  scabbard.chapeLength = safe ? r(0.14, 0.24) : r(0.08, 0.32);
+  scabbard.chapeScale = safe ? r(0.35, 0.6) : r(0.2, 0.75);
+  scabbard.bodyRoundness = safe ? r(0.35, 0.7) : r(0.1, 0.9);
+  scabbard.offsetX = (Math.random() > 0.5 ? 1 : -1) * (safe ? r(0.1, 0.22) : r(0.08, 0.3));
+  scabbard.offsetZ = safe ? r(-0.06, 0.06) : r(-0.12, 0.12);
+  scabbard.hangAngle = ((safe ? r(-40, 40) : r(-65, 65)) * Math.PI) / 180;
+
+  tassel.enabled = Math.random() > (safe ? 0.7 : 0.45);
+  tassel.attachTo = tassel.enabled && scabbard.enabled && Math.random() > 0.5 ? 'scabbard' : 'guard';
+  tassel.anchorOffset = safe ? r(0.2, 0.65) : r(0, 1);
+  tassel.length = safe ? r(0.4, 0.8) : r(0.25, 1.2);
+  tassel.droop = safe ? r(0.45, 0.7) : r(0.25, 0.9);
+  tassel.sway = safe ? r(-0.45, 0.45) : r(-0.85, 0.85);
+  tassel.thickness = safe ? r(0.01, 0.025) : r(0.006, 0.05);
+  tassel.tuftSize = safe ? r(0.035, 0.08) : r(0.02, 0.12);
+  tassel.tuftLength = safe ? r(0.08, 0.16) : r(0.05, 0.26);
+  tassel.strands = Math.max(1, Math.round(safe ? r(6, 14) : r(4, 20)));
 }
 
 function presetArming(): SwordParams {

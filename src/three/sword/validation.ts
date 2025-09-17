@@ -8,7 +8,10 @@ import type {
   SwordParams,
   BladeWaviness,
   HollowGrindProfile,
-  FullerSlot
+  FullerSlot,
+  AccessoriesParams,
+  ScabbardParams,
+  TasselParams
 } from './types'
 
 /**
@@ -355,6 +358,43 @@ export function validateSwordParams(params: SwordParams): SwordParams {
 
   if (!['dome','block'].includes(pommel.peenShape as any)) pommel.peenShape = 'dome'
 
+  const rawAccessories = ((params as any).accessories && typeof (params as any).accessories === 'object') ? (params as any).accessories : {}
+  const rawScabbard = rawAccessories && typeof rawAccessories.scabbard === 'object' ? rawAccessories.scabbard : {}
+  const rawTassel = rawAccessories && typeof rawAccessories.tassel === 'object' ? rawAccessories.tassel : {}
+
+  const scabbard: ScabbardParams = {
+    enabled: !!rawScabbard.enabled,
+    bodyMargin: clamp(typeof rawScabbard.bodyMargin === 'number' ? rawScabbard.bodyMargin : 0.035, 0.002, 0.4),
+    bodyThickness: clamp(typeof rawScabbard.bodyThickness === 'number' ? rawScabbard.bodyThickness : 0.12, 0.02, 0.8),
+    tipExtension: clamp(typeof rawScabbard.tipExtension === 'number' ? rawScabbard.tipExtension : 0.06, 0, 0.5),
+    throatLength: clamp(typeof rawScabbard.throatLength === 'number' ? rawScabbard.throatLength : 0.08, 0, 0.5),
+    throatScale: clamp(typeof rawScabbard.throatScale === 'number' ? rawScabbard.throatScale : 1.12, 1, 3),
+    locketOffset: clamp(typeof rawScabbard.locketOffset === 'number' ? rawScabbard.locketOffset : 0.18, 0, 0.9),
+    locketLength: clamp(typeof rawScabbard.locketLength === 'number' ? rawScabbard.locketLength : 0.12, 0, 0.6),
+    locketScale: clamp(typeof rawScabbard.locketScale === 'number' ? rawScabbard.locketScale : 1.05, 1, 2.5),
+    chapeLength: clamp(typeof rawScabbard.chapeLength === 'number' ? rawScabbard.chapeLength : 0.22, 0.01, 0.7),
+    chapeScale: clamp(typeof rawScabbard.chapeScale === 'number' ? rawScabbard.chapeScale : 0.45, 0.1, 1),
+    bodyRoundness: clamp(typeof rawScabbard.bodyRoundness === 'number' ? rawScabbard.bodyRoundness : 0.5, 0, 1),
+    offsetX: clamp(typeof rawScabbard.offsetX === 'number' ? rawScabbard.offsetX : 0.16, -1, 1),
+    offsetZ: clamp(typeof rawScabbard.offsetZ === 'number' ? rawScabbard.offsetZ : -0.02, -1, 1),
+    hangAngle: clamp(typeof rawScabbard.hangAngle === 'number' ? rawScabbard.hangAngle : -0.18, -Math.PI / 2, Math.PI / 2)
+  }
+
+  const tassel: TasselParams = {
+    enabled: !!rawTassel.enabled,
+    attachTo: rawTassel.attachTo === 'scabbard' ? 'scabbard' : 'guard',
+    anchorOffset: clamp(typeof rawTassel.anchorOffset === 'number' ? rawTassel.anchorOffset : 0.35, 0, 1),
+    length: clamp(typeof rawTassel.length === 'number' ? rawTassel.length : 0.55, 0.05, 2.5),
+    droop: clamp(typeof rawTassel.droop === 'number' ? rawTassel.droop : 0.55, 0, 1),
+    sway: clamp(typeof rawTassel.sway === 'number' ? rawTassel.sway : 0.3, -1, 1),
+    thickness: clamp(typeof rawTassel.thickness === 'number' ? rawTassel.thickness : 0.018, 0.002, 0.12),
+    tuftSize: clamp(typeof rawTassel.tuftSize === 'number' ? rawTassel.tuftSize : 0.05, 0.005, 0.4),
+    tuftLength: clamp(typeof rawTassel.tuftLength === 'number' ? rawTassel.tuftLength : 0.14, 0.01, 0.6),
+    strands: Math.round(clamp(typeof rawTassel.strands === 'number' ? rawTassel.strands : 10, 1, 32))
+  }
+
+  const accessories: AccessoriesParams = { scabbard, tassel }
+
   return {
     blade,
     guard,
@@ -367,6 +407,7 @@ export function validateSwordParams(params: SwordParams): SwordParams {
       guardWidthToBlade: typeof params.ratios.guardWidthToBlade === 'number' ? clamp(params.ratios.guardWidthToBlade, 0.01, 10) : undefined,
       handleLengthToBlade: typeof params.ratios.handleLengthToBlade === 'number' ? clamp(params.ratios.handleLengthToBlade, 0.01, 10) : undefined,
       pommelSizeToBlade: typeof params.ratios.pommelSizeToBlade === 'number' ? clamp(params.ratios.pommelSizeToBlade, 0.01, 10) : undefined,
-    } : undefined
+    } : undefined,
+    accessories
   }
 }

@@ -20,7 +20,18 @@ import * as THREE from 'three';
 export { defaultSwordParams } from './sword/defaults';
 import { computeBladeDynamics } from './sword/dynamics';
 // Types are centralized under ./sword/types for reuse
-export type { BladeParams, GuardStyle, GuardParams, HandleParams, PommelStyle, PommelParams, SwordParams } from './sword/types';
+export type {
+  AccessoriesParams,
+  BladeParams,
+  GuardStyle,
+  GuardParams,
+  HandleParams,
+  PommelStyle,
+  PommelParams,
+  ScabbardParams,
+  SwordParams,
+  TasselParams
+} from './sword/types';
 // Geometry helpers now live in focused modules
 import { buildBladeGeometry, buildFullerOverlays, buildHamonOverlays, buildBladeOutlinePoints, bladeOutlineToSVG } from './sword/bladeGeometry';
 import { buildGuard } from './sword/guardGeometry';
@@ -33,10 +44,14 @@ import { validateSwordParams } from './sword/validation';
 import { TextureCache } from './sword/textures';
 import { createMaterial } from './sword/materials';
 import { disposeObject3D } from './sword/utils';
+import { buildScabbard, buildTassel, type ScabbardBuildResult } from './sword/accessories';
 // Re-export selected helpers for existing consumers
 export { buildBladeOutlinePoints, bladeOutlineToSVG } from './sword/bladeGeometry';
 
 // Types moved to './sword/types'
+
+type MaterialPart = 'blade' | 'guard' | 'handle' | 'pommel' | 'scabbard' | 'tassel';
+type MaterialMap = Partial<Record<MaterialPart, any>>;
 
 export class SwordGenerator {
   public readonly group = new THREE.Group();
@@ -44,24 +59,27 @@ export class SwordGenerator {
   public guardMesh: THREE.Mesh | null = null;
   public handleMesh: THREE.Mesh | null = null;
   public pommelMesh: THREE.Mesh | null = null;
+  public scabbardGroup: THREE.Group | null = null;
+  public tasselGroup: THREE.Group | null = null;
   private guardGroup: THREE.Group | null = null;
   private handleGroup: THREE.Group | null = null;
   private fullerGroup: THREE.Group | null = null;
   private hamonGroup: THREE.Group | null = null;
   private engravingGroup: THREE.Group | null = null;
   private _fontCache?: Map<string, any>;
-  private highlighted: 'blade' | 'guard' | 'handle' | 'pommel' | null = null;
+  private highlighted: MaterialPart | null = null;
+  private scabbardBuild?: ScabbardBuildResult;
 
   private lastParams?: SwordParams;
     private derived?: { mass: number; cmY: number; Ibase: number; Icm: number; copY: number };
-  private mats?: Record<'blade'|'guard'|'handle'|'pommel', any>;
+  private mats?: MaterialMap;
   private _texCache = new TextureCache();
 
   /**
    * Create a generator and immediately build geometry for the provided params.
    * Optionally pass material overrides per part.
    */
-  constructor(initial: SwordParams, materials?: Record<'blade'|'guard'|'handle'|'pommel', any>) {
+  constructor(initial: SwordParams, materials?: MaterialMap) {
     this.mats = materials;
     this.updateGeometry(initial);
   }
@@ -81,25 +99,33 @@ export class SwordGenerator {
     return copy;
   }
   /** Apply new material presets and rebind to existing meshes/groups. */
-  public setMaterials(mats: Record<'blade'|'guard'|'handle'|'pommel', any>) {
+  public setMaterials(mats: MaterialMap) {
     this.mats = mats; this.reapplyMaterials();
   }
   /**
    * Create a MeshPhysicalMaterial for a given part using shared material factory.
    */
-  private makeMaterial(part: 'blade'|'guard'|'handle'|'pommel'): THREE.MeshPhysicalMaterial {
+  private makeMaterial(part: MaterialPart): THREE.MeshPhysicalMaterial {
     return createMaterial(part, this.mats?.[part] ?? null, this._texCache);
   }
+  /** Apply a material to all meshes under the provided object. */
+  private applyMaterialPart(obj: THREE.Object3D | null | undefined, part: MaterialPart) {
+    if (!obj) return;
+    const mat = this.makeMaterial(part);
+    obj.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if ((mesh as any).isMesh) mesh.material = mat;
+    });
+  }
+
   /** Traverse current parts and set freshly created materials. */
   private reapplyMaterials() {
-    const apply = (obj: THREE.Object3D | null | undefined, part: 'blade'|'guard'|'handle'|'pommel') => {
-      if (!obj) return; const mat = this.makeMaterial(part);
-      obj.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.material = mat; });
-    };
-    apply(this.bladeMesh, 'blade');
-    apply(this.guardMesh ?? this.guardGroup, 'guard');
-    apply(this.handleMesh, 'handle');
-    apply(this.pommelMesh, 'pommel');
+    this.applyMaterialPart(this.bladeMesh, 'blade');
+    this.applyMaterialPart(this.guardMesh ?? this.guardGroup, 'guard');
+    this.applyMaterialPart(this.handleMesh, 'handle');
+    this.applyMaterialPart(this.pommelMesh, 'pommel');
+    this.applyMaterialPart(this.scabbardGroup, 'scabbard');
+    this.applyMaterialPart(this.tasselGroup, 'tassel');
   }
 
   /** Return last computed dynamics (mass proxy, CM, inertias, CoP). */
@@ -137,11 +163,12 @@ export class SwordGenerator {
       this.rebuildHandle(p.handle);
       this.rebuildPommel(p.pommel);
     }
+    this.rebuildAccessories(p.accessories, p.blade);
     this.derived = computeBladeDynamics(p.blade);
   }
 
   /** Enable emissive highlighting for a single named part. */
-  public setHighlight(part: 'blade' | 'guard' | 'handle' | 'pommel' | null) {
+  public setHighlight(part: MaterialPart | null) {
     // Reset previous
     const setEmissive = (obj: THREE.Object3D | null, on: boolean) => {
       if (!obj) return;
@@ -160,6 +187,8 @@ export class SwordGenerator {
     setEmissive(this.handleMesh, false);
     setEmissive(this.handleGroup, false);
     setEmissive(this.pommelMesh, false);
+    setEmissive(this.scabbardGroup, false);
+    setEmissive(this.tasselGroup, false);
 
     this.highlighted = part;
     if (part === 'blade') setEmissive(this.bladeMesh, true);
@@ -169,6 +198,8 @@ export class SwordGenerator {
     }
     if (part === 'handle') { setEmissive(this.handleMesh, true); setEmissive(this.handleGroup, true); }
     if (part === 'pommel') setEmissive(this.pommelMesh, true);
+    if (part === 'scabbard') setEmissive(this.scabbardGroup, true);
+    if (part === 'tassel') setEmissive(this.tasselGroup, true);
   }
 
   /** Dispose and rebuild blade and its visual overlays (fullers, hamon, engravings). */
@@ -271,6 +302,84 @@ export class SwordGenerator {
     if (this.pommelMesh) { this.group.remove(this.pommelMesh); disposeObject3D(this.pommelMesh); this.pommelMesh = null }
     this.pommelMesh = buildPommel(p, { handleMesh: this.handleMesh, blade: this.lastParams?.blade ?? null }, (part)=> this.makeMaterial(part))
     this.group.add(this.pommelMesh)
+  }
+
+  private rebuildAccessories(accessories: SwordParams['accessories'], blade: BladeParams) {
+    if (this.scabbardGroup) {
+      this.group.remove(this.scabbardGroup)
+      disposeObject3D(this.scabbardGroup)
+      this.scabbardGroup = null
+    }
+    if (this.tasselGroup) {
+      this.group.remove(this.tasselGroup)
+      disposeObject3D(this.tasselGroup)
+      this.tasselGroup = null
+    }
+    this.scabbardBuild = undefined
+
+    if (!accessories) return
+
+    const scabbard = accessories.scabbard
+    if (scabbard?.enabled) {
+      const built = buildScabbard(blade, scabbard)
+      if (built) {
+        this.scabbardBuild = built
+        this.scabbardGroup = built.group
+        this.group.add(this.scabbardGroup)
+        this.applyMaterialPart(this.scabbardGroup, 'scabbard')
+      }
+    }
+
+    const tassel = accessories.tassel
+    if (tassel?.enabled) {
+      const anchor = this.resolveTasselAnchor(tassel, blade)
+      if (anchor) {
+        const tasselGroup = buildTassel(blade, tassel, anchor)
+        if (tasselGroup) {
+          this.tasselGroup = tasselGroup
+          this.group.add(this.tasselGroup)
+          this.applyMaterialPart(this.tasselGroup, 'tassel')
+        }
+      }
+    }
+  }
+
+  private resolveTasselAnchor(
+    tassel: NonNullable<SwordParams['accessories']>['tassel'],
+    blade: BladeParams
+  ): { anchor: THREE.Vector3; tangent?: THREE.Vector3 } | null {
+    if (tassel.attachTo === 'scabbard' && this.scabbardGroup && this.scabbardBuild) {
+      this.scabbardGroup.updateMatrixWorld(true)
+      const u = THREE.MathUtils.clamp(tassel.anchorOffset ?? 0.5, 0, 1)
+      const localPoint = this.scabbardBuild.samplePoint(u)
+      const localTangent = this.scabbardBuild.sampleTangent(u)
+      const worldPoint = localPoint.clone()
+      this.scabbardGroup.localToWorld(worldPoint)
+      const normalMatrix = new THREE.Matrix3().getNormalMatrix(this.scabbardGroup.matrixWorld)
+      const worldTangent = localTangent.applyMatrix3(normalMatrix).normalize()
+      return { anchor: worldPoint, tangent: worldTangent }
+    }
+
+    const sideSign = tassel.sway >= 0 ? 1 : -1
+    const fallback = new THREE.Vector3()
+    const guardObj = this.guardMesh ?? this.guardGroup
+    const offset = Math.max(0.02, (this.lastParams?.blade.baseWidth ?? 0.2) * 0.05)
+    if (guardObj) {
+      const bbox = new THREE.Box3().setFromObject(guardObj)
+      const x = sideSign >= 0 ? bbox.max.x : bbox.min.x
+      const y = bbox.max.y - offset
+      const z = (bbox.min.z + bbox.max.z) * 0.5
+      fallback.set(x + sideSign * offset, y, z)
+    } else if (this.handleMesh) {
+      const bbox = new THREE.Box3().setFromObject(this.handleMesh)
+      const x = sideSign >= 0 ? bbox.max.x : bbox.min.x
+      const y = bbox.max.y - offset
+      const z = (bbox.min.z + bbox.max.z) * 0.5
+      fallback.set(x + sideSign * offset, y, z)
+    } else {
+      fallback.set(sideSign * (this.lastParams?.blade.baseWidth ?? 0.2) * 0.4, Math.max(0.05, blade.baseWidth * 0.1), 0)
+    }
+    return { anchor: fallback, tangent: new THREE.Vector3(0, -1, 0) }
   }
 
   // Validation moved to ./sword/validation

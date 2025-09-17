@@ -83,6 +83,97 @@ export function buildHandle(
   const handleGroup = new THREE.Group()
   handleGroup.add(handleMesh)
 
+  const bounds = new THREE.Box3().setFromObject(handleMesh)
+  const yMin = bounds.min.y
+  const yMax = bounds.max.y
+  const spanY = Math.max(1e-6, yMax - yMin)
+  const flare = Math.max(0, (h as any).flare ?? 0)
+  const baseRadiusAt = (t: number) => {
+    const clamped = THREE.MathUtils.clamp(t, 0, 1)
+    const baseR = h.radiusBottom + (h.radiusTop - h.radiusBottom) * clamped
+    const flareTerm = flare * Math.pow(1 - clamped, 2)
+    return Math.max(0.02, baseR + flareTerm)
+  }
+  const radiusAtY = (y: number) => baseRadiusAt((y - yMin) / spanY)
+
+  class HelixCurve extends (THREE as any).Curve {
+    constructor(public y0: number, public y1: number, public turns: number, public rFunc: (t: number) => number, public phase = 0) {
+      super()
+    }
+    getPoint(u: number) {
+      const y = this.y0 + (this.y1 - this.y0) * u
+      const t = (y - yMin) / spanY
+      const r = this.rFunc(t)
+      const phi = this.phase + 2 * Math.PI * this.turns * u
+      return new THREE.Vector3(Math.cos(phi) * r, y, Math.sin(phi) * r)
+    }
+  }
+
+  const applyWrapStyle = () => {
+    const style = (h as any).wrapStyle ?? 'none'
+    if (style === 'none') return
+    const wrapMat = makeMaterial('handle')
+    const addHelix = (startFrac: number, endFrac: number, turns: number, phase: number, radiusOffset: number, tubeRadius: number) => {
+      const s = THREE.MathUtils.clamp(startFrac, 0, 1)
+      const e = THREE.MathUtils.clamp(endFrac, 0, 1)
+      if (e <= s) return
+      const y0 = yMin + s * spanY
+      const y1 = yMin + e * spanY
+      const rFunc = (t: number) => baseRadiusAt(t) + radiusOffset
+      const curve = new HelixCurve(y0, y1, turns, rFunc, phase)
+      const tube = new THREE.TubeGeometry(curve, 160, tubeRadius, 12, false)
+      const mesh = new THREE.Mesh(tube, wrapMat)
+      mesh.castShadow = true
+      handleGroup.add(mesh)
+    }
+
+    if (style === 'crisscross') {
+      const turns = Math.max(3, Math.round((h.wrapTurns ?? 6)))
+      const offset = Math.max(0.004, Math.min(0.02, (h.wrapDepth ?? 0.012)))
+      const tubeR = Math.max(0.002, offset * 0.25)
+      addHelix(0, 1, turns, 0, offset, tubeR)
+      addHelix(0, 1, -turns, 0, offset, tubeR)
+    } else if (style === 'hineri') {
+      addHelix(0, 1, 5, 0, 0.012, 0.004)
+      addHelix(0, 1, -5, Math.PI * 0.5, 0.01, 0.004)
+    } else if (style === 'katate') {
+      addHelix(0, 0.45, 4, 0, 0.012, 0.004)
+      addHelix(0.55, 1, -4, Math.PI, 0.012, 0.004)
+    } else if (style === 'wire') {
+      const rings = 10
+      for (let i = 0; i < rings; i++) {
+        const t = (i + 0.5) / rings
+        const y = yMin + t * spanY
+        const radius = radiusAtY(y) + 0.004
+        const torus = new THREE.TorusGeometry(radius, 0.0035, 10, 48)
+        const ring = new THREE.Mesh(torus, wrapMat)
+        ring.position.y = y
+        ring.rotation.x = Math.PI / 2
+        handleGroup.add(ring)
+      }
+    }
+  }
+  applyWrapStyle()
+
+  if (h.rayskin?.enabled) {
+    const scaleOffset = 1 + THREE.MathUtils.clamp(h.rayskin.scale ?? 0.01, 0.001, 0.05)
+    const rayskinGeo = new THREE.LatheGeometry(profile, Math.max(phiSegments, 72))
+    const baseMat = makeMaterial('handle') as THREE.MeshStandardMaterial
+    const rayskinMat = baseMat.clone()
+    const highlight = new THREE.Color(0xf4f1ea)
+    const intensity = THREE.MathUtils.clamp(h.rayskin.intensity ?? 0.6, 0, 1)
+    rayskinMat.color.copy(baseMat.color.clone().lerp(highlight, intensity))
+    rayskinMat.roughness = Math.min(1, (rayskinMat.roughness ?? 0.5) + 0.25)
+    rayskinMat.metalness = Math.max(0, (rayskinMat.metalness ?? 0.1) - 0.1)
+    rayskinMat.side = THREE.DoubleSide
+    const rayskinMesh = new THREE.Mesh(rayskinGeo, rayskinMat)
+    rayskinMesh.position.copy(handleMesh.position)
+    rayskinMesh.scale.set(scaleOffset, 1, scaleOffset)
+    rayskinMesh.castShadow = false
+    rayskinMesh.receiveShadow = false
+    handleGroup.add(rayskinMesh)
+  }
+
   // Visible tang
   if ((h as any).tangVisible) {
     const tw = Math.max(0.01, (h as any).tangWidth ?? 0.05)
@@ -99,27 +190,12 @@ export function buildHandle(
   const layers = (h as any).handleLayers as any[] | undefined
   if (layers && layers.length) {
     const gmat = makeMaterial('handle')
-    const hb = new THREE.Box3().setFromObject(handleMesh)
-    const yMin = hb.min.y, yMax = hb.max.y; const H = Math.max(1e-6, yMax - yMin)
-    const baseRadiusAt = (t:number) => {
-      const baseR = h.radiusBottom + (h.radiusTop - h.radiusBottom) * t
-      const flare = Math.max(0, (h as any).flare ?? 0) * Math.pow(1 - t, 2)
-      return Math.max(0.02, baseR + flare)
-    }
-    class HelixCurve extends (THREE as any).Curve {
-      constructor(public y0:number, public y1:number, public turns:number, public rFunc:(t:number)=>number, public phase:number){ super() }
-      getPoint(u:number) {
-        const y = this.y0 + (this.y1 - this.y0) * u
-        const t = (y - yMin) / Math.max(1e-6, H)
-        const r = this.rFunc(t)
-        const phi = this.phase + 2 * Math.PI * this.turns * u
-        return new THREE.Vector3(Math.cos(phi)*r, y, Math.sin(phi)*r)
-      }
-    }
     layers.forEach((L) => {
       if (L.kind === 'wrap' && (L.wrapPattern === 'crisscross')) {
-        const y0 = yMin + (L.y0Frac ?? 0) * H
-        const y1 = y0 + (L.lengthFrac ?? 1) * H
+        const start = THREE.MathUtils.clamp(L.y0Frac ?? 0, 0, 1)
+        const end = THREE.MathUtils.clamp(start + (L.lengthFrac ?? 1), 0, 1)
+        const y0 = yMin + start * spanY
+        const y1 = yMin + end * spanY
         const turns = Math.max(1, L.turns ?? 6)
         const depth = Math.max(0.001, Math.min(0.05, L.depth ?? 0.012))
         const rFunc = (t:number)=> baseRadiusAt(t) + depth
@@ -131,8 +207,8 @@ export function buildHandle(
         handleGroup.add(new THREE.Mesh(tube1, gmat), new THREE.Mesh(tube2, gmat))
       }
       if (L.kind === 'ring') {
-        const y = yMin + (L.y0Frac ?? 0.5) * H
-        const t = (y - yMin) / H; const r = baseRadiusAt(t) + (L.radiusAdd ?? 0.0)
+        const y = yMin + (L.y0Frac ?? 0.5) * spanY
+        const r = baseRadiusAt((y - yMin) / spanY) + (L.radiusAdd ?? 0)
         const tor = new THREE.TorusGeometry(r, Math.max(0.002, 0.01), 8, 32)
         const ring = new THREE.Mesh(tor, gmat)
         ring.position.y = y
@@ -140,10 +216,10 @@ export function buildHandle(
         handleGroup.add(ring)
       }
       if (L.kind === 'inlay') {
-        const y = yMin + (L.y0Frac ?? 0.5) * H
+        const y = yMin + (L.y0Frac ?? 0.5) * spanY
         const box = new THREE.BoxGeometry(0.03, 0.01, 0.005)
         const m = new THREE.Mesh(box, gmat)
-        m.position.set(0, y, baseRadiusAt((y-yMin)/H) - 0.003)
+        m.position.set(0, y, baseRadiusAt((y - yMin) / spanY) - 0.003)
         handleGroup.add(m)
       }
     })
@@ -153,12 +229,10 @@ export function buildHandle(
   const menuki = (h as any).menuki as any[] | undefined
   if (menuki && menuki.length) {
     const matM = makeMaterial('handle')
-    const hb2 = new THREE.Box3().setFromObject(handleMesh)
-    const yMin2 = hb2.min.y, yMax2 = hb2.max.y; const H2 = Math.max(1e-6, yMax2 - yMin2)
     menuki.forEach((m) => {
-      const y = yMin2 + (m.positionFrac ?? 0.5) * H2
-      const t = (y - yMin2) / H2
-      const r = Math.max(0.02, h.radiusBottom + (h.radiusTop - h.radiusBottom) * t)
+      const t = THREE.MathUtils.clamp(m.positionFrac ?? 0.5, 0, 1)
+      const y = yMin + t * spanY
+      const r = baseRadiusAt(t)
       const x = (m.side === 'left' ? -r : +r)
       const sph = new THREE.SphereGeometry(Math.max(0.005, m.size ?? 0.02), 12, 8)
       const mesh = new THREE.Mesh(sph, matM)
@@ -171,13 +245,11 @@ export function buildHandle(
   const rivets = (h as any).rivets as any[] | undefined
   if (rivets && rivets.length) {
     const matR = makeMaterial('handle')
-    const hb3 = new THREE.Box3().setFromObject(handleMesh)
-    const yMin3 = hb3.min.y, yMax3 = hb3.max.y; const H3 = Math.max(1e-6, yMax3 - yMin3)
     rivets.forEach((rv) => {
       const n = Math.max(1, Math.round(rv.count ?? 1))
-      const y = yMin3 + Math.max(0, Math.min(1, rv.ringFrac ?? 0.5)) * H3
-      const t = (y - yMin3) / H3
-      const baseR = Math.max(0.02, h.radiusBottom + (h.radiusTop - h.radiusBottom) * t)
+      const t = THREE.MathUtils.clamp(rv.ringFrac ?? 0.5, 0, 1)
+      const y = yMin + t * spanY
+      const baseR = baseRadiusAt(t)
       const rr = Math.max(0.002, rv.radius ?? 0.01)
       const geo = new THREE.SphereGeometry(rr, 10, 8)
       for (let i=0;i<n;i++) {

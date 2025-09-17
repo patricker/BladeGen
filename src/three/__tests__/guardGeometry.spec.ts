@@ -24,6 +24,13 @@ describe('guardGeometry', () => {
     expect(basket.guardGroup || basket.guardMesh).toBeTruthy()
   })
 
+  it('builds a shell guard with double-sided material', () => {
+    const built = buildGuard({ width: 1.0, thickness: 0.18, curve: 0, tilt: 0, style: 'shell', shellCoverage: 0.8, shellThickness: 1.1, shellFlare: 1.2 } as any, { makeMaterial: ()=>mm() })
+    expect(built.guardMesh).toBeTruthy()
+    const mat = built.guardMesh!.material as THREE.MeshStandardMaterial
+    expect(mat.side).toBe(THREE.DoubleSide)
+  })
+
   it('mirrored guard halves overlap across Z (aligned thickness)', () => {
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 0.02), mm())
     blade.position.y = 0.6

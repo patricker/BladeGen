@@ -26,5 +26,20 @@ describe('defaults + validation', () => {
     expect(v.handle.length).toBeGreaterThan(0)
     expect(v.pommel.size).toBeGreaterThan(0)
   })
-})
 
+  it('populates menuki preset and sanitizes rayskin/peen fields', () => {
+    const base = defaultSwordParams()
+    base.handle.menuki = undefined
+    ;(base.handle as any).menukiPreset = 'katana'
+    ;(base.handle as any).rayskin = { enabled: true, scale: 0.2, intensity: -1 }
+    ;(base.pommel as any).peenVisible = true
+    ;(base.pommel as any).peenSize = 0.4
+    ;(base.pommel as any).peenShape = 'block'
+    const v = validateSwordParams(base)
+    expect(v.handle.menuki?.length).toBe(2)
+    expect(v.handle.menuki?.[0].side).toBeDefined()
+    expect(v.handle.rayskin?.scale).toBeLessThanOrEqual(0.05)
+    expect(v.pommel.peenVisible).toBe(true)
+    expect(v.pommel.peenSize).toBeLessThanOrEqual(0.1)
+  })
+})

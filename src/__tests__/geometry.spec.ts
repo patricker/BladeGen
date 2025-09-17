@@ -525,9 +525,12 @@ describe('Dependent knobs', () => {
     expect(approx(z0, z1, 1e-3)).toBe(true)
   })
 
-  it('fuller overlay requires depth and length; otherwise no overlay group', () => {
-    const sNo = make(p => { p.blade.fullerEnabled = true; p.blade.fullerLength = 0; p.blade.fullerDepth = 0.02; (p.blade as any).fullerMode = 'overlay' })
-    const sYes = make(p => { p.blade.fullerEnabled = true; p.blade.fullerLength = 0.5; p.blade.fullerDepth = 0.02; (p.blade as any).fullerMode = 'overlay' })
+  it('fuller overlay requires an active slot with depth', () => {
+    const sNo = make(p => { delete (p.blade as any).fullers; p.blade.fullerEnabled = false; })
+    const sYes = make(p => {
+      (p.blade as any).fullers = [{ side: 'both', offsetFromSpine: 0, width: 0.05, depth: 0.012, inset: 0.006, start: 0.1, end: 0.7, profile: 'u', mode: 'overlay', taper: 0 }]
+      p.blade.fullerEnabled = true
+    })
     const hasOverlay = (s: SwordGenerator) => !!(s as any).fullerGroup
     expect(hasOverlay(sNo)).toBe(false)
     expect(hasOverlay(sYes)).toBe(true)

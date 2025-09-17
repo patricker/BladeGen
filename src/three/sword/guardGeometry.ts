@@ -80,6 +80,35 @@ export function buildGuard(
     group.add(bow)
     group.rotation.z = g.tilt
     return { guardGroup: group }
+  } else if (g.style === 'shell') {
+    const baseMat = ctx.makeMaterial('guard') as THREE.MeshStandardMaterial
+    const groupMat = baseMat.clone() as THREE.MeshStandardMaterial
+    groupMat.side = THREE.DoubleSide
+    const radius = Math.max(0.12, g.width * 0.45)
+    const coverage = THREE.MathUtils.clamp((g as any).shellCoverage ?? 0.75, 0.3, 1)
+    const height = Math.max(0.05, g.thickness * THREE.MathUtils.clamp((g as any).shellThickness ?? 1, 0.2, 1.5))
+    const flare = THREE.MathUtils.clamp((g as any).shellFlare ?? 1, 0.5, 2)
+    const profileSegments = Math.max(12, Math.round((g.curveSegments ?? 12) * 2))
+    const profile: THREE.Vector2[] = []
+    const angleMax = coverage * Math.PI * 0.5
+    for (let i = 0; i <= profileSegments; i++) {
+      const t = i / profileSegments
+      const angle = t * angleMax
+      const x = Math.sin(angle) * radius
+      const y = -Math.cos(angle) * height
+      profile.push(new THREE.Vector2(x, y))
+    }
+    const latheSegments = Math.max(24, Math.round((g.curveSegments ?? 12) * 2))
+    const geo = new THREE.LatheGeometry(profile, latheSegments)
+    const shell = new THREE.Mesh(geo, groupMat)
+    shell.castShadow = true
+    shell.scale.z *= flare
+    shell.rotation.x = Math.PI
+    const bb = new THREE.Box3().setFromObject(shell)
+    const offsetY = targetTopY - bb.max.y
+    shell.position.set(0, offsetY, 0)
+    shell.rotation.z = g.tilt
+    return { guardMesh: shell }
   } else if ((g as any).style === 'swept') {
     const group = new THREE.Group()
     const xHalf = Math.max(0.2, g.width * 0.5)

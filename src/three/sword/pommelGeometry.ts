@@ -53,6 +53,29 @@ export function buildPommel(
     const geo = new THREE.ConeGeometry(sizeEff * (0.9 + 0.2 * (p.shapeMorph ?? 0)), height, spikes, 1, false)
     mesh = new THREE.Mesh(geo, mat)
     mesh.rotation.z = Math.PI
+  } else if (p.style === 'fishtail') {
+    const width = sizeEff * (1.6 + 0.4 * (p.shapeMorph ?? 0))
+    const height = sizeEff * 0.25
+    const depth = sizeEff * (0.5 + 0.3 * (p.shapeMorph ?? 0))
+    const geo = new THREE.BoxGeometry(width, height, depth, Math.max(2, Math.round(facets / 2)), Math.max(1, Math.round(facets / 4)), Math.max(2, Math.round(facets / 2)))
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute
+    const arr = pos.array as unknown as number[]
+    for (let i = 0; i < pos.count; i++) {
+      const idx = i * 3
+      const x = arr[idx]
+      const y = arr[idx + 1]
+      const z = arr[idx + 2]
+      const yNorm = THREE.MathUtils.clamp(y / (height * 0.5), -1, 1)
+      const flare = Math.pow(Math.abs(yNorm), 1.3)
+      const xScale = 1 + flare * (yNorm >= 0 ? 1.1 : 0.6)
+      const zScale = 1 - 0.5 * flare
+      arr[idx] = x * xScale
+      arr[idx + 2] = z * zScale
+      arr[idx + 1] = y * (1 + 0.15 * yNorm)
+    }
+    pos.needsUpdate = true
+    geo.computeVertexNormals()
+    mesh = new THREE.Mesh(geo, mat)
   } else {
     const geo = new THREE.SphereGeometry(sizeEff, facets, Math.max(8, Math.round(facets/2)))
     mesh = new THREE.Mesh(geo, mat)
@@ -62,6 +85,8 @@ export function buildPommel(
   if (p.style !== 'disk' && p.style !== 'wheel' && p.style !== 'ring' && p.style !== 'crown' && p.style !== 'scentStopper') {
     mesh.scale.y *= THREE.MathUtils.clamp(p.elongation, 0.5, 2)
   }
+  mesh.geometry.computeBoundingBox()
+  const geoTop = mesh.geometry.boundingBox?.max.y ?? sizeEff
   // Place just below handle bottom
   let y = -1.0
   if (ctx.handleMesh) {
@@ -72,6 +97,21 @@ export function buildPommel(
   mesh.position.y = y - sizeEff * 0.3 * p.elongation + (p.offsetY ?? 0)
   mesh.position.x = (p.offsetX ?? 0)
   mesh.castShadow = true
+
+  if ((p as any).peenVisible && p.style !== 'ring') {
+    const peenSize = THREE.MathUtils.clamp((p as any).peenSize ?? 0.02, 0.005, 0.1)
+    const shape = ((p as any).peenShape ?? 'dome') as 'dome' | 'block'
+    const peenGeo = shape === 'block'
+      ? new THREE.BoxGeometry(peenSize, peenSize * 0.4, peenSize)
+      : new THREE.SphereGeometry(peenSize * 0.5, 12, 8)
+    const baseMat = mesh.material as THREE.MeshStandardMaterial
+    const peenMat = baseMat.clone()
+    if (peenMat.color) peenMat.color = baseMat.color.clone().offsetHSL(0, -0.05, 0.1)
+    const peen = new THREE.Mesh(peenGeo, peenMat)
+    const topOffset = geoTop * mesh.scale.y + peenSize * 0.4
+    peen.position.set((p.offsetX ?? 0), topOffset, 0)
+    mesh.add(peen)
+  }
+
   return mesh
 }
-

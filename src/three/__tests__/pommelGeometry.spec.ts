@@ -13,5 +13,17 @@ describe('pommelGeometry', () => {
     expect(orb.position.y).toBeLessThan(handle.position.y)
     expect(spike.position.y).toBeLessThan(handle.position.y)
   })
-})
 
+  it('creates fishtail pommel with pronounced lateral flare', () => {
+    const pommel = buildPommel({ size: 0.2, elongation: 1, style: 'fishtail', shapeMorph: 0.4, offsetX: 0, offsetY: 0 }, { handleMesh: undefined, blade: null }, ()=>mat())
+    const box = new THREE.Box3().setFromObject(pommel)
+    const spanX = box.max.x - box.min.x
+    const spanZ = box.max.z - box.min.z
+    expect(spanX).toBeGreaterThan(spanZ)
+  })
+
+  it('adds peen decoration when enabled', () => {
+    const pommel = buildPommel({ size: 0.2, elongation: 1, style: 'disk', shapeMorph: 0.2, offsetX: 0, offsetY: 0, peenVisible: true, peenSize: 0.02, peenShape: 'block' } as any, { handleMesh: undefined, blade: null }, ()=>mat())
+    expect(pommel.children.length).toBeGreaterThan(0)
+  })
+})

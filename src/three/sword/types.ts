@@ -12,6 +12,73 @@ import * as THREE from 'three'
  * - Avoid side effects: this file only exports TypeScript types and enums.
  */
 
+export type CurveProfile = {
+  /** Normalized distance along blade (0..1) mapped to lateral offsets. */
+  points?: Array<[number, number]>;
+  /** 'absolute' offsets are scene units; 'relative' are multiplied by blade length. */
+  mode?: 'absolute' | 'relative';
+  /** Optional multiplier applied to sampled values. */
+  scale?: number;
+};
+
+export type WidthProfile = {
+  /** Normalized distance along blade (0..1) mapped to scale/width values. */
+  points?: Array<[number, number]>;
+  /** 'scale' multiplies procedural width, 'absolute' overrides in scene units. */
+  mode?: 'scale' | 'absolute';
+};
+
+export type BladeWaviness = {
+  /** Lateral amplitude in scene units applied to the selected waviness mode. */
+  amplitude: number;
+  /** Number of oscillations along the blade span. */
+  frequency: number;
+  /** Optional phase offset in radians. */
+  phase?: number;
+  /** Blend factor fading amplitude toward the tip (0 no fade, 4 strong). */
+  taper?: number;
+  /** Static offset added to the result (scene units). */
+  offset?: number;
+  /** Controls which aspect is modulated. */
+  mode?: 'centerline' | 'width' | 'both';
+};
+
+export type HollowGrindProfile = {
+  /** Enable concave hollow grind shaping. */
+  enabled?: boolean;
+  /** Strength of the concave carve (0 flush, 1 full depth). */
+  mix?: number;
+  /** Depth scalar relative to the local half-thickness. */
+  depth?: number;
+  /** Controls falloff from edge toward spine; higher = tighter near edge. */
+  radius?: number;
+  /** Bias toward the spine (negative) or edge (positive). */
+  bias?: number;
+};
+
+export type FullerSlot = {
+  /** Which side(s) receive this groove. */
+  side?: 'left' | 'right' | 'both';
+  /** Lateral offset from the spine in scene units (positive = +X). */
+  offsetFromSpine?: number;
+  /** Width of the groove across X in scene units. */
+  width?: number;
+  /** Visual depth used for overlays (scene units). */
+  depth?: number;
+  /** Physical inset for carve mode (scene units). */
+  inset?: number;
+  /** Normalized start position along the blade (0..1). */
+  start?: number;
+  /** Normalized end position along the blade (0..1). */
+  end?: number;
+  /** Cross profile shape. */
+  profile?: 'u' | 'v' | 'flat';
+  /** Realization per groove (defaults to global fullerMode). */
+  mode?: 'overlay' | 'carve';
+  /** Linear taper multiplier toward the end (0 none, 1 full). */
+  taper?: number;
+};
+
 export type BladeParams = {
   /** Total blade length along +Y, in scene units (meters-ish). */
   length: number;
@@ -93,7 +160,7 @@ export type BladeParams = {
   /** Total twist from base to tip, radians. */
   twistAngle?: number;
   /** Cross section profile family. */
-  crossSection?: 'flat' | 'lenticular' | 'diamond' | 'hexagonal';
+  crossSection?: 'flat' | 'lenticular' | 'diamond' | 'hexagonal' | 'triangular' | 'tSpine';
   /** Cross-section bevel intensity 0..1. */
   bevel?: number;
   /** Tip family. Controls taper behavior near tip. */
@@ -104,15 +171,25 @@ export type BladeParams = {
   engravings?: Array<{ type:'text'|'shape'|'decal', content?: string, fontUrl?: string, width:number, height:number, depth?: number, offsetY:number, offsetX:number, rotation?: number, side?: 'left'|'right'|'both', align?: 'left'|'center'|'right', letterSpacing?: number }>;
   /** Distal taper profile: piecewise linear [t, scale] points (t in 0..1). */
   thicknessProfile?: { points?: Array<[number, number]> };
+  /** Optional curve profile for the blade centerline (lateral offsets). */
+  curveProfile?: CurveProfile;
+  /** Optional width profile to scale/override procedural outline width. */
+  widthProfile?: WidthProfile;
   /** Optional ricasso length fraction near base (0..0.3). */
   ricassoLength?: number;
   /** False edge length fraction near tip (0..1). */
   falseEdgeLength?: number;
   /** False edge depth fraction (0..0.2). */
   falseEdgeDepth?: number;
+  /** Optional oscillation profile for flamberge/kris style waviness. */
+  waviness?: BladeWaviness;
+  /** Optional hollow grind shaping parameters. */
+  hollowGrind?: HollowGrindProfile;
+  /** Advanced fuller definition array supporting per-side grooves. */
+  fullers?: Array<FullerSlot>;
 };
 
-export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk' | 'basket' | 'knucklebow' | 'swept';
+export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk' | 'basket' | 'knucklebow' | 'swept' | 'shell';
 
 export type GuardParams = {
   /** Span across X. */
@@ -157,6 +234,22 @@ export type GuardParams = {
   basketRingCount?: number;
   basketRingRadiusAdd?: number;
   basketRingThickness?: number;
+  /** Shell guard coverage (0..1) for cup-like guards. */
+  shellCoverage?: number;
+  /** Additional shell thickness scaling (0..1). */
+  shellThickness?: number;
+  /** Stretch shell along Z (1 normal, >1 elongated). */
+  shellFlare?: number;
+  /** Pas d'âne (finger rings) count. 0 disables. */
+  pasDaneCount?: number;
+  /** Pas d'âne ring radius. */
+  pasDaneRadius?: number;
+  /** Pas d'âne ring thickness. */
+  pasDaneThickness?: number;
+  /** Vertical offset for pas d'âne rings relative to guard top. */
+  pasDaneOffsetY?: number;
+  /** Langets hugging the blade flats. */
+  langets?: { enabled?: boolean; length?: number; width?: number; thickness?: number; chamfer?: number };
 };
 
 export type HandleParams = {
@@ -196,9 +289,15 @@ export type HandleParams = {
   menuki?: Array<any>;
   /** Optional rivet rings. */
   rivets?: Array<any>;
+  /** Preset wrap style generator. */
+  wrapStyle?: 'none' | 'crisscross' | 'hineri' | 'katate' | 'wire';
+  /** Rayskin overlay controls. */
+  rayskin?: { enabled?: boolean; scale?: number; intensity?: number };
+  /** Auto menuki placement preset. */
+  menukiPreset?: 'none' | 'katana' | 'paired';
 };
 
-export type PommelStyle = 'orb' | 'disk' | 'spike' | 'wheel' | 'scentStopper' | 'ring' | 'crown';
+export type PommelStyle = 'orb' | 'disk' | 'spike' | 'wheel' | 'scentStopper' | 'ring' | 'crown' | 'fishtail';
 
 export type PommelParams = {
   /** Base size controlling radius/extent of the pommel. */
@@ -222,6 +321,10 @@ export type PommelParams = {
   ringInnerRadius?: number;
   crownSpikes?: number;
   crownSharpness?: number;
+  /** Show hammer peen or peen block. */
+  peenVisible?: boolean;
+  peenSize?: number;
+  peenShape?: 'dome' | 'block';
 };
 
 export type SwordParams = {

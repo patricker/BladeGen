@@ -60,7 +60,9 @@ export function defaultSwordParams(): SwordParams {
       wrapTexture: false,
       wrapTexScale: 10,
       wrapTexAngle: Math.PI / 4,
-      ovalRatio: 1.0
+      wrapStyle: 'none',
+      ovalRatio: 1.0,
+      menukiPreset: 'none'
     },
     pommel: {
       size: 0.16,
@@ -71,7 +73,8 @@ export function defaultSwordParams(): SwordParams {
       offsetY: 0,
       facetCount: 32,
       spikeLength: 1.0,
-      balance: 0
+      balance: 0,
+      peenVisible: false
     }
   };
 }

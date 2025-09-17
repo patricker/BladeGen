@@ -47,6 +47,32 @@ describe('bladeGeometry helpers', () => {
     expect(tip).toBeCloseTo(blade.tipWidth, 6)
   })
 
+  it('bendOffsetX applies curve profile offsets', () => {
+    const blade = {
+      ...baseBlade,
+      curveProfile: {
+        mode: 'absolute',
+        scale: 1,
+        points: [[0, 0], [1, 0.5]]
+      }
+    } as any
+    const L = blade.length
+    expect(bendOffsetX(blade, L, L)).toBeCloseTo(0.5, 6)
+  })
+
+  it('tipWidthWithKissaki honors width profile scaling', () => {
+    const blade = {
+      ...baseBlade,
+      widthProfile: {
+        mode: 'scale',
+        points: [[0, 1], [0.5, 2], [1, 2]]
+      }
+    } as any
+    const baseMid = tipWidthWithKissaki(baseBlade, 0.5, baseBlade.baseWidth, baseBlade.tipWidth)
+    const profMid = tipWidthWithKissaki(blade, 0.5, blade.baseWidth, blade.tipWidth)
+    expect(profMid).toBeCloseTo(baseMid * 2, 6)
+  })
+
   it('edge thickness overrides do not collapse the spine', () => {
     const blade = {
       ...baseBlade,
@@ -112,10 +138,27 @@ describe('bladeGeometry helpers', () => {
   })
 
   it('fuller overlays create ribbons within span', () => {
-    const b = { ...baseBlade, fullerEnabled: true, fullerDepth: 0.01, fullerLength: 0.8, fullerCount: 2 } as any
+    const b = {
+      ...baseBlade,
+      fullers: [
+        { side: 'both', offsetFromSpine: 0, width: 0.05, depth: 0.01, inset: 0.006, start: 0.1, end: 0.7, profile: 'u', mode: 'overlay', taper: 0 }
+      ]
+    } as any
     const g = buildFullerOverlays(b)
     let meshCount = 0
     g.traverse(o => { const m = o as THREE.Mesh; if ((m as any).isMesh) meshCount++ })
     expect(meshCount).toBeGreaterThanOrEqual(2)
+  })
+
+  it('waviness offsets blade outline laterally', () => {
+    const straight = buildBladeOutlinePoints(baseBlade)
+    const wavyBlade = {
+      ...baseBlade,
+      waviness: { amplitude: 0.02, frequency: 6, mode: 'centerline', taper: 0, offset: 0 }
+    } as any
+    const wavy = buildBladeOutlinePoints(wavyBlade)
+    const straightMaxX = Math.max(...straight.map((p) => p.x))
+    const wavyMaxX = Math.max(...wavy.map((p) => p.x))
+    expect(wavyMaxX).toBeGreaterThan(straightMaxX)
   })
 })

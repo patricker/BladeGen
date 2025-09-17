@@ -8,9 +8,11 @@
     "build": "vite build",
     "preview": "vite preview --port 5173",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.47.2",
     "@types/node": "24.4.0",
     "typescript": "5.9.2",
     "vite": "7.1.5",

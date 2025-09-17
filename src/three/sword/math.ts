@@ -1,5 +1,21 @@
 import * as THREE from 'three'
-import type { BladeParams } from './types'
+import type { BladeParams, BladeWaviness } from './types'
+
+function sampleProfile(points: Array<[number, number]>, t: number): number {
+  if (!points.length) return 0
+  const tt = Math.max(0, Math.min(1, t))
+  let lo = points[0]
+  let hi = points[points.length - 1]
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i]
+    const b = points[i + 1]
+    if (tt >= a[0] && tt <= b[0]) { lo = a; hi = b; break }
+    if (tt > b[0]) { lo = b; hi = points[Math.min(i + 2, points.length - 1)] }
+  }
+  const range = Math.max(1e-6, hi[0] - lo[0])
+  const alpha = Math.max(0, Math.min(1, (tt - lo[0]) / range))
+  return THREE.MathUtils.lerp(lo[1], hi[1], alpha)
+}
 
 /**
  * Shared math helpers for blade geometry and dynamics.
@@ -21,7 +37,14 @@ export function bendOffsetX(b: BladeParams, y: number, L: number): number {
   const norm = peak > 1e-6 ? shape / peak : shape
   const curved = -(b.curvature || 0) * 0.25 * norm * L
   const linear = Math.tan(b.baseAngle ?? 0) * y
-  return curved + linear
+  let profile = 0
+  if (b.curveProfile?.points && b.curveProfile.points.length >= 2) {
+    const val = sampleProfile(b.curveProfile.points, t)
+    const mode = b.curveProfile.mode ?? 'absolute'
+    const scale = b.curveProfile.scale ?? 1
+    profile = val * scale * (mode === 'relative' ? L : 1)
+  }
+  return curved + linear + profile
 }
 
 /**
@@ -65,6 +88,16 @@ export function tipWidthWithKissaki(b: BladeParams, t: number, baseW: number, ti
     const bell = 4 * t * (1 - t)
     w *= 1 + bulge * bell
   }
+  if (b.widthProfile?.points && b.widthProfile.points.length >= 2) {
+    const val = sampleProfile(b.widthProfile.points, THREE.MathUtils.clamp(t, 0, 1))
+    const mode = b.widthProfile.mode ?? 'scale'
+    if (mode === 'absolute') {
+      w = val
+    } else {
+      w *= val
+    }
+  }
+  w = Math.max(0.0005, w)
   return w
 }
 
@@ -80,6 +113,31 @@ export function thicknessScaleAt(b: BladeParams, t: number): number {
   if (t1 === t0) return s0
   const a = (tt - t0) / (t1 - t0)
   return (THREE as any).MathUtils.lerp(s0, s1, a)
+}
+
+const computeWavinessWave = (waviness: BladeWaviness, t: number) => {
+  const taper = waviness.taper ?? 0
+  const envelope = taper > 0 ? Math.pow(Math.max(0, 1 - t), taper) : 1
+  const phase = waviness.phase ?? 0
+  const wave = Math.sin(t * waviness.frequency * Math.PI * 2 + phase) * waviness.amplitude
+  return { wave: wave * envelope, envelope }
+}
+
+/**
+ * Sample the waviness profile, returning centerline and width offsets.
+ */
+export function wavinessAt(b: BladeParams, t: number): { center: number; width: number } {
+  if (!b.waviness) return { center: 0, width: 0 }
+  const { wave, envelope } = computeWavinessWave(b.waviness, t)
+  const offset = (b.waviness.offset ?? 0) * envelope
+  switch (b.waviness.mode) {
+    case 'centerline':
+      return { center: wave + offset, width: 0 }
+    case 'both':
+      return { center: wave + offset, width: wave }
+    default:
+      return { center: offset, width: wave }
+  }
 }
 
 /** Serration waveforms used by blade edge features. */

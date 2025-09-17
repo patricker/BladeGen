@@ -27,10 +27,18 @@ export function decorateGuard(
   // Guard extras container (attach to sword group)
   const extras = (g as any).extras as GuardParams['extras'] | undefined
   let createdGroup: THREE.Group | undefined
+  let container = ctx.guardGroup ?? null
+  const ensureContainer = () => {
+    if (container) return container
+    const fresh = ctx.guardGroup ?? new THREE.Group()
+    if (!ctx.guardGroup) { ctx.swordGroup.add(fresh); createdGroup = fresh }
+    container = fresh
+    return fresh
+  }
+  const gmatX = ctx.makeMaterial('guard')
+
   if (extras && extras.length) {
-    const container = ctx.guardGroup ?? new THREE.Group()
-    if (!ctx.guardGroup) { ctx.swordGroup.add(container); createdGroup = container }
-    const gmatX = ctx.makeMaterial('guard')
+    const cont = ensureContainer()
     extras.forEach((ex) => {
       if (ex.kind === 'sideRing') {
         const R = Math.max(0.01, ex.radius)
@@ -39,10 +47,10 @@ export function decorateGuard(
         const ringL = new THREE.Mesh(tor, gmatX)
         ringL.position.set(-Math.max(0.2, g.width*0.5) - R*0.2, targetTopY + (ex.offsetY||0), 0)
         ringL.rotation.y = Math.PI/2
-        container.add(ringL)
+        cont.add(ringL)
         const ringR = ringL.clone()
         ringR.position.x *= -1
-        container.add(ringR)
+        cont.add(ringR)
       } else if (ex.kind === 'loop') {
         const R = Math.max(0.01, ex.radius)
         const r = Math.max(0.004, (ex.thickness ?? 0.02) * 0.5)
@@ -52,8 +60,8 @@ export function decorateGuard(
         loopL.position.set(-xHalf, targetTopY + (ex.offsetY||0), 0)
         loopL.rotation.x = Math.PI/2
         if (ex.tilt) loopL.rotation.z = ex.tilt
-        container.add(loopL)
-        const loopR = loopL.clone(); loopR.position.x = +xHalf; container.add(loopR)
+        cont.add(loopL)
+        const loopR = loopL.clone(); loopR.position.x = +xHalf; cont.add(loopR)
       } else if (ex.kind === 'fingerGuard') {
         const xHalf = Math.max(0.2, g.width * 0.5)
         const yTop = targetTopY
@@ -65,10 +73,60 @@ export function decorateGuard(
         const curve = new THREE.CubicBezierCurve3(p0, p1, p2, p3)
         const tube = new THREE.TubeGeometry(curve, 36, Math.max(0.005, (ex.thickness??0.03)*0.5), 10, false)
         const fg = new THREE.Mesh(tube, gmatX)
-        container.add(fg)
+        cont.add(fg)
       }
     })
     // container already attached if newly created
+  }
+
+  // Langets hugging blade flats
+  const langets = g.langets
+  if (langets && langets.enabled) {
+    const cont = ensureContainer()
+    const length = Math.max(0.02, langets.length ?? 0.12)
+    const width = Math.max(0.005, langets.width ?? 0.04)
+    const thickness = Math.max(0.002, langets.thickness ?? 0.01)
+    const bladeW = ctx.bladeParams?.baseWidth ?? 0.25
+    const bladeT = Math.max(ctx.bladeParams?.thicknessLeft ?? 0.08, ctx.bladeParams?.thicknessRight ?? 0.08)
+    const offsetX = Math.max(0, bladeW * 0.5 - width * 0.5)
+    const posY = targetTopY - length * 0.5
+    const buildLanget = (sign: number) => {
+      const geo = new THREE.BoxGeometry(width, length, thickness)
+      const mesh = new THREE.Mesh(geo, gmatX)
+      mesh.position.set(offsetX * sign, posY, 0)
+      cont.add(mesh)
+    }
+    buildLanget(+1)
+    buildLanget(-1)
+  }
+
+  // Pas d'âne (finger rings)
+  const pasCount = Math.max(0, Math.min(2, g.pasDaneCount ?? 0))
+  if (pasCount > 0) {
+    const cont = ensureContainer()
+    const radius = Math.max(0.01, g.pasDaneRadius ?? 0.05)
+    const thickness = Math.max(0.002, g.pasDaneThickness ?? 0.01)
+    const offsetY = g.pasDaneOffsetY ?? 0
+    const bladeT = Math.max(ctx.bladeParams?.thicknessLeft ?? 0.08, ctx.bladeParams?.thicknessRight ?? 0.08)
+    const spacingZ = bladeT * 0.5 + radius * 0.7
+    const baseRing = new THREE.Mesh(new THREE.TorusGeometry(radius, thickness, 12, 32), gmatX)
+    baseRing.rotation.y = Math.PI / 2
+    baseRing.position.set(0, targetTopY + offsetY, spacingZ)
+    cont.add(baseRing)
+    const rearRing = baseRing.clone()
+    rearRing.position.z = -spacingZ
+    cont.add(rearRing)
+    if (pasCount > 1) {
+      const spacingX = (ctx.bladeParams?.baseWidth ?? 0.25) * 0.5 + radius * 0.5
+      const sideRing = baseRing.clone()
+      sideRing.rotation.y = 0
+      sideRing.rotation.x = Math.PI / 2
+      sideRing.position.set(spacingX, targetTopY + offsetY, 0)
+      cont.add(sideRing)
+      const sideRingR = sideRing.clone()
+      sideRingR.position.x = -spacingX
+      cont.add(sideRingR)
+    }
   }
 
   // Guard-blade blend fillet

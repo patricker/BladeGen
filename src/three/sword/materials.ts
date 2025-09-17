@@ -35,6 +35,8 @@ export function createMaterial(
   if (m.transmission) { (mat as any).transmission = m.transmission; (mat as any).ior = m.ior ?? 1.5; (mat as any).thickness = m.thickness ?? 0.2; if (m.attenuationColor) (mat as any).attenuationColor = new THREE.Color(m.attenuationColor); if (m.attenuationDistance!==undefined) (mat as any).attenuationDistance = m.attenuationDistance }
   if (m.sheen!==undefined) { (mat as any).sheen = m.sheen; if (m.sheenColor) (mat as any).sheenColor = new THREE.Color(m.sheenColor) }
   if (m.iridescence!==undefined) { (mat as any).iridescence = m.iridescence; (mat as any).iridescenceIOR = m.iridescenceIOR ?? 1.3; (mat as any).iridescenceThicknessRange = [m.iridescenceThicknessMin ?? 100, m.iridescenceThicknessMax ?? 400] }
+  if (m.anisotropy !== undefined) { (mat as any).anisotropy = m.anisotropy }
+  if (m.anisotropyRotation !== undefined) { (mat as any).anisotropyRotation = m.anisotropyRotation }
 
   // Optional texture maps
   const maps: Array<[keyof THREE.MeshPhysicalMaterial, string, boolean]> = [
@@ -58,4 +60,3 @@ export function createMaterial(
   if (m.envMapIntensity !== undefined) (mat as any).envMapIntensity = m.envMapIntensity
   return mat
 }
-

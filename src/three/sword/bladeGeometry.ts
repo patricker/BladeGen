@@ -1,6 +1,54 @@
 import * as THREE from 'three'
 import type { BladeParams } from './types'
-import { bendOffsetX, tipWidthWithKissaki, thicknessScaleAt, serrationWave } from './math'
+import { bendOffsetX, tipWidthWithKissaki, thicknessScaleAt, serrationWave, wavinessAt } from './math'
+
+type ResolvedFuller = {
+  side: 'left' | 'right';
+  offset: number;
+  width: number;
+  depth: number;
+  inset: number;
+  start: number;
+  end: number;
+  profile: 'u' | 'v' | 'flat';
+  mode: 'overlay' | 'carve';
+  taper: number;
+};
+
+const resolveFullers = (b: BladeParams): ResolvedFuller[] => {
+  const slots = Array.isArray((b as any).fullers) ? (b.fullers as Array<any>) : []
+  const resolved: ResolvedFuller[] = []
+  for (const slot of slots) {
+    if (!slot) continue
+    const width = Math.max(0.005, Number(slot.width) || (b.baseWidth || 0.25) * 0.3)
+    const start = THREE.MathUtils.clamp(Number(slot.start) || 0.05, 0, 0.98)
+    const endRaw = THREE.MathUtils.clamp(Number(slot.end) || 0.95, start + 0.02, 1)
+    if (endRaw <= start) continue
+    const depth = Math.max(0, Number(slot.depth) || 0)
+    const inset = Math.max(0, Number(slot.inset) || depth)
+    const profile: ResolvedFuller['profile'] = slot.profile === 'v' || slot.profile === 'flat' ? slot.profile : 'u'
+    const mode: ResolvedFuller['mode'] = slot.mode === 'carve' ? 'carve' : 'overlay'
+    const taper = THREE.MathUtils.clamp(Number(slot.taper) || 0, 0, 1)
+    const baseOffset = Math.abs(Number(slot.offsetFromSpine) || 0)
+    const push = (sign: number, side: 'left' | 'right') => {
+      const offset = sign >= 0 ? baseOffset : -baseOffset
+      resolved.push({ side, offset, width, depth, inset, start, end: endRaw, profile, mode, taper })
+    }
+    switch (slot.side) {
+      case 'left':
+        push(-1, 'left')
+        break
+      case 'right':
+        push(1, 'right')
+        break
+      default:
+        push(-1, 'left')
+        push(1, 'right')
+        break
+    }
+  }
+  return resolved
+}
 
 /**
  * Blade geometry helpers.
@@ -76,6 +124,12 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     if (cs === 'diamond') { const pow = THREE.MathUtils.lerp(1.0, 2.5, bevel); return 1 - Math.pow(au, pow) }
     if (cs === 'lenticular') { const g = THREE.MathUtils.lerp(1.4, 0.8, bevel); const base = Math.max(0, 1 - au * au); return Math.pow(base, 0.5 * g) }
     if (cs === 'hexagonal') { const p = THREE.MathUtils.lerp(0.4, 1.0, bevel); return Math.pow(1 - au, Math.max(0.2, p)) }
+    if (cs === 'triangular') { const slope = THREE.MathUtils.lerp(1.0, 0.3, bevel); return Math.max(0, 1 - Math.pow(au, slope)) }
+    if (cs === 'tSpine') {
+      const ridgeWidth = THREE.MathUtils.lerp(0.18, 0.05, bevel)
+      const ridge = Math.max(0, 1 - Math.pow(au / Math.max(0.01, ridgeWidth), 2))
+      return Math.pow(ridge, 1.5)
+    }
     return 0
   }
 
@@ -86,10 +140,8 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   const biasRight = THREE.MathUtils.clamp((b as any).serrationLeanRight ?? 0, -1, 1)
   const serr = (t:number, freq:number, amp:number, bias:number, seedOffset = 0) => serrationWave(t, freq, amp, serPat, serSeed + seedOffset, sharp, bias)
 
-  const wantCarve = (b.fullerMode ?? 'overlay') === 'carve' && (b.fullerEnabled ?? false) && (b.fullerLength ?? 0) > 0 && (b.fullerInset ?? b.fullerDepth ?? 0) > 0
-  const carveWidth = (b.fullerWidth && b.fullerWidth > 0) ? b.fullerWidth : (b.baseWidth || 0.25) * 0.3
-  const insetBase = Math.min(Math.max(0, b.fullerInset ?? b.fullerDepth ?? 0), 0.2)
-  const prof = b.fullerProfile ?? 'u'
+  const resolvedFullers = resolveFullers(b)
+  const carveFullers = resolvedFullers.filter((f) => f.mode === 'carve' && f.inset > 0 && f.end > f.start)
   const ricassoFrac = THREE.MathUtils.clamp((b as any).ricassoLength ?? 0, 0, 0.3)
   const feLen = THREE.MathUtils.clamp((b as any).falseEdgeLength ?? 0, 0, 1)
   const feDepth = THREE.MathUtils.clamp((b as any).falseEdgeDepth ?? 0, 0, 0.2)
@@ -127,7 +179,12 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
         if (edgeIsRight) rightHalf = Math.max(0.0005, rightHalf - delta); else leftHalf = Math.max(0.0005, leftHalf - delta)
       }
     }
-    const bend = bendOffsetX(b, y, L)
+    const wav = wavinessAt(b, t)
+    if (wav.width !== 0) {
+      leftHalf = Math.max(0.0005, leftHalf + wav.width)
+      rightHalf = Math.max(0.0005, rightHalf + wav.width)
+    }
+    const bend = bendOffsetX(b, y, L) + wav.center
     const xl = -leftHalf + bend
     const xr = +rightHalf + bend
     const tScale = thicknessScaleAt(b, t)
@@ -140,7 +197,11 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
     const edgeMidHalf = 0.5 * (halfEdgeL + halfEdgeR)
     const baseSpineTarget = (b.thickness ?? ((TL0 + TR0) * 0.5)) * 0.5 * tScale * tipThicknessFactor
     const baseSpineHalf = Math.max(edgeMidHalf + 0.0005, baseSpineTarget)
-    const centerHalf = Math.max(baseSpineHalf, edgeMidHalf * (1 + 2.0 * bevel))
+    let centerHalf = Math.max(baseSpineHalf, edgeMidHalf * (1 + 2.0 * bevel))
+    if ((b.crossSection ?? 'flat') === 'tSpine') {
+      const ridgeBoost = Math.max(0.0005, (b.thickness ?? ((TL0 + TR0) * 0.5)) * 0.15)
+      centerHalf = Math.max(centerHalf, baseSpineHalf + ridgeBoost)
+    }
 
     const twist = (b.twistAngle ?? 0) * t
     const cosT = Math.cos(twist), sinT = Math.sin(twist)
@@ -153,21 +214,36 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
       const edgeHalf = THREE.MathUtils.lerp(halfEdgeL, halfEdgeR, s)
       const f = shapeFactor(u)
       let zHalf = edgeHalf + (centerHalf - edgeMidHalf) * f
-      if (wantCarve) {
-        const y0 = Math.max(0, (b.fullerLength ?? 0) * 0.0 * L + 0.05 * L)
-        const y1 = L - Math.max(0, 0.12 * (b.baseWidth || 0.2))
-        if (y >= y0 && y <= y1) {
-          const cx = bend
-          const halfW = carveWidth * 0.5
+      if (b.hollowGrind && (b.hollowGrind.enabled || (b.hollowGrind.mix ?? 0) > 0)) {
+        const hgMix = THREE.MathUtils.clamp(b.hollowGrind.mix ?? (b.hollowGrind.enabled ? 0.65 : 0), 0, 1)
+        const hgDepth = THREE.MathUtils.clamp(b.hollowGrind.depth ?? 0.45, 0, 1)
+        const hgRadius = THREE.MathUtils.clamp(b.hollowGrind.radius ?? 0.6, 0.1, 6)
+        const hgBias = THREE.MathUtils.clamp(b.hollowGrind.bias ?? 0, -1, 1)
+        if (hgMix > 0 && hgDepth > 0) {
+          const edgeDist = Math.abs(u)
+          const biased = THREE.MathUtils.clamp(edgeDist + hgBias * 0.5, 0, 1)
+          const concave = Math.pow(1 - Math.pow(biased, hgRadius), 1.25)
+          const target = edgeHalf + (centerHalf - edgeHalf) * (1 - concave * hgDepth)
+          zHalf = THREE.MathUtils.lerp(zHalf, Math.max(edgeHalf, target), hgMix)
+        }
+      }
+      if (carveFullers.length) {
+        for (const slot of carveFullers) {
+          if (t < slot.start || t > slot.end) continue
+          const span = Math.max(1e-6, slot.end - slot.start)
+          const along = THREE.MathUtils.clamp((t - slot.start) / span, 0, 1)
+          const widthScale = Math.max(0.1, 1 - slot.taper * along)
+          const halfW = Math.max(0.002, (slot.width * 0.5) * widthScale)
+          const cx = bend + slot.offset
           const dx = Math.abs(xRaw - cx)
-          if (dx <= halfW) {
-            const tX = 1 - THREE.MathUtils.clamp(dx / Math.max(1e-6, halfW), 0, 1)
-            let profile = tX
-            if (prof === 'u') profile = Math.sqrt(tX)
-            else if (prof === 'v') profile = tX
-            const inset = profile * insetBase
-            zHalf = Math.max(0.0006, zHalf - inset)
-          }
+          if (dx > halfW) continue
+          const inner = 1 - THREE.MathUtils.clamp(dx / Math.max(1e-6, halfW), 0, 1)
+          let profile = inner
+          if (slot.profile === 'u') profile = Math.sqrt(inner)
+          else if (slot.profile === 'flat') profile = inner * 0.85
+          const depthScale = Math.max(0, 1 - slot.taper * along)
+          const inset = profile * slot.inset * depthScale
+          zHalf = Math.max(0.0006, zHalf - inset)
         }
       }
       if (feLen > 0 && feDepth > 0 && t >= (1 - feLen)) {
@@ -225,8 +301,9 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
 export function buildFullerOverlays(b: BladeParams): THREE.Group {
   const group = new THREE.Group()
   const totalLen = b.length
-  const y0 = Math.max(0, (b.fullerLength ?? 0) * 0.0 * totalLen + 0.05 * totalLen)
-  const y1 = totalLen - Math.max(0, 0.12 * (b.baseWidth || 0.2))
+  const resolved = resolveFullers(b)
+  if (!resolved.length) return group
+
   const color = 0xdfe6ff
   const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.2, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide })
 
@@ -236,30 +313,31 @@ export function buildFullerOverlays(b: BladeParams): THREE.Group {
   const zFrontL = halfTL - eps
   const zFrontR = halfTR - eps
 
-  const widthAcrossX = (b.fullerWidth && b.fullerWidth > 0) ? b.fullerWidth : (b.baseWidth || 0.25) * 0.3
-  const halfW = Math.max(0.005, widthAcrossX * 0.5)
-  const thNorm = Math.max(0.05, Math.min(0.7, (b.fullerDepth ?? 0.02) / Math.max(1e-3, (b.thickness ?? 0.08))))
-  const buildRibbon = (dx: number, z: number) => {
+  const buildRibbon = (slot: ResolvedFuller, faceZ: number) => {
     const positions: number[] = []
     const index: number[] = []
-    const pushV = (x: number, y: number) => { positions.push(x, y, z) }
     const steps = 120
-    let last: THREE.Vector3 | null = null
     for (let i = 0; i <= steps; i++) {
-      const t = i / steps
-      const y = y0 + (y1 - y0) * t
-      const w = tipWidthWithKissaki(b, Math.max(0, Math.min(1, y / totalLen)), b.baseWidth, b.tipWidth)
-      const half = Math.max(0.001, w * 0.5)
-      const bend = bendOffsetX(b, y, totalLen)
-      const cx = bend + dx
-      const left = cx - halfW
-      const right = cx + halfW
-      pushV(left, y); pushV(right, y)
+      const u = i / steps
+      const t = slot.start + (slot.end - slot.start) * u
+      const y = t * totalLen
+      let width = tipWidthWithKissaki(b, t, b.baseWidth, b.tipWidth)
+      const wav = wavinessAt(b, t)
+      if (wav.width !== 0) width = Math.max(0.0005, width + wav.width * 2)
+      const availableHalf = Math.max(0.001, width * 0.5)
+      const bend = bendOffsetX(b, y, totalLen) + wav.center
+      const span = Math.max(1e-6, slot.end - slot.start)
+      const along = THREE.MathUtils.clamp((t - slot.start) / span, 0, 1)
+      const widthScale = Math.max(0.1, 1 - slot.taper * along)
+      const halfSlot = Math.min(availableHalf * 0.95, Math.max(0.002, (slot.width * 0.5) * widthScale))
+      const cx = bend + slot.offset
+      const left = cx - halfSlot
+      const right = cx + halfSlot
+      positions.push(left, y, faceZ, right, y, faceZ)
       if (i > 0) {
         const a = (i - 1) * 2; const bI = a + 1; const c = a + 2; const d = a + 3
         index.push(a, bI, d, a, d, c)
       }
-      last = new THREE.Vector3(cx, y, z)
     }
     const geo = new THREE.BufferGeometry()
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
@@ -268,22 +346,16 @@ export function buildFullerOverlays(b: BladeParams): THREE.Group {
     return new THREE.Mesh(geo, mat)
   }
 
-  const inset = thNorm * (halfTL - eps * 8) * 0.8
-  const frontZ = zFrontR - inset // use right side as reference; inset symmetric
-  const backZ = -frontZ
-  const count = Math.max(0, Math.min(3, Math.round(b.fullerCount ?? 1)))
-  if (count === 1) {
-    group.add(buildRibbon(0, frontZ), buildRibbon(0, backZ))
-  } else if (count === 2) {
-    const off = (b.baseWidth || 0.3) * 0.12
-    group.add(buildRibbon(-off, frontZ), buildRibbon(-off, backZ))
-    group.add(buildRibbon(+off, frontZ), buildRibbon(+off, backZ))
-  } else if (count >= 3) {
-    const off = (b.baseWidth || 0.3) * 0.14
-    group.add(buildRibbon(0, frontZ), buildRibbon(0, backZ))
-    group.add(buildRibbon(-off, frontZ), buildRibbon(-off, backZ))
-    group.add(buildRibbon(+off, frontZ), buildRibbon(+off, backZ))
+  for (const slot of resolved) {
+    if (slot.mode !== 'overlay' && slot.depth <= 0) continue
+    const depthNorm = Math.max(0, Math.min(1, slot.depth / Math.max(1e-3, (b.thickness ?? 0.08))))
+    const frontBase = slot.side === 'right' ? zFrontR : zFrontL
+    const offsetZ = depthNorm * 0.5 * (slot.side === 'right' ? halfTR : halfTL)
+    const frontZ = frontBase - Math.max(0.001, offsetZ + 0.001)
+    const backZ = -frontZ
+    group.add(buildRibbon(slot, frontZ), buildRibbon(slot, backZ))
   }
+
   return group
 }
 
@@ -319,16 +391,19 @@ export function buildHamonOverlays(b: BladeParams): THREE.Group {
     for (let i = 0; i <= segments; i++) {
       const t = i / segments
       const y = t * totalLen
-      const w = tipWidthWithKissaki(b, t, b.baseWidth, b.tipWidth)
-      const serr = (side === 'right' ? serrAmpR : serrAmpL)
+      let widthAt = tipWidthWithKissaki(b, t, b.baseWidth, b.tipWidth)
+      const waviness = wavinessAt(b, t)
+      if (waviness.width !== 0) widthAt = Math.max(0.0005, widthAt + waviness.width * 2)
+      const bend = bendOffsetX(b, y, totalLen) + waviness.center
+      const serr = side === 'right' ? serrAmpR : serrAmpL
       const serrX = serr > 0 && serrFreq > 0 ? Math.sin(t * Math.PI * serrFreq) * serr * (1 - t) : 0
-      const halfBase = Math.max(0.001, w * 0.5 + serrX)
-      const bend = bendOffsetX(b, y, totalLen)
-      const edgeX = side === 'right' ? (bend + halfBase) : (bend - halfBase)
-      const dir = side === 'right' ? -1 : +1
-      const wav = amp > 0 && freq > 0 ? Math.sin(t * Math.PI * freq) * amp : 0
+      const halfBase = Math.max(0.001, widthAt * 0.5 + serrX)
+      const edgeHalf = Math.max(0.001, halfBase + waviness.width)
+      const edgeX = side === 'right' ? bend + edgeHalf : bend - edgeHalf
+      const dir = side === 'right' ? -1 : 1
+      const hamonWave = amp > 0 && freq > 0 ? Math.sin(t * Math.PI * freq) * amp : 0
       const outer = edgeX + dir * 0.002
-      const inner = edgeX + dir * (width + wav)
+      const inner = edgeX + dir * (width + hamonWave)
       pushV(outer, y)
       pushV(inner, y)
     }
@@ -379,23 +454,29 @@ export function buildBladeOutlinePoints(b: BladeParams): THREE.Vector2[] {
   for (let i = 0; i <= steps; i++) {
     const t = i / steps
     const y = t * length
-    const w = tipWidthWithKissaki(b, t, baseW, tipW)
+    let w = tipWidthWithKissaki(b, t, baseW, tipW)
+    const wav = wavinessAt(b, t)
+    if (wav.width !== 0) w = Math.max(0.0005, w + wav.width * 2)
     const serrR = serr(t, serrFreq, serrAmpR, biasOutlineR) * (1 - t)
     const half = Math.max(0.001, w * 0.5)
     const asym = (b.asymmetry ?? 0)
     let rightHalf = Math.max(0.0005, (half + serrR) * (1 + 0.5 * asym))
-    const bend = bendOffsetX(b, y, length)
+    rightHalf = Math.max(0.0005, rightHalf + wav.width)
+    const bend = bendOffsetX(b, y, length) + wav.center
     pts.push(new THREE.Vector2(+rightHalf + bend, y))
   }
   for (let i = steps; i >= 0; i--) {
     const t = i / steps
     const y = t * length
-    const w = tipWidthWithKissaki(b, t, baseW, tipW)
+    let w = tipWidthWithKissaki(b, t, baseW, tipW)
+    const wav = wavinessAt(b, t)
+    if (wav.width !== 0) w = Math.max(0.0005, w + wav.width * 2)
     const serrL = serr(t, serrFreq, serrAmpL, biasOutlineL, 7) * (1 - t)
     const half = Math.max(0.001, w * 0.5)
     const asym = (b.asymmetry ?? 0)
     let leftHalf = Math.max(0.0005, (half + serrL) * (1 - 0.5 * asym))
-    const bend = bendOffsetX(b, y, length)
+    leftHalf = Math.max(0.0005, leftHalf + wav.width)
+    const bend = bendOffsetX(b, y, length) + wav.center
     pts.push(new THREE.Vector2(-leftHalf + bend, y))
   }
   return pts

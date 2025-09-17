@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { BladeParams } from './types'
-import { tipWidthWithKissaki } from './math'
+import { tipWidthWithKissaki, wavinessAt } from './math'
 /**
  * Blade dynamics approximations.
  *
@@ -37,7 +37,12 @@ export function computeBladeDynamics(b: BladeParams) {
   const serrFreq = b.serrationFrequency ?? 0
   const serPat = b.serrationPattern ?? 'sine'
   const serSeed = (b.serrationSeed ?? 1337)
-  const wAt = (t:number) => tipWidthWithKissaki(b, t, baseW, tipW) + (serr(t, serrFreq, serrAmpL, serPat, serSeed)+serr(t, serrFreq, serrAmpR, serPat, serSeed))
+  const wAt = (t:number) => {
+    let width = tipWidthWithKissaki(b, t, baseW, tipW)
+    const wav = wavinessAt(b, t)
+    if (wav.width !== 0) width += wav.width * 2
+    return width + (serr(t, serrFreq, serrAmpL, serPat, serSeed) + serr(t, serrFreq, serrAmpR, serPat, serSeed))
+  }
   const tScaleAt = (t:number) => {
     const pts = (b.thicknessProfile?.points && b.thicknessProfile.points.length >= 2)
       ? b.thicknessProfile.points.slice().sort((a, c) => a[0] - c[0])
@@ -58,7 +63,12 @@ export function computeBladeDynamics(b: BladeParams) {
     const thick = 0.5*((TL0*ts)+(TR0*ts))
     const w = Math.max(1e-5, wAt(t))
     const cs = b.crossSection ?? 'flat'
-    const q = cs==='diamond'?0.6: cs==='lenticular'?0.7: cs==='hexagonal'?0.8: 1.0
+    const q = cs==='diamond'?0.6
+      : cs==='lenticular'?0.7
+      : cs==='hexagonal'?0.8
+      : cs==='triangular'?0.5
+      : cs==='tSpine'?0.9
+      : 1.0
     const dm = w * thick * q
     M += dm; My += dm * y; Ibase += dm * y * y
   }
@@ -70,7 +80,12 @@ export function computeBladeDynamics(b: BladeParams) {
     const thick = 0.5*((TL0*ts)+(TR0*ts))
     const w = Math.max(1e-5, wAt(t))
     const cs = b.crossSection ?? 'flat'
-    const q = cs==='diamond'?0.6: cs==='lenticular'?0.7: cs==='hexagonal'?0.8: 1.0
+    const q = cs==='diamond'?0.6
+      : cs==='lenticular'?0.7
+      : cs==='hexagonal'?0.8
+      : cs==='triangular'?0.5
+      : cs==='tSpine'?0.9
+      : 1.0
     const dm = w * thick * q
     Icm += dm * (y - cmY) * (y - cmY)
   }

@@ -195,10 +195,13 @@ export class SwordGenerator {
       disposeObject3D(this.fullerGroup);
       this.fullerGroup = null;
     }
-    if (b.fullerEnabled && (b.fullerLength ?? 0) > 0 && (b.fullerMode ?? 'overlay') === 'overlay' && (b.fullerDepth ?? 0) > 0) {
-      this.fullerGroup = buildFullerOverlays(b);
+    const maybeFullers = buildFullerOverlays(b);
+    if (maybeFullers.children.length > 0) {
+      this.fullerGroup = maybeFullers;
       this.fullerGroup.position.copy(this.bladeMesh.position);
       this.group.add(this.fullerGroup);
+    } else {
+      disposeObject3D(maybeFullers);
     }
 
     // Engravings / inlays

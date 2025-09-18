@@ -71,7 +71,7 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [x] Expand Playwright coverage: export flows (GLB/OBJ/SVG).
 - [x] Expand Playwright coverage: JSON import/export error paths.
 - [x] Add unit tests around accessories (scabbard/tassel anchor sampling) and render hook mutations to prevent regressions.
-- [ ] Validate schema vs `SwordParams` with a generated fixture per guard/handle/pommel style so Ajv tests cover more combinations.
+- [x] Validate schema vs `SwordParams` with a generated fixture per guard/handle/pommel style so Ajv tests cover more combinations.
 
 ---
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import Ajv2020 from 'ajv/dist/2020'
 import fs from 'node:fs'
 import path from 'node:path'
-import { defaultSwordParams } from '../three/SwordGenerator'
+import { defaultSwordParams, type GuardStyle, type PommelStyle } from '../three/SwordGenerator'
 
 describe('JSON Schema validation', () => {
   it('default export payload matches schema', () => {
@@ -130,5 +130,47 @@ describe('JSON Schema validation', () => {
     const ok = validate(payload)
     if (!ok) console.error(validate.errors)
     expect(ok).toBe(true)
+  })
+
+  it('accepts guard, handle, and pommel style combinations', () => {
+    const schemaPath = path.resolve(__dirname, '../../schema/sword.schema.json')
+    const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf-8'))
+    const ajv = new Ajv2020({ allErrors: true, allowUnionTypes: true })
+    const validate = ajv.compile(schema)
+
+    const guardStyles: GuardStyle[] = ['bar', 'winged', 'claw', 'disk', 'basket', 'knucklebow', 'swept', 'shell']
+    const wrapStyles = ['none', 'crisscross', 'hineri', 'katate', 'wire'] as const
+    const pommelStyles: PommelStyle[] = ['orb', 'disk', 'spike', 'wheel', 'scentStopper', 'ring', 'crown', 'fishtail']
+
+    const baseMaterial = { color: '#b9c6ff', metalness: 0.8, roughness: 0.25, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337 }
+    const makeMaterials = () => ({
+      blade: { ...baseMaterial },
+      guard: { ...baseMaterial },
+      handle: { ...baseMaterial },
+      pommel: { ...baseMaterial },
+      scabbard: { ...baseMaterial },
+      tassel: { ...baseMaterial }
+    })
+    const render = { exposure: 1.0, bgColor: '#0f1115', bgBrightness: 0.0, ambient: 0.4, keyIntensity: 2.0, keyAz: 40, keyEl: 40, rimIntensity: 0.5, rimAz: -135, rimEl: 20, rimColor: '#ffffff' }
+
+    for (const guardStyle of guardStyles) {
+      for (const wrapStyle of wrapStyles) {
+        for (const pommelStyle of pommelStyles) {
+          const model = defaultSwordParams()
+          model.guard.style = guardStyle
+          model.handle.wrapStyle = wrapStyle as typeof model.handle.wrapStyle
+          model.handle.wrapEnabled = wrapStyle !== 'none'
+          model.pommel.style = pommelStyle
+
+          const materials = makeMaterials()
+          const payload = { $schema: 'schema/sword.schema.json', version: 4, model, materials, render }
+          const ok = validate(payload)
+          if (!ok) {
+            console.error('Schema validation failed for', { guardStyle, wrapStyle, pommelStyle }, validate.errors)
+          }
+          expect(ok).toBe(true)
+        }
+      }
+    }
   })
 })

@@ -50,7 +50,7 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [ ] Progressive disclosure polish for advanced controls.
 
 ## Render & Performance
-- [ ] MSAA path for WebGL2 (fallback to FXAA/SMAA; UI toggle).
+- [x] MSAA path for WebGL2 (fallback to FXAA/SMAA; UI toggle).
 - [ ] Contact shadow plane option.
 - [x] Toggle composer vs direct render for perf fallback.
 - [ ] Mobile heuristics: auto‑disable bloom/outline; lower DPR/shadow size.

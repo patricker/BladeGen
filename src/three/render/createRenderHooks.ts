@@ -36,7 +36,7 @@ export type RenderHooks = {
   setBackgroundBrightness: (v: number) => void
   setBackgroundTargetColor: (hex: number) => void
   setBaseColor: (hex: number) => void
-  setAAMode: (mode: 'none'|'fxaa'|'smaa') => void
+  setAAMode: (mode: 'none'|'fxaa'|'smaa'|'msaa') => void
   setShadowBias: (bias: number, normalBias?: number) => void
   setShadowMapSize: (size: 512|1024|2048|4096) => void
   setEnvMap: (url?: string, asBackground?: boolean) => Promise<void>
@@ -57,6 +57,8 @@ export type RenderHooks = {
   setBladeMist: (enabled: boolean, colorHex?: number, density?: number, speed?: number, spread?: number, size?: number) => void
   setBladeMistAdvanced: (cfg: { occlude?: boolean; lifeRate?: number; noiseAmp?: number; noiseFreqX?: number; noiseFreqZ?: number; windX?: number; windZ?: number; emission?: 'base'|'edge'|'tip'|'full'; sizeMinRatio?: number }) => void
   setPostFXEnabled: (enabled: boolean) => void
+  supportedAAModes?: Array<'none'|'fxaa'|'smaa'|'msaa'>
+  getAAMode?: () => 'none'|'fxaa'|'smaa'|'msaa'
 }
 
 export interface RenderHookFlags {
@@ -96,6 +98,7 @@ export interface RenderHookContext {
   background: BackgroundState
   aaPasses: { fxaa: ShaderPass | null; smaa: SMAAPass | null }
   updateFXAA: () => void
+  msaa: { supported: boolean; maxSamples: number; setSamples: (samples: number) => void; getSamples: () => number }
   envTex: THREE.Texture
   currentEnvTex: { current: THREE.Texture | null }
   buildInkOutline: (scale: number, colorHex: number) => THREE.Group | null
@@ -136,9 +139,10 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     mistState,
     rebuildMist,
     background,
-    aaPasses,
-    updateFXAA,
-    envTex,
+  aaPasses,
+  updateFXAA,
+  msaa,
+  envTex,
     currentEnvTex,
     buildInkOutline,
     inkOutlineGroup,
@@ -156,6 +160,84 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     setPostFXEnabled
   } = context
 
+  const desiredMsaaSamples = () => {
+    const { maxSamples } = msaa
+    if (!msaa.supported) return 0
+    if (!Number.isFinite(maxSamples) || maxSamples <= 0) return 0
+    return Math.max(1, Math.min(4, Math.round(maxSamples)))
+  }
+
+  const ensureFxaa = () => {
+    if (!aaPasses.fxaa) {
+      aaPasses.fxaa = new ShaderPass(FXAAShader)
+      composer.addPass(aaPasses.fxaa)
+      updateFXAA()
+    }
+    aaPasses.fxaa.enabled = true
+  }
+
+  const ensureSmaa = () => {
+    if (!aaPasses.smaa) {
+      aaPasses.smaa = new SMAAPass(1, 1)
+      composer.addPass(aaPasses.smaa)
+      updateFXAA()
+    }
+    aaPasses.smaa.enabled = true
+  }
+
+  const disablePostAA = () => {
+    if (aaPasses.fxaa) aaPasses.fxaa.enabled = false
+    if (aaPasses.smaa) aaPasses.smaa.enabled = false
+  }
+
+  const deactivateMsaa = () => {
+    if (!msaa.supported) return
+    if (msaa.getSamples() !== 0) {
+      msaa.setSamples(0)
+    }
+  }
+
+  const activateMsaa = () => {
+    if (!msaa.supported) return false
+    const target = desiredMsaaSamples()
+    if (target <= 0) return false
+    if (msaa.getSamples() !== target) {
+      msaa.setSamples(target)
+    }
+    return true
+  }
+
+  let currentAaMode: 'none' | 'fxaa' | 'smaa' | 'msaa' = 'none'
+
+  const setAAModeInternal = (mode: 'none' | 'fxaa' | 'smaa' | 'msaa') => {
+    let appliedMode: 'none' | 'fxaa' | 'smaa' | 'msaa' = mode
+    if (mode === 'msaa') {
+      const enabled = activateMsaa()
+      if (!enabled) {
+        appliedMode = 'fxaa'
+        ensureFxaa()
+      } else {
+        disablePostAA()
+      }
+    } else if (mode === 'fxaa') {
+      deactivateMsaa()
+      ensureFxaa()
+      if (aaPasses.smaa) aaPasses.smaa.enabled = false
+      appliedMode = 'fxaa'
+    } else if (mode === 'smaa') {
+      deactivateMsaa()
+      // Temporarily fall back to FXAA until SMAA is re-evaluated for stability across presets.
+      ensureFxaa()
+      if (aaPasses.smaa) aaPasses.smaa.enabled = false
+      appliedMode = 'fxaa'
+    } else {
+      deactivateMsaa()
+      disablePostAA()
+      appliedMode = 'none'
+    }
+    currentAaMode = appliedMode
+  }
+
   const renderHooks: RenderHooks = {
     setPartMaterial: (part, patch) => {
       (materials as any)[part] = { ...(materials as any)[part], ...(patch || {}) }
@@ -171,6 +253,26 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
       applyBladeVisibility(!!visible, !!occlude)
     },
     setExposure: (v) => { renderer.toneMappingExposure = v },
+    setPartColor: (part, hex) => {
+      (materials as any)[part] = { ...(materials as any)[part], color: hex }
+      setPartColor(sword, part, hex)
+    },
+    setPartMetalness: (part, value) => {
+      (materials as any)[part] = { ...(materials as any)[part], metalness: value }
+      setPartMetalness(sword, part, value)
+    },
+    setPartRoughness: (part, value) => {
+      (materials as any)[part] = { ...(materials as any)[part], roughness: value }
+      setPartRoughness(sword, part, value)
+    },
+    setPartClearcoat: (part, value) => {
+      (materials as any)[part] = { ...(materials as any)[part], clearcoat: value }
+      setPartClearcoat(sword, part, value)
+    },
+    setPartClearcoatRoughness: (part, value) => {
+      (materials as any)[part] = { ...(materials as any)[part], clearcoatRoughness: value }
+      setPartClearcoatRoughness(sword, part, value)
+    },
     setToneMapping: (mode) => {
       const map: Record<string, any> = {
         None: THREE.NoToneMapping,
@@ -225,28 +327,7 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     setBackgroundBrightness: (v) => { background.setBrightness(v); background.apply() },
     setBackgroundTargetColor: (hex) => { background.target.setHex(hex); background.apply() },
     setBaseColor: (hex) => { background.groundMaterial.color.setHex(hex); background.groundMaterial.needsUpdate = true },
-    setAAMode: (mode) => {
-      if (mode === 'fxaa') {
-        if (!aaPasses.fxaa) {
-          aaPasses.fxaa = new ShaderPass(FXAAShader)
-          composer.addPass(aaPasses.fxaa)
-          updateFXAA()
-        }
-        aaPasses.fxaa.enabled = true
-        if (aaPasses.smaa) aaPasses.smaa.enabled = false
-      } else if (mode === 'smaa') {
-        if (!aaPasses.smaa) {
-          aaPasses.smaa = new SMAAPass(1, 1)
-          composer.addPass(aaPasses.smaa)
-          updateFXAA()
-        }
-        aaPasses.smaa.enabled = true
-        if (aaPasses.fxaa) aaPasses.fxaa.enabled = false
-      } else {
-        if (aaPasses.fxaa) aaPasses.fxaa.enabled = false
-        if (aaPasses.smaa) aaPasses.smaa.enabled = false
-      }
-    },
+    setAAMode: setAAModeInternal,
     setShadowBias: (bias, normalBias) => {
       if (keyLight.shadow) {
         keyLight.shadow.bias = bias
@@ -373,11 +454,6 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
         if (Array.isArray(mat)) mat.forEach(apply); else apply(mat)
       })
     },
-    setPartColor: (part, hex) => setPartColor(sword, part, hex),
-    setPartMetalness: (part, v) => setPartMetalness(sword, part, v),
-    setPartRoughness: (part, v) => setPartRoughness(sword, part, v),
-    setPartClearcoat: (part, v) => setPartClearcoat(sword, part, v),
-    setPartClearcoatRoughness: (part, v) => setPartClearcoatRoughness(sword, part, v),
     setDPRCap: (cap) => {
       (renderer as any)._dprCap = cap
       updateFXAA()
@@ -453,6 +529,12 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
       setPostFXEnabled(enabled)
     }
   }
+
+  const supportedModes: Array<'none'|'fxaa'|'smaa'|'msaa'> = msaa.supported
+    ? ['none', 'fxaa', 'smaa', 'msaa']
+    : ['none', 'fxaa']
+  renderHooks.supportedAAModes = supportedModes
+  renderHooks.getAAMode = () => currentAaMode
 
   return renderHooks
 }

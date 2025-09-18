@@ -371,6 +371,12 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     background,
     aaPasses: post.aaPasses,
     updateFXAA,
+    msaa: {
+      supported: post.supportsMsaa,
+      maxSamples: post.maxMsaaSamples,
+      setSamples: post.setMsaaSamples,
+      getSamples: post.getMsaaSamples
+    },
     envTex: envTexture,
     currentEnvTex,
     buildInkOutline,

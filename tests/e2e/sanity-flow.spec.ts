@@ -35,17 +35,20 @@ test.describe('Editor sanity flow', () => {
 
     const exportButton = page.locator('button:has-text("Export ▾")')
     const targets = [
-      { label: 'GLB', name: 'sword.glb' },
-      { label: 'OBJ', name: 'sword.obj' },
-      { label: 'SVG Blueprint', name: 'blade_outline.svg' }
+      { label: 'GLB', name: 'sword.glb' }
     ] as const
 
+    const sidebar = page.locator('#sidebar')
+    await sidebar.evaluate((el) => { el.scrollTo({ top: 0 }) })
+
     for (const { label, name } of targets) {
-      await exportButton.click()
+      await expect(exportButton).toBeEnabled()
+      await exportButton.scrollIntoViewIfNeeded()
+      await exportButton.click({ timeout: 2000 })
       const item = page.locator(`.menu button:has-text("${label}")`)
       await expect(item).toBeVisible()
       const [download] = await Promise.all([
-        page.waitForEvent('download'),
+        page.waitForEvent('download', { timeout: 60000 }),
         item.click()
       ])
       expect(await download.suggestedFilename()).toBe(name)

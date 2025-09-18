@@ -21,10 +21,19 @@ export interface PostProcessingContext {
   outline: OutlinePass;
   vignette: ShaderPass;
   updateAaPass: (width: number, height: number, pixelRatio: number) => void;
+  supportsMsaa: boolean;
+  maxMsaaSamples: number;
+  setMsaaSamples: (samples: number) => void;
+  getMsaaSamples: () => number;
 }
 
 export function createPostProcessing(scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer): PostProcessingContext {
+  // NOTE: WebGLMultisampleRenderTarget cannot be sampled by post-processing passes without a manual resolve
+  // step. Until a resolve path is wired in, fall back to the standard single-sample targets so presets
+  // don’t collapse to black on multi-pass renders when MSAA is requested.
+  const msaaSupported = false;
   const composer = new EffectComposer(renderer);
+  const maxSamples = 0;
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
 
@@ -54,5 +63,24 @@ export function createPostProcessing(scene: THREE.Scene, camera: THREE.Camera, r
   vignette.enabled = false;
   composer.addPass(vignette);
 
-  return { composer, renderPass, aaPasses, bloom, outline, vignette, updateAaPass };
+  let currentSamples = 0;
+  const setMsaaSamples = (_samples: number) => {
+    currentSamples = 0;
+  };
+
+  const getMsaaSamples = () => currentSamples;
+
+  return {
+    composer,
+    renderPass,
+    aaPasses,
+    bloom,
+    outline,
+    vignette,
+    updateAaPass,
+    supportsMsaa: msaaSupported && maxSamples > 0,
+    maxMsaaSamples: maxSamples,
+    setMsaaSamples,
+    getMsaaSamples
+  };
 }

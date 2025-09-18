@@ -26,7 +26,7 @@ type RenderHooks = {
   setBackgroundBrightness: (v: number) => void;
   setVignette: (enabled: boolean, strength?: number, softness?: number) => void;
   setInkOutline: (enabled: boolean, thickness?: number, colorHex?: number) => void;
-  setAAMode: (mode: 'none'|'fxaa'|'smaa') => void;
+  setAAMode: (mode: 'none'|'fxaa'|'smaa'|'msaa') => void;
   setShadowBias: (bias: number, normalBias?: number) => void;
   setShadowMapSize: (size: 512|1024|2048|4096) => void;
   setDPRCap: (cap: number) => void;
@@ -46,6 +46,8 @@ type RenderHooks = {
   setPartClearcoat: (part: Part, v: number) => void;
   setPartClearcoatRoughness: (part: Part, v: number) => void;
   setPostFXEnabled?: (enabled: boolean) => void;
+  supportedAAModes?: Array<'none'|'fxaa'|'smaa'|'msaa'>;
+  getAAMode?: () => 'none'|'fxaa'|'smaa'|'msaa';
 };
 
 type ControlType = 'slider' | 'select' | 'checkbox' | 'color' | 'text';
@@ -200,7 +202,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     bloomThreshold: 0.85,
     bloomRadius: 0.2,
     envMapIntensity: 1.0,
-    aaMode: 'fxaa' as 'none'|'fxaa'|'smaa',
+    aaMode: 'fxaa' as 'none'|'fxaa'|'smaa'|'msaa',
     shadowMapSize: 2048 as 1024|2048|4096,
     qualityPreset: 'Medium' as 'Low'|'Medium'|'High',
     toneMapping: 'ACES' as 'ACES'|'Reinhard'|'Cineon'|'Linear'|'None',
@@ -236,6 +238,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     bladeInvisible: false,
     occludeInvisible: false,
   };
+
+  const supportedAAModes = (render?.supportedAAModes ?? ['none','fxaa']) as Array<'none'|'fxaa'|'smaa'|'msaa'>;
+  const initialAAMode = render?.getAAMode?.() ?? rstate.aaMode;
+  if (supportedAAModes.includes(initialAAMode)) {
+    rstate.aaMode = initialAAMode;
+  } else {
+    rstate.aaMode = supportedAAModes.includes('fxaa') ? 'fxaa' : supportedAAModes[0];
+  }
   const fxState = {
     innerGlow: { enabled: false, color: '#88ccff', min: 0.2, max: 0.9, speed: 1.5 },
     mist: {
@@ -314,7 +324,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     envMapIntensity: number;
     bgColor: string;
     bgBrightness: number;
-    aaMode: 'none' | 'fxaa' | 'smaa';
+    aaMode: 'none' | 'fxaa' | 'smaa' | 'msaa';
     shadowMapSize: 1024 | 2048 | 4096;
     qualityPreset: 'Low' | 'Medium' | 'High';
     toneMapping: 'ACES' | 'Reinhard' | 'Cineon' | 'Linear' | 'None';
@@ -1293,10 +1303,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       }
     };
 
-    const QUALITY_PRESETS: Record<'Low' | 'Medium' | 'High', { aa: 'none'|'fxaa'|'smaa'; shadow: 1024|2048|4096; bloom: boolean; outline: boolean; dpr: number; shadowBias?: number }> = {
-      Low: { aa: 'none', shadow: 1024, bloom: false, outline: false, dpr: 1.0, shadowBias: -0.0005 },
-      Medium: { aa: 'fxaa', shadow: 2048, bloom: false, outline: false, dpr: 1.5, shadowBias: -0.0005 },
-      High: { aa: 'smaa', shadow: 2048, bloom: false, outline: false, dpr: 2.0, shadowBias: -0.0005 }
+    const lowAa: 'none'|'fxaa'|'smaa'|'msaa' = supportedAAModes.includes('none') ? 'none' : supportedAAModes[0];
+    const mediumAa: 'none'|'fxaa'|'smaa'|'msaa' = supportedAAModes.includes('fxaa') ? 'fxaa' : supportedAAModes[0];
+    const highAa: 'none'|'fxaa'|'smaa'|'msaa' = mediumAa;
+
+    const QUALITY_PRESETS: Record<'Low' | 'Medium' | 'High', { aa: 'none'|'fxaa'|'smaa'|'msaa'; shadow: 1024|2048|4096; bloom: boolean; outline: boolean; dpr: number; shadowBias?: number }> = {
+      Low: { aa: lowAa, shadow: 1024, bloom: false, outline: false, dpr: 1.0, shadowBias: -0.0005 },
+      Medium: { aa: mediumAa, shadow: 2048, bloom: false, outline: false, dpr: 1.5, shadowBias: -0.0005 },
+      High: { aa: highAa, shadow: 2048, bloom: false, outline: false, dpr: 2.0, shadowBias: -0.0005 }
     };
 
     const applyQualityPreset = (preset: 'Low'|'Medium'|'High', emitUi = false) => {
@@ -1751,7 +1765,19 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       render.setPostFXEnabled?.(v);
       refreshWarnings();
     }, () => {}, 'Disable to render directly without post-processing for a performance boost.');
-    select(rQual, 'AA Mode', ['none','fxaa','smaa'], rstate.aaMode, (v) => { rstate.aaMode = v as 'none'|'fxaa'|'smaa'; render.setAAMode(rstate.aaMode); }, () => {}, 'Anti-aliasing mode.');
+    select(
+      rQual,
+      'AA Mode',
+      supportedAAModes,
+      rstate.aaMode,
+      (v) => {
+        const next = v as 'none'|'fxaa'|'smaa'|'msaa'
+        rstate.aaMode = next
+        render.setAAMode(next)
+      },
+      () => {},
+      'Anti-aliasing mode. MSAA appears when WebGL2 multisampling is available.'
+    );
     select(rQual, 'Quality', ['Low','Medium','High'], 'Medium', (v) => {
       applyQualityPreset(v as 'Low'|'Medium'|'High', true);
     }, () => {}, 'Quality preset (affects AA, shadows, DPR).');

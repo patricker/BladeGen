@@ -309,7 +309,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     bloomStrength: number;
     bloomThreshold: number;
     bloomRadius: number;
-  envMapIntensity: number;
+    envMapIntensity: number;
     bgColor: string;
     bgBrightness: number;
     aaMode: 'none' | 'fxaa' | 'smaa';
@@ -694,7 +694,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         bloomStrength: 1.05,
         bloomThreshold: 0.58,
         bloomRadius: 0.45,
-        envIntensity: 1.2,
+        envMapIntensity: 1.2,
         exposure: 0.95
       }
     },
@@ -1116,7 +1116,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     registry.setValue('render-quality-exposure', 'Shadow Map', String(rstate.shadowMapSize));
     registry.setValue('render-quality-exposure', 'Tone Mapping', rstate.toneMapping);
     registry.setValue('render-quality-exposure', 'Exposure', rstate.exposure);
-    registry.setValue('render-quality-exposure', 'Env Intensity', rstate.envIntensity);
+    registry.setValue('render-quality-exposure', 'Env Intensity', rstate.envMapIntensity);
     registry.setValue('render-background', 'Background Color', rstate.bgColor);
     registry.setValue('render-background', 'Background Bright', rstate.bgBrightness);
     registry.setValue('render-lights', 'Ambient Intensity', rstate.ambient);
@@ -1367,7 +1367,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         rstate.rimColor = overrides.rimColor;
         render.setRimColor(parseInt(rstate.rimColor.replace('#', '0x')));
       }
-      applyNumeric('envIntensity', (v) => { rstate.envIntensity = v; render.setEnvIntensity(v); });
+      applyNumeric('envMapIntensity', (v) => { rstate.envMapIntensity = v; render.setEnvIntensity(v); });
       if (overrides.bgColor !== undefined) {
         rstate.bgColor = overrides.bgColor;
         render.setBackgroundColor(parseInt(rstate.bgColor.replace('#', '0x')));
@@ -1461,7 +1461,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       render.setRimAngles(rstate.rimAz, rstate.rimEl);
       render.setRimColor(parseInt(rstate.rimColor.replace('#', '0x')));
       render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius);
-      render.setEnvIntensity(rstate.envIntensity);
+      render.setEnvIntensity(rstate.envMapIntensity);
       render.setBackgroundBrightness(rstate.bgBrightness);
       render.setBackgroundColor(parseInt(rstate.bgColor.replace('#', '0x')));
       render.setAAMode?.(rstate.aaMode);
@@ -1752,7 +1752,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(rQual, 'Shadow Bias', -0.01, 0.01, 0.0001, -0.0005, (v) => { render.setShadowBias(v); }, () => {}, 'Shadow acne/peter-panning tweak.');
     select(rQual, 'Tone Mapping', ['ACES','Reinhard','Cineon','Linear','None'], 'ACES', (v) => { rstate.toneMapping = v as any; (render as any).setToneMapping?.(v as any); }, () => {}, 'Renderer tone mapping curve.');
     slider(rQual, 'Exposure', 0.5, 2.0, 0.01, rstate.exposure, (v) => { rstate.exposure = v; render.setExposure(v); }, () => {} , 'Tone mapping exposure.');
-    slider(rQual, 'Env Intensity', 0, 3.0, 0.01, rstate.envIntensity, (v) => { rstate.envIntensity = v; render.setEnvIntensity(v); }, () => {}, 'Environment map intensity (reflections).');
+    slider(rQual, 'Env Intensity', 0, 3.0, 0.01, rstate.envMapIntensity, (v) => { rstate.envMapIntensity = v; render.setEnvIntensity(v); }, () => {}, 'Environment map intensity (reflections).');
 
     // Background
     colorPicker(rBg, 'Background Color', rstate.bgColor, (hex) => { rstate.bgColor = hex; const n = parseInt(hex.replace('#','0x')); render.setBackgroundColor(n); }, () => {}, 'Renderer clear color.');
@@ -2478,7 +2478,8 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
           if (R.bloomRadius !== undefined) rstate.bloomRadius = R.bloomRadius;
           render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius);
         }
-        if (R.envIntensity !== undefined) { rstate.envIntensity = R.envIntensity; render.setEnvIntensity(R.envIntensity); }
+        const envIntensityValue = (R as any).envMapIntensity ?? (R as any).envIntensity;
+        if (envIntensityValue !== undefined) { rstate.envMapIntensity = envIntensityValue; render.setEnvIntensity(envIntensityValue); }
         if (R.bgBrightness !== undefined) { rstate.bgBrightness = R.bgBrightness; render.setBackgroundBrightness(R.bgBrightness); }
         if (R.bgColor !== undefined) {
           rstate.bgColor = R.bgColor;

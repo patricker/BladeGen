@@ -20,7 +20,7 @@ describe('JSON Schema validation', () => {
       scabbard:{ color: '#3a2c1c', metalness: 0.2, roughness: 0.65, clearcoat: 0.05, clearcoatRoughness: 0.7, preset: 'None', bumpEnabled: false, bumpScale: 0.015, bumpNoiseScale: 9, bumpSeed: 1337 },
       tassel:{ color: '#7c3f1d', metalness: 0.05, roughness: 0.8, clearcoat: 0.0, clearcoatRoughness: 0.7, preset: 'None', bumpEnabled: false, bumpScale: 0.01, bumpNoiseScale: 10, bumpSeed: 777, sheen: 0.35, sheenColor: '#d8a273' }
     }
-    const render = { exposure: 1.0, bgColor: '#0f1115', bgBrightness: 0.0, ambient: 0.4, keyIntensity: 2.0, keyAz: 40, keyEl: 40, rimIntensity: 0.5, rimAz: -135, rimEl: 20, rimColor: '#ffffff' }
+    const render = { exposure: 1.0, bgColor: '#0f1115', bgBrightness: 0.0, ambient: 0.4, keyIntensity: 2.0, keyAz: 40, keyEl: 40, rimIntensity: 0.5, rimAz: -135, rimEl: 20, rimColor: '#ffffff', envMapIntensity: 1.0 }
     const payload = { $schema: 'schema/sword.schema.json', version: 4, model, materials, render }
     const ok = validate(payload)
     if (!ok) console.error(validate.errors)
@@ -57,7 +57,7 @@ describe('JSON Schema validation', () => {
         }
       ]
     }
-    const render = { exposure: 1.0, bgColor: '#0f1115', bgBrightness: 0.0, ambient: 0.4, keyIntensity: 2.0, keyAz: 40, keyEl: 40, rimIntensity: 0.5, rimAz: -135, rimEl: 20, rimColor: '#ffffff' }
+    const render = { exposure: 1.0, bgColor: '#0f1115', bgBrightness: 0.0, ambient: 0.4, keyIntensity: 2.0, keyAz: 40, keyEl: 40, rimIntensity: 0.5, rimAz: -135, rimEl: 20, rimColor: '#ffffff', envMapIntensity: 1.0 }
     const payload = { $schema: 'schema/sword.schema.json', version: 4, model, materials, render }
     const ok = validate(payload)
     if (!ok) console.error(validate.errors)
@@ -81,7 +81,7 @@ describe('JSON Schema validation', () => {
       scabbard:{ color: '#3a2c1c', metalness: 0.2, roughness: 0.65, clearcoat: 0.05, clearcoatRoughness: 0.7, preset: 'None', bumpEnabled: false, bumpScale: 0.015, bumpNoiseScale: 9, bumpSeed: 1337 },
       tassel:{ color: '#7c3f1d', metalness: 0.05, roughness: 0.8, clearcoat: 0.0, clearcoatRoughness: 0.7, preset: 'None', bumpEnabled: false, bumpScale: 0.01, bumpNoiseScale: 10, bumpSeed: 777, sheen: 0.35, sheenColor: '#d8a273' }
     }
-    const render = { exposure: 1.0, bgColor: '#0f1115', bgBrightness: 0.0, ambient: 0.4, keyIntensity: 2.0, keyAz: 40, keyEl: 40, rimIntensity: 0.5, rimAz: -135, rimEl: 20, rimColor: '#ffffff' }
+    const render = { exposure: 1.0, bgColor: '#0f1115', bgBrightness: 0.0, ambient: 0.4, keyIntensity: 2.0, keyAz: 40, keyEl: 40, rimIntensity: 0.5, rimAz: -135, rimEl: 20, rimColor: '#ffffff', envMapIntensity: 1.0 }
     const payload = { $schema: 'schema/sword.schema.json', version: 4, model, materials, render }
     const ok = validate(payload)
     if (!ok) console.error(validate.errors)
@@ -125,7 +125,7 @@ describe('JSON Schema validation', () => {
       scabbard:{ color: '#3a2c1c', metalness: 0.2, roughness: 0.65, clearcoat: 0.05, clearcoatRoughness: 0.7, preset: 'None', bumpEnabled: false, bumpScale: 0.015, bumpNoiseScale: 9, bumpSeed: 1337 },
       tassel:{ color: '#7c3f1d', metalness: 0.05, roughness: 0.8, clearcoat: 0.0, clearcoatRoughness: 0.7, preset: 'None', bumpEnabled: false, bumpScale: 0.01, bumpNoiseScale: 10, bumpSeed: 777, sheen: 0.35, sheenColor: '#d8a273' }
     }
-    const render = { exposure: 1.0, bgColor: '#0f1115', bgBrightness: 0.0, ambient: 0.4, keyIntensity: 2.0, keyAz: 40, keyEl: 40, rimIntensity: 0.5, rimAz: -135, rimEl: 20, rimColor: '#ffffff' }
+    const render = { exposure: 1.0, bgColor: '#0f1115', bgBrightness: 0.0, ambient: 0.4, keyIntensity: 2.0, keyAz: 40, keyEl: 40, rimIntensity: 0.5, rimAz: -135, rimEl: 20, rimColor: '#ffffff', envMapIntensity: 1.0 }
     const payload = { $schema: 'schema/sword.schema.json', version: 4, model, materials, render }
     const ok = validate(payload)
     if (!ok) console.error(validate.errors)

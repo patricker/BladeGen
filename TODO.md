@@ -56,7 +56,7 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [ ] Mobile heuristics: auto‑disable bloom/outline; lower DPR/shadow size.
 - [ ] Dispose/GC of composers/passes/materials on toggles.
 - [ ] Animated shimmer (time uniform) for gradient/wear (optional).
-- [ ] Wire up global envMapIntensity in UI; persist in JSON.
+- [x] Wire up global envMapIntensity in UI; persist in JSON.
 
 ## Schema & Versioning
 - [ ] Schema v2 bump; add new fields as optional with safe defaults and clamps.

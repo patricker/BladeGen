@@ -10,8 +10,8 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 
 ## Architecture & Code Health
 - [ ] Split `src/three/setupScene.ts` into renderer/bootstrap, lighting, post, and FX modules; return a typed context instead of `any`/`scene.__renderHooks` so `src/main.ts` can import explicit hooks.
-- [ ] Introduce parameter diffing in `SwordGenerator.updateGeometry` so guard/handle/pommel/accessories only rebuild when their inputs change; reuse existing meshes to reduce GC churn.
-- [ ] Replace the JSON deep-clone in `resolveDerivedParams` with a typed normaliser that preserves texture/material references and shared objects.
+- [x] Introduce parameter diffing in `SwordGenerator.updateGeometry` so guard/handle/pommel/accessories only rebuild when their inputs change; reuse existing meshes to reduce GC churn.
+- [x] Replace the JSON deep-clone in `resolveDerivedParams` with a typed normaliser that preserves texture/material references and shared objects.
 - [ ] Extract a render-material service so highlight/emissive toggles and material patching live outside the generator class (fewer side effects, easier testing).
 
 ## Geometry & Dynamics

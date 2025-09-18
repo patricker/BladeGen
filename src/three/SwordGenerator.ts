@@ -43,7 +43,7 @@ import { buildEngravingsGroup } from './sword/engravings';
 import { validateSwordParams } from './sword/validation';
 import { TextureCache } from './sword/textures';
 import { createMaterial } from './sword/materials';
-import { disposeObject3D } from './sword/utils';
+import { disposeObject3D, deepEqual } from './sword/utils';
 import { buildScabbard, buildTassel, type ScabbardBuildResult } from './sword/accessories';
 // Re-export selected helpers for existing consumers
 export { buildBladeOutlinePoints, bladeOutlineToSVG } from './sword/bladeGeometry';
@@ -88,14 +88,35 @@ export class SwordGenerator {
    * object is safe to validate and pass to builders.
    */
   private resolveDerivedParams(params: SwordParams): SwordParams {
-    const copy: SwordParams = JSON.parse(JSON.stringify(params));
-    if ((params as any).useRatios) {
-      const r = (params as any).ratios || {};
-      const L = params.blade?.length ?? 3.0;
-      if (typeof r.guardWidthToBlade === 'number') copy.guard.width = Math.max(0.2, r.guardWidthToBlade * L);
-      if (typeof r.handleLengthToBlade === 'number') copy.handle.length = Math.max(0.2, r.handleLengthToBlade * L);
-      if (typeof r.pommelSizeToBlade === 'number') copy.pommel.size = Math.max(0.05, r.pommelSizeToBlade * L);
+    const copy: SwordParams = {
+      ...params,
+      blade: params.blade ? { ...params.blade } : params.blade,
+      guard: params.guard ? { ...params.guard } : params.guard,
+      handle: params.handle ? { ...params.handle } : params.handle,
+      pommel: params.pommel ? { ...params.pommel } : params.pommel,
+      accessories: params.accessories
+        ? {
+            ...params.accessories,
+            scabbard: params.accessories.scabbard ? { ...params.accessories.scabbard } : undefined,
+            tassel: params.accessories.tassel ? { ...params.accessories.tassel } : undefined
+          }
+        : undefined
+    };
+
+    if ((params as any).useRatios && copy.guard && copy.handle && copy.pommel) {
+      const ratios = (params as any).ratios || {};
+      const bladeLength = params.blade?.length ?? 3.0;
+      if (typeof ratios.guardWidthToBlade === 'number') {
+        copy.guard.width = Math.max(0.2, ratios.guardWidthToBlade * bladeLength);
+      }
+      if (typeof ratios.handleLengthToBlade === 'number') {
+        copy.handle.length = Math.max(0.2, ratios.handleLengthToBlade * bladeLength);
+      }
+      if (typeof ratios.pommelSizeToBlade === 'number') {
+        copy.pommel.size = Math.max(0.05, ratios.pommelSizeToBlade * bladeLength);
+      }
     }
+
     return copy;
   }
   /** Apply new material presets and rebind to existing meshes/groups. */
@@ -139,32 +160,53 @@ export class SwordGenerator {
     const prev = this.lastParams;
     this.lastParams = p;
 
-    // Rebuild blade on any blade param change to avoid scaling artifacts
-    this.rebuildBlade(p.blade);
-    // Optionally build or remove hilt (guard, handle, pommel)
+    const bladeChanged = !prev || !deepEqual(prev.blade, p.blade);
+    if (bladeChanged) {
+      this.rebuildBlade(p.blade);
+    }
+
+    const hiltPreviouslyDisabled = prev?.hiltEnabled === false;
+    let handleChanged = false;
+    let guardChanged = false;
+
     if (p.hiltEnabled === false) {
-      // Remove guard
       if (this.guardMesh) { this.group.remove(this.guardMesh); disposeObject3D(this.guardMesh); this.guardMesh = null }
       if (this.guardGroup) { this.group.remove(this.guardGroup); disposeObject3D(this.guardGroup); this.guardGroup = null }
-      // Remove handle
       if (this.handleMesh) { this.group.remove(this.handleMesh); disposeObject3D(this.handleMesh); this.handleMesh = null }
       if (this.handleGroup) { this.group.remove(this.handleGroup); disposeObject3D(this.handleGroup); this.handleGroup = null }
-      // Remove pommel
       if (this.pommelMesh) { this.group.remove(this.pommelMesh); disposeObject3D(this.pommelMesh); this.pommelMesh = null }
+      handleChanged = prev?.hiltEnabled !== false
+      guardChanged = prev?.guardEnabled !== false && prev?.hiltEnabled !== false
     } else {
-      // Guard: optional independent toggle
-      if (p.guardEnabled === false) {
+      handleChanged = hiltPreviouslyDisabled || !prev || !deepEqual(prev.handle, p.handle);
+      if (handleChanged) {
+        this.rebuildHandle(p.handle);
+      }
+
+      const guardShouldExist = p.guardEnabled !== false;
+      const guardWasEnabled = !prev || (prev.hiltEnabled !== false && prev.guardEnabled !== false);
+      guardChanged = bladeChanged || handleChanged || hiltPreviouslyDisabled || !prev || prev.guardEnabled !== p.guardEnabled || !deepEqual(prev.guard, p.guard);
+      if (!guardShouldExist) {
         if (this.guardMesh) { this.group.remove(this.guardMesh); disposeObject3D(this.guardMesh); this.guardMesh = null }
         if (this.guardGroup) { this.group.remove(this.guardGroup); disposeObject3D(this.guardGroup); this.guardGroup = null }
-      } else {
+      } else if (!guardWasEnabled || guardChanged) {
         this.rebuildGuard(p.guard);
       }
-      // Ensure order: handle before pommel for placement dependence
-      this.rebuildHandle(p.handle);
-      this.rebuildPommel(p.pommel);
+
+      const pommelChanged = handleChanged || hiltPreviouslyDisabled || !prev || !deepEqual(prev.pommel, p.pommel);
+      if (pommelChanged) {
+        this.rebuildPommel(p.pommel);
+      }
     }
-    this.rebuildAccessories(p.accessories, p.blade);
-    this.derived = computeBladeDynamics(p.blade);
+
+    const accessoriesChanged = bladeChanged || handleChanged || guardChanged || !prev || !deepEqual(prev.accessories, p.accessories);
+    if (accessoriesChanged) {
+      this.rebuildAccessories(p.accessories, p.blade);
+    }
+
+    if (bladeChanged || !this.derived) {
+      this.derived = computeBladeDynamics(p.blade);
+    }
   }
 
   /** Enable emissive highlighting for a single named part. */

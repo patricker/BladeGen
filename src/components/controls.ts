@@ -198,7 +198,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     bloomStrength: 0.6,
     bloomThreshold: 0.85,
     bloomRadius: 0.2,
-    envIntensity: 1.0,
+    envMapIntensity: 1.0,
     aaMode: 'fxaa' as 'none'|'fxaa'|'smaa',
     shadowMapSize: 2048 as 1024|2048|4096,
     qualityPreset: 'Medium' as 'Low'|'Medium'|'High',
@@ -309,7 +309,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     bloomStrength: number;
     bloomThreshold: number;
     bloomRadius: number;
-    envIntensity: number;
+  envMapIntensity: number;
     bgColor: string;
     bgBrightness: number;
     aaMode: 'none' | 'fxaa' | 'smaa';

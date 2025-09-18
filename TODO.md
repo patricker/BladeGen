@@ -66,7 +66,7 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [ ] Visual QA checklist and screenshot gallery (consistent lighting).
 - [ ] Blender import parity (sRGB/linear, exposure/shadows check).
 - [ ] Landing page presets and images; publish to Pages.
-- [ ] e2e sanity flow: load preset → tweak → export GLB/OBJ/SVG.
+- [x] e2e sanity flow: load preset → tweak → export GLB/OBJ/SVG.
 - [x] Expand Playwright coverage: drive render toggles (AA, bloom).
 - [x] Expand Playwright coverage: export flows (GLB/OBJ/SVG).
 - [x] Expand Playwright coverage: JSON import/export error paths.

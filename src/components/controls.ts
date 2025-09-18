@@ -2254,6 +2254,61 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   checkbox(sections.Handle, 'Wrap Texture', state.handle.wrapTexture ?? false, (v) => (state.handle.wrapTexture = v), rerender, 'Procedural diagonal stripe texture on grip.');
   slider(sections.Handle, 'Wrap Tex Scale', 1, 32, 1, state.handle.wrapTexScale ?? 10, (v) => (state.handle.wrapTexScale = Math.round(v)), rerender, 'Texture repeat scale.');
   slider(sections.Handle, 'Wrap Tex Angle', -90, 90, 1, (state.handle.wrapTexAngle ?? (Math.PI/4)) * 180/Math.PI, (v) => (state.handle.wrapTexAngle = (v*Math.PI/180)), rerender, 'Stripe angle (degrees).');
+  select(sections.Handle, 'Wrap Style', ['none','crisscross','hineri','katate','wire'], state.handle.wrapStyle ?? 'none', (v) => {
+    state.handle.wrapStyle = v as typeof state.handle.wrapStyle;
+  }, () => { rerender(); }, 'Adds stylized wrap geometry (hineri/katate/wire).');
+
+  const wrapPresetRow = document.createElement('div');
+  wrapPresetRow.className = 'row full';
+  wrapPresetRow.style.alignItems = 'center';
+  const wrapPresetLabel = document.createElement('label');
+  wrapPresetLabel.textContent = 'Wrap Presets';
+  wrapPresetLabel.style.marginRight = '8px';
+  wrapPresetLabel.style.fontSize = '12px';
+  wrapPresetRow.appendChild(wrapPresetLabel);
+  const wrapPresetButtons = document.createElement('div');
+  wrapPresetButtons.style.display = 'flex';
+  wrapPresetButtons.style.gap = '6px';
+
+  const applyWrapPreset = (preset: 'hineri'|'katate'|'wire') => {
+    state.handle.wrapEnabled = true;
+    state.handle.wrapTexture = preset === 'katate';
+    if (preset === 'hineri') {
+      state.handle.wrapStyle = 'hineri';
+      state.handle.wrapTurns = 8;
+      state.handle.wrapDepth = 0.012;
+      state.handle.wrapTexScale = 12;
+      state.handle.wrapTexAngle = Math.PI / 5;
+    } else if (preset === 'katate') {
+      state.handle.wrapStyle = 'katate';
+      state.handle.wrapTurns = 6;
+      state.handle.wrapDepth = 0.013;
+      state.handle.wrapTexScale = 16;
+      state.handle.wrapTexAngle = Math.PI / 6;
+    } else if (preset === 'wire') {
+      state.handle.wrapStyle = 'wire';
+      state.handle.wrapTurns = 0;
+      state.handle.wrapDepth = 0.006;
+      state.handle.wrapTexture = false;
+    }
+    rerender();
+    syncUi();
+  };
+
+  const makeWrapButton = (label: string, preset: 'hineri'|'katate'|'wire') => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.addEventListener('click', () => applyWrapPreset(preset));
+    wrapPresetButtons.appendChild(btn);
+  };
+
+  makeWrapButton('Hineri-maki', 'hineri');
+  makeWrapButton('Katate-maki', 'katate');
+  makeWrapButton('Wire Wrap', 'wire');
+  wrapPresetRow.appendChild(wrapPresetButtons);
+  sections.Handle.appendChild(wrapPresetRow);
+
   slider(sections.Handle, 'Oval Ratio', 1, 1.8, 0.01, state.handle.ovalRatio ?? 1, (v) => (state.handle.ovalRatio = v), rerender, 'Wider X vs Z for an oval tsuka.');
   slider(sections.Handle, 'Flare', 0, 0.2, 0.001, state.handle.flare ?? 0, (v) => (state.handle.flare = v), rerender, 'Extra radius near the pommel.');
   slider(sections.Handle, 'Handle Curvature', -0.2, 0.2, 0.001, state.handle.curvature ?? 0, (v) => (state.handle.curvature = v), rerender, 'Slight bend in handle along length.');
@@ -3320,6 +3375,7 @@ function refreshInputs(registry: ControlRegistry, params: SwordParams) {
       'Ridges': handle.segmentation ?? false,
       'Ridge Count': handle.segmentationCount ?? 8,
       'Wrap Enabled': handle.wrapEnabled ?? false,
+      'Wrap Style': handle.wrapStyle ?? 'none',
       'Wrap Turns': handle.wrapTurns ?? 6,
       'Wrap Depth': handle.wrapDepth ?? 0.015,
       'Handle Sides': handle.phiSegments ?? 64,

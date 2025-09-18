@@ -28,7 +28,7 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [x] Advanced guard↔blade fillet (smooth profile).
 
 ## Handle & Grip
-- [ ] Wrap style presets: hineri‑maki, katate‑maki, wire wrap.
+- [x] Wrap style presets: hineri‑maki, katate‑maki, wire wrap.
 - [ ] Rayskin (samegawa) visual layer (procedural/texture; density/scale).
 - [ ] Menuki presets/placement helpers (left/right arrays with common positions).
 

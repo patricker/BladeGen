@@ -19,7 +19,7 @@ test.describe('Render controls', () => {
       const dbg = (window as any).__swordDebug
       if (!dbg || !dbg.renderHooks) throw new Error('Render hooks unavailable for tests')
       const calls: Array<{ name: string; args: unknown[] }> = []
-      const wrap = (name: 'setAAMode' | 'setBloom') => {
+      const wrap = (name: 'setAAMode' | 'setBloom' | 'setPostFXEnabled') => {
         const original = dbg.renderHooks[name]
         if (typeof original !== 'function') return
         dbg.renderHooks[name] = ((...args: unknown[]) => {
@@ -29,10 +29,18 @@ test.describe('Render controls', () => {
       }
       wrap('setAAMode')
       wrap('setBloom')
+      wrap('setPostFXEnabled')
       ;(window as any).__renderHookCalls = calls
     })
 
     await page.locator('button.tab-btn:has-text("Render")').click()
+
+    const postFxCheckbox = page.locator('[data-field="render-quality-exposure.post-fx-pipeline"] input[type="checkbox"]')
+    await postFxCheckbox.scrollIntoViewIfNeeded()
+    await postFxCheckbox.uncheck()
+    await expect(postFxCheckbox).not.toBeChecked()
+    await postFxCheckbox.check()
+    await expect(postFxCheckbox).toBeChecked()
 
     const aaSelect = page.locator('[data-field="render-quality-exposure.aa-mode"] select')
     await aaSelect.scrollIntoViewIfNeeded()
@@ -53,6 +61,8 @@ test.describe('Render controls', () => {
     expect(aaCalls.length).toBeGreaterThanOrEqual(1)
     const bloomOn = calls.find((c) => c.name === 'setBloom' && Array.isArray(c.args) && c.args[0] === true)
     expect(bloomOn).toBeTruthy()
+    const postFxCalls = calls.filter((c) => c.name === 'setPostFXEnabled')
+    expect(postFxCalls.length).toBeGreaterThanOrEqual(1)
 
     expect(errors, errors.join('\n')).toEqual([])
   })

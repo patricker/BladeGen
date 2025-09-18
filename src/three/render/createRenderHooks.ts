@@ -56,6 +56,7 @@ export type RenderHooks = {
   setFresnel: (enabled: boolean, colorHex?: number, intensity?: number, power?: number) => void
   setBladeMist: (enabled: boolean, colorHex?: number, density?: number, speed?: number, spread?: number, size?: number) => void
   setBladeMistAdvanced: (cfg: { occlude?: boolean; lifeRate?: number; noiseAmp?: number; noiseFreqX?: number; noiseFreqZ?: number; windX?: number; windZ?: number; emission?: 'base'|'edge'|'tip'|'full'; sizeMinRatio?: number }) => void
+  setPostFXEnabled: (enabled: boolean) => void
 }
 
 export interface RenderHookFlags {
@@ -110,6 +111,7 @@ export interface RenderHookContext {
   applyBladeVisibility: (visible: boolean, occlude: boolean) => void
   setKeyLightAngles: (az: number, el: number) => void
   setRimLightAngles: (az: number, el: number) => void
+  setPostFXEnabled: (enabled: boolean) => void
 }
 
 export function createRenderHooks(context: RenderHookContext): RenderHooks {
@@ -150,7 +152,8 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     bladeVisibility,
     applyBladeVisibility,
     setKeyLightAngles,
-    setRimLightAngles
+    setRimLightAngles,
+    setPostFXEnabled
   } = context
 
   const renderHooks: RenderHooks = {
@@ -445,6 +448,9 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
       if (cfg.windZ !== undefined) mistState.windZ = cfg.windZ
       if (cfg.emission !== undefined) mistState.emission = cfg.emission
       if (cfg.sizeMinRatio !== undefined) mistState.sizeMinRatio = Math.max(0, Math.min(1, cfg.sizeMinRatio))
+    },
+    setPostFXEnabled: (enabled) => {
+      setPostFXEnabled(enabled)
     }
   }
 

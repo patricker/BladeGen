@@ -1,13 +1,13 @@
 import { setupScene } from './three/setupScene';
 import { createSidebar } from './components/controls';
-import { defaultSwordParams, SwordGenerator } from './three/SwordGenerator';
+import { defaultSwordParams } from './three/SwordGenerator';
 
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
 if (!canvas) {
   throw new Error('Canvas element #scene not found');
 }
 
-const { renderer, camera, controls, scene, composer, dispose, updateFXAA, renderHooks, preFX } = setupScene(canvas) as any;
+const { renderer, camera, controls, scene, composer, dispose, updateFXAA, renderHooks, pipeline, sword } = setupScene(canvas);
 
 // Simple FPS overlay
 const fpsEl = document.getElementById('fps');
@@ -38,13 +38,7 @@ function animate(t: number) {
   const dt = (t - last) / 1000;
   last = t;
   controls.update();
-  if (composer) {
-    // Run pre-passes (selective bloom, heat haze mask), then render
-    try { (preFX as any)?.(); } catch {}
-    composer.render();
-  } else {
-    renderer.render(scene, camera);
-  }
+  pipeline.render();
   // FPS update every ~500ms
   _fpsFrames++;
   const now = performance.now();
@@ -59,23 +53,9 @@ function animate(t: number) {
 requestAnimationFrame(animate);
 
 // Build UI controls
-let sword: SwordGenerator | undefined = undefined;
-// The setupScene creates and adds a SwordGenerator; expose it by tag
-// Fallback: create a fresh one if not found
-try {
-  // @ts-ignore
-  sword = (scene as any).__swordInstance as SwordGenerator;
-} catch {}
-if (!sword) {
-  sword = new SwordGenerator(defaultSwordParams());
-  scene.add(sword.group);
-}
-
 const sidebar = document.getElementById('sidebar');
 if (sidebar && sword) {
-  // @ts-ignore
-  const hooks = (scene as any).__renderHooks || renderHooks;
-  createSidebar(sidebar, sword, defaultSwordParams(), hooks);
+  createSidebar(sidebar, sword, defaultSwordParams(), renderHooks);
 }
 
 // Hot module cleanup
@@ -102,10 +82,9 @@ const themes: Record<string, Theme> = {
 
 function applyTheme(key: string) {
   const t = themes[key] || themes.midnight;
-  const hooks = (scene as any).__renderHooks || renderHooks;
-  hooks.setBackgroundColor(t.base);
-  (hooks as any).setBackgroundTargetColor?.(t.target);
-  hooks.setBackgroundBrightness(t.brightness);
+  renderHooks.setBackgroundColor(t.base);
+  (renderHooks as any).setBackgroundTargetColor?.(t.target);
+  renderHooks.setBackgroundBrightness(t.brightness);
   // Ground tint will auto-sync to background via setupScene
 }
 

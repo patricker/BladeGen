@@ -9,7 +9,7 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - Render polish: MSAA (WebGL2), contact shadow plane, composer toggle, mobile heuristics, global envMapIntensity hook.
 
 ## Architecture & Code Health
-- [ ] Split `src/three/setupScene.ts` into renderer/bootstrap, lighting, post, and FX modules; return a typed context instead of `any`/`scene.__renderHooks` so `src/main.ts` can import explicit hooks.
+- [x] Split `src/three/setupScene.ts` into renderer/bootstrap, lighting, post, and FX modules; return a typed context instead of `any`/`scene.__renderHooks` so `src/main.ts` can import explicit hooks.
 - [x] Introduce parameter diffing in `SwordGenerator.updateGeometry` so guard/handle/pommel/accessories only rebuild when their inputs change; reuse existing meshes to reduce GC churn.
 - [x] Replace the JSON deep-clone in `resolveDerivedParams` with a typed normaliser that preserves texture/material references and shared objects.
 - [x] Extract a render-material service so highlight/emissive toggles and material patching live outside the generator class (fewer side effects, easier testing).
@@ -52,7 +52,7 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 ## Render & Performance
 - [ ] MSAA path for WebGL2 (fallback to FXAA/SMAA; UI toggle).
 - [ ] Contact shadow plane option.
-- [ ] Toggle composer vs direct render for perf fallback.
+- [x] Toggle composer vs direct render for perf fallback.
 - [ ] Mobile heuristics: auto‑disable bloom/outline; lower DPR/shadow size.
 - [ ] Dispose/GC of composers/passes/materials on toggles.
 - [ ] Animated shimmer (time uniform) for gradient/wear (optional).

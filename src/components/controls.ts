@@ -45,6 +45,7 @@ type RenderHooks = {
   setPartRoughness: (part: Part, v: number) => void;
   setPartClearcoat: (part: Part, v: number) => void;
   setPartClearcoatRoughness: (part: Part, v: number) => void;
+  setPostFXEnabled?: (enabled: boolean) => void;
 };
 
 type ControlType = 'slider' | 'select' | 'checkbox' | 'color' | 'text';
@@ -187,7 +188,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     bgColor: '#0f1115',
     bgBrightness: 0.0,
     ambient: 0.4,
-    keyIntensity: 2.0,
+    keyIntensity: 1.6,
     keyAz: 40,
     keyEl: 40,
     rimIntensity: 0.5,
@@ -202,7 +203,8 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     aaMode: 'fxaa' as 'none'|'fxaa'|'smaa',
     shadowMapSize: 2048 as 1024|2048|4096,
     qualityPreset: 'Medium' as 'Low'|'Medium'|'High',
-    toneMapping: 'ACES' as 'ACES'|'Reinhard'|'Cineon'|'Linear'|'None'
+    toneMapping: 'ACES' as 'ACES'|'Reinhard'|'Cineon'|'Linear'|'None',
+    postFxEnabled: true
   };
   const postState = {
     outlineEnabled: false,
@@ -1744,6 +1746,11 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     renderVariantList();
 
     // Quality & AA
+    checkbox(rQual, 'Post FX Pipeline', rstate.postFxEnabled, (v) => {
+      rstate.postFxEnabled = v;
+      render.setPostFXEnabled?.(v);
+      refreshWarnings();
+    }, () => {}, 'Disable to render directly without post-processing for a performance boost.');
     select(rQual, 'AA Mode', ['none','fxaa','smaa'], rstate.aaMode, (v) => { rstate.aaMode = v as 'none'|'fxaa'|'smaa'; render.setAAMode(rstate.aaMode); }, () => {}, 'Anti-aliasing mode.');
     select(rQual, 'Quality', ['Low','Medium','High'], 'Medium', (v) => {
       applyQualityPreset(v as 'Low'|'Medium'|'High', true);
@@ -2862,6 +2869,22 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     registry.setWarning('render-post', 'Ink Color', !postState.inkEnabled, 'Enable Ink Outline to see effect');
     registry.setWarning('render-post', 'Vignette Strength', !postState.vignetteEnabled, 'Enable Vignette to see effect');
     registry.setWarning('render-post', 'Vignette Softness', !postState.vignetteEnabled, 'Enable Vignette to see effect');
+    if (!rstate.postFxEnabled) {
+      w.push('Post FX pipeline disabled: bloom, outline, ink and vignette are skipped.');
+      registry.setWarning('render-quality-exposure', 'Post FX Pipeline', true, 'Enable to restore bloom, outline, ink outline, vignette and selective FX.');
+      if (rstate.bloomEnabled) {
+        registry.setWarning('render-post', 'Bloom Enabled', true, 'Post FX Pipeline is disabled');
+      }
+      if (postState.outlineEnabled) {
+        registry.setWarning('render-post', 'Outline Enabled', true, 'Post FX Pipeline is disabled');
+      }
+      if (postState.inkEnabled) {
+        registry.setWarning('render-post', 'Ink Outline', true, 'Post FX Pipeline is disabled');
+      }
+      if (postState.vignetteEnabled) {
+        registry.setWarning('render-post', 'Vignette', true, 'Post FX Pipeline is disabled');
+      }
+    }
     registry.setWarning('render-blade-gradient', 'Grad Base', !postState.bladeGradientEnabled, 'Enable Blade Gradient to see effect');
     registry.setWarning('render-blade-gradient', 'Grad Edge', !postState.bladeGradientEnabled, 'Enable Blade Gradient to see effect');
     registry.setWarning('render-blade-gradient', 'Grad Edge Fade', !postState.bladeGradientEnabled, 'Enable Blade Gradient to see effect');

@@ -2650,10 +2650,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         const res = await fetch(schemaUrl);
         const schema = await res.json();
         // @ts-ignore
-        const Ajv = (await import('ajv')).default;
-        const ajv = new Ajv({ allErrors: true, allowUnionTypes: true });
+        const Ajv2020 = (await import('ajv/dist/2020')).default;
+        const ajv = new Ajv2020({ allErrors: true, allowUnionTypes: true });
         const validate = ajv.compile(schema);
         const valid = validate(obj);
+        const dbgWin = (window as typeof window & { __swordDebug?: Record<string, unknown> });
+        const swordDebug = (dbgWin.__swordDebug = dbgWin.__swordDebug ?? {});
+        swordDebug.lastImportValid = valid;
+        swordDebug.lastImportErrors = valid ? null : (validate.errors || []);
         if (!valid) {
           const errs = (validate.errors || []).map((e:any) => `- ${e.instancePath || e.schemaPath}: ${e.message}`).join('\n');
           alert('Import failed: JSON does not match schema.\n' + errs);

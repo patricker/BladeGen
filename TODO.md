@@ -67,7 +67,9 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [ ] Blender import parity (sRGB/linear, exposure/shadows check).
 - [ ] Landing page presets and images; publish to Pages.
 - [ ] e2e sanity flow: load preset → tweak → export GLB/OBJ/SVG.
-- [ ] Expand Playwright coverage: drive render toggles (AA, bloom), export flows, and JSON import/export error paths.
+- [x] Expand Playwright coverage: drive render toggles (AA, bloom).
+- [ ] Expand Playwright coverage: export flows (GLB/OBJ/SVG).
+- [ ] Expand Playwright coverage: JSON import/export error paths.
 - [x] Add unit tests around accessories (scabbard/tassel anchor sampling) and render hook mutations to prevent regressions.
 - [ ] Validate schema vs `SwordParams` with a generated fixture per guard/handle/pommel style so Ajv tests cover more combinations.
 

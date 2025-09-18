@@ -700,6 +700,15 @@ export function setupScene(canvas: HTMLCanvasElement) {
     }
   };
   (scene as any).__renderHooks = renderHooks;
+  if (typeof window !== 'undefined') {
+    const debug = ((window as unknown) as Record<string, any>)['__swordDebug'] ?? {};
+    debug.renderHooks = renderHooks;
+    debug.renderer = renderer;
+    debug.scene = scene;
+    debug.sword = sword;
+    debug.composer = composer;
+    ((window as unknown) as Record<string, any>)['__swordDebug'] = debug;
+  }
   // Default to SMAA to avoid FXAA driver warnings on some systems
   try { renderHooks.setAAMode('smaa'); } catch {}
 

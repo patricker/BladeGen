@@ -26,58 +26,17 @@ import { buildFlameAura } from './fx/aura'
 import { createEmbers } from './fx/embers'
 import { buildInnerGlow as buildInnerGlowImported } from './fx/innerGlow'
 import { makeMistNoiseTexture, updateMistPositions, buildMist } from './fx/mist'
-import { makeValueNoiseTexture } from './fx/noise'
 import { setPartBump, setPartClearcoat, setPartClearcoatRoughness, setPartColor, setPartMetalness, setPartRoughness } from './render/materialMutators'
 import { FxManager } from './fx/manager'
+import { createRenderHooks, RenderHooks } from './render/createRenderHooks'
+
+export type { RenderHooks } from './render/createRenderHooks';
 
 /**
  * Initialize the renderer/scene for a given canvas and return handles to core
  * objects plus helpers: `renderer, scene, camera, controls, composer, dispose,
  * updateFXAA, renderHooks, preFX`.
  */
-export type RenderHooks = {
-  setPartMaterial: (part: 'blade'|'guard'|'handle'|'pommel', patch: any) => void
-  setBladeVisible: (visible: boolean, occlude?: boolean) => void
-  setExposure: (v: number) => void
-  setToneMapping: (mode: 'None'|'Linear'|'Reinhard'|'Cineon'|'ACES') => void
-  setAmbient: (v: number) => void
-  setKeyIntensity: (v: number) => void
-  setKeyAngles: (az: number, el: number) => void
-  setRimIntensity: (v: number) => void
-  setRimColor: (hex: number) => void
-  setRimAngles: (az: number, el: number) => void
-  setBloom: (enabled: boolean, strength?: number, threshold?: number, radius?: number) => void
-  setVignette: (enabled: boolean, strength?: number, softness?: number) => void
-  setSelectiveBloom: (enabled: boolean, strength?: number, threshold?: number, radius?: number, intensity?: number) => void
-  markForBloom: (obj: THREE.Object3D, enable?: boolean) => void
-  setHeatHaze: (enabled: boolean, distortion?: number) => void
-  markForHeat: (obj: THREE.Object3D, enable?: boolean) => void
-  setFlameAura: (enabled: boolean, opts?: { scale?: number; color1?: number; color2?: number; noiseScale?: number; speed?: number; intensity?: number; direction?: 'up'|'down' }) => void
-  setEmbers: (enabled: boolean, opts?: { count?: number; size?: number; color?: number }) => void
-  setMistTurbulence: (v: number) => void
-  setBackgroundColor: (hex: number) => void
-  setBackgroundBrightness: (v: number) => void
-  setBackgroundTargetColor: (hex: number) => void
-  setBaseColor: (hex: number) => void
-  setAAMode: (mode: 'none'|'fxaa'|'smaa') => void
-  setShadowBias: (bias: number, normalBias?: number) => void
-  setShadowMapSize: (size: 512|1024|2048|4096) => void
-  setEnvMap: (url?: string, asBackground?: boolean) => Promise<void>
-  setFog: (colorHex?: number, density?: number) => void
-  setInnerGlow: (enabled: boolean, colorHex?: number, iMin?: number, iMax?: number, speed?: number) => void
-  setOutline: (enabled: boolean, strength?: number, thickness?: number, colorHex?: number) => void
-  setInkOutline: (enabled: boolean, thickness?: number, colorHex?: number) => void
-  setEnvIntensity: (v: number) => void
-  setPartColor: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', hex: number) => void
-  setPartMetalness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => void
-  setPartRoughness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => void
-  setPartClearcoat: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => void
-  setPartClearcoatRoughness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => void
-  setDPRCap: (cap: number) => void
-  setBladeGradientWear: (enabled: boolean, baseHex?: number, edgeHex?: number, edgeFade?: number, wear?: number) => void
-  setPartBump: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => void
-}
-
 export function setupScene(canvas: HTMLCanvasElement) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   const bgBase = new THREE.Color(0x0f1115);
@@ -182,17 +141,17 @@ export function setupScene(canvas: HTMLCanvasElement) {
   const clock = new THREE.Clock();
   const bbox = new THREE.Box3();
   // Flame aura & embers state
-  let flameMesh: THREE.Mesh | null = null;
+  const flameMeshRef = { current: null as THREE.Mesh | null };
   const flameState = { enabled: false, opts: { scale: 1.05, color1: 0xff5a00, color2: 0xfff18a, noiseScale: 2.2, speed: 1.6, intensity: 1.0, direction: 'up' as 'up'|'down', blend: 'add' as 'add'|'normal'|'multiply' } };
   function setFlameAura(enabled: boolean, { scale=1.05, color1=0xff5a00, color2=0xfff18a, noiseScale=2.2, speed=1.6, intensity=1.0, direction='up' as 'up'|'down', blend='add' as 'add'|'normal'|'multiply' }={}){
     flameState.enabled = enabled; flameState.opts = { scale, color1, color2, noiseScale, speed, intensity, direction, blend };
-    if (flameMesh) { (flameMesh.parent as any)?.remove(flameMesh); (flameMesh.material as any).dispose?.(); (flameMesh.geometry as any).dispose?.(); flameMesh = null; }
+    if (flameMeshRef.current) { (flameMeshRef.current.parent as any)?.remove(flameMeshRef.current); (flameMeshRef.current.material as any).dispose?.(); (flameMeshRef.current.geometry as any).dispose?.(); flameMeshRef.current = null; }
     if (!enabled || !sword.bladeMesh) return;
     const built = buildFlameAura(sword.bladeMesh, { scale, color1, color2, noiseScale, speed, intensity, direction, blend })
     sword.bladeMesh.add(built.mesh);
-    flameMesh = built.mesh;
-    if (selectiveBloomEnabled) flameMesh.layers.enable(BLOOM_LAYER);
-    if (heatHazeEnabled) flameMesh.layers.enable(HEAT_LAYER);
+    flameMeshRef.current = built.mesh;
+    if (fxFlags.selectiveBloom) flameMeshRef.current.layers.enable(BLOOM_LAYER);
+    if (fxFlags.heatHaze) flameMeshRef.current.layers.enable(HEAT_LAYER);
   }
   let sparks: THREE.Points | null = null, sparksPos: Float32Array | null = null, sparksVel: Float32Array | null = null, sparksLife: Float32Array | null = null, sparksGeom: THREE.BufferGeometry | null = null;
   function setEmbers(enabled: boolean, {count=120, size=3, color=0xffaa55}={}){
@@ -217,7 +176,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
     if (mistState.enabled) { mistTime += dt; }
     // Flame aura/heat haze time
     const elapsed = clock.getElapsedTime();
-    if (flameMesh) { const m = flameMesh.material as THREE.ShaderMaterial; (m.uniforms as any).time.value = elapsed; }
+    if (flameMeshRef.current) { const m = flameMeshRef.current.material as THREE.ShaderMaterial; (m.uniforms as any).time.value = elapsed; }
     if (heatHazeEnabled) { fx.setHeatTime(elapsed); }
     // Update mist
     if (mistPoints && mistGeom && mistLife && mistVel && mistState.enabled) {
@@ -278,8 +237,8 @@ export function setupScene(canvas: HTMLCanvasElement) {
         const fres: any = (renderHooks as any)._fresnelState;
         if (fres?.enabled) { renderHooks.setFresnel(true, fres.color, fres.intensity, fres.power); resynced.push('fresnel'); }
         // Ensure layers for bloom/heat on the new blade
-        if (selectiveBloomEnabled) bm.layers.enable(BLOOM_LAYER);
-        if (heatHazeEnabled) bm.layers.enable(HEAT_LAYER);
+        if (fxFlags.selectiveBloom) bm.layers.enable(BLOOM_LAYER);
+        if (fxFlags.heatHaze) bm.layers.enable(HEAT_LAYER);
         // Re-apply blade visibility mode if currently hidden
         try { if (!bladeVisibility.visible) applyBladeVisibility(false, bladeVisibility.occlude); } catch {}
         // Rebuild blade gradient overlay if active
@@ -300,15 +259,14 @@ export function setupScene(canvas: HTMLCanvasElement) {
   const composer = new EffectComposer(renderer);
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
-  let fxaa: ShaderPass | null = null;
-  let smaa: SMAAPass | null = null;
+  const aaPasses = { fxaa: null as ShaderPass | null, smaa: null as SMAAPass | null };
   const fx = new FxManager(renderer, scene, camera);
   fx.attachToComposer(composer);
   const size = new THREE.Vector2();
   const updateFXAA = () => {
     renderer.getSize(size);
-    if (fxaa) (fxaa.uniforms as any).resolution.value.set(1 / (size.x * renderer.getPixelRatio()), 1 / (size.y * renderer.getPixelRatio()));
-    if (smaa) smaa.setSize(size.x, size.y);
+    if (aaPasses.fxaa) (aaPasses.fxaa.uniforms as any).resolution.value.set(1 / (size.x * renderer.getPixelRatio()), 1 / (size.y * renderer.getPixelRatio()));
+    if (aaPasses.smaa) aaPasses.smaa.setSize(size.x, size.y);
     // sync FX-managed buffers
     fx.updateSize(size.x, size.y);
   };
@@ -317,8 +275,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
 
   // === FX Layers and Selective Bloom / Heat Haze via manager ===
   const BLOOM_LAYER = fx.BLOOM_LAYER; const HEAT_LAYER = fx.HEAT_LAYER;
-  let selectiveBloomEnabled = false;
-  let heatHazeEnabled = false;
+  const fxFlags = { selectiveBloom: false, heatHaze: false };
 
   // Bloom (disabled by default)
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.6, 0.2, 0.85);
@@ -340,22 +297,22 @@ export function setupScene(canvas: HTMLCanvasElement) {
   composer.addPass(vignette);
 
   // Back-face "ink" outline (mesh-based)
-  let inkOutlineGroup: THREE.Group | null = null;
+  const inkOutlineGroup = { current: null as THREE.Group | null };
   const buildInkOutline = (scale: number, colorHex: number) => buildInkOutlineImported(sword.group, scale, colorHex);
 
   // Fresnel/specular edge accent overlay (mesh-based ShaderMaterial)
-  let fresnelGroup: THREE.Group | null = null;
+  const fresnelGroup = { current: null as THREE.Group | null };
   const buildFresnel = (col: number, intensity: number, power: number) => buildFresnelImported(sword.group, col, intensity, power);
 
   // Flame aura shader moved to ./fx/shaders and builder in ./fx/aura
 
   // Inner Glow (pulsing fresnel-like overlay)
-  let innerGlowGroup: THREE.Group | null = null;
-  let innerGlowMat: THREE.ShaderMaterial | null = null;
+  const innerGlowGroup = { current: null as THREE.Group | null };
+  const innerGlowMat = { current: null as THREE.ShaderMaterial | null };
   const innerGlowState = { enabled: false, time: 0.0, speed: 1.5, color: 0x88ccff, iMin: 0.2, iMax: 0.9 };
   const buildInnerGlow = (colorHex: number, iMin: number, iMax: number, speed: number) => {
     const built = buildInnerGlowImported(sword.group, colorHex, iMin, iMax, speed)
-    innerGlowMat = built.material
+    innerGlowMat.current = built.material
     return built.group
   }
 
@@ -411,7 +368,6 @@ export function setupScene(canvas: HTMLCanvasElement) {
   };
 
   // Blade gradient/wear overlay (mesh-based ShaderMaterial)
-  let bladeGradGroup: THREE.Group | null = null;
   const buildBladeGradient = (baseHex: number, edgeHex: number, edgeFade: number, wearAmt: number) => sword.bladeMesh ? buildBladeGradientOverlay(sword.bladeMesh, baseHex, edgeHex, edgeFade, wearAmt) : null;
 
   // Blade visibility state and applicator: hide blade surface without hiding child FX
@@ -489,7 +445,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
       selectiveBloomEnabled = enabled;
       fx.setSelectiveBloom(enabled, { strength, threshold, radius, intensity });
       // Mark aura for bloom if present, otherwise mark blade
-      const target = flameMesh ?? sword.bladeMesh;
+        const target = flameMeshRef.current ?? sword.bladeMesh;
       if (target) {
         if (enabled) target.layers.enable(BLOOM_LAYER);
         else target.layers.disable(BLOOM_LAYER);
@@ -498,7 +454,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
     markForBloom: (obj: THREE.Object3D, enable = true) => { fx.markForBloom(obj, enable); },
     setHeatHaze: (enabled: boolean, distortion?: number) => {
       heatHazeEnabled = enabled; fx.setHeatHaze(enabled, distortion);
-      const target = flameMesh ?? sword.bladeMesh;
+      const target = flameMeshRef.current ?? sword.bladeMesh;
       if (target) {
         if (enabled) target.layers.enable(HEAT_LAYER); else target.layers.disable(HEAT_LAYER);
       }

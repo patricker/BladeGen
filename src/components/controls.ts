@@ -294,6 +294,97 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     description?: string;
     parts: Partial<Record<Part, MatExt>>;
   };
+
+  type PresetRenderOverrides = Partial<{
+    exposure: number;
+    ambient: number;
+    keyIntensity: number;
+    keyAz: number;
+    keyEl: number;
+    rimIntensity: number;
+    rimAz: number;
+    rimEl: number;
+    rimColor: string;
+    bloomEnabled: boolean;
+    bloomStrength: number;
+    bloomThreshold: number;
+    bloomRadius: number;
+    envIntensity: number;
+    bgColor: string;
+    bgBrightness: number;
+    aaMode: 'none' | 'fxaa' | 'smaa';
+    shadowMapSize: 1024 | 2048 | 4096;
+    qualityPreset: 'Low' | 'Medium' | 'High';
+    toneMapping: 'ACES' | 'Reinhard' | 'Cineon' | 'Linear' | 'None';
+  }> & {
+    shadowBias?: number;
+    dprCap?: number;
+  };
+
+  type PresetPostOverrides = Partial<{
+    outlineEnabled: boolean;
+    outlineStrength: number;
+    outlineThickness: number;
+    outlineColor: string;
+    inkEnabled: boolean;
+    inkThickness: number;
+    inkColor: string;
+    vignetteEnabled: boolean;
+    vignetteStrength: number;
+    vignetteSoftness: number;
+    bladeGradientEnabled: boolean;
+    gradBase: string;
+    gradEdge: string;
+    gradFade: number;
+    gradWear: number;
+  }>;
+
+  type PresetAtmosOverrides = Partial<{
+    envUrl: string;
+    envPreset: 'None' | 'Room' | 'Royal Esplanade' | 'Venice Sunset';
+    envAsBackground: boolean;
+    fogColor: string;
+    fogDensity: number;
+    fresnelEnabled: boolean;
+    fresnelColor: string;
+    fresnelIntensity: number;
+    fresnelPower: number;
+    bladeInvisible: boolean;
+    occludeInvisible: boolean;
+  }>;
+
+  type PresetFxOverrides = Partial<{
+    innerGlow: Partial<{ enabled: boolean; color: string; min: number; max: number; speed: number }>;
+    mist: Partial<{
+      enabled: boolean;
+      color: string;
+      density: number;
+      speed: number;
+      spread: number;
+      size: number;
+      lifeRate: number;
+      turbulence: number;
+      windX: number;
+      windZ: number;
+      emission: 'base' | 'edge' | 'tip' | 'full';
+      sizeMinRatio: number;
+      occlude: boolean;
+    }>;
+    flame: Partial<{
+      enabled: boolean;
+      color1: string;
+      color2: string;
+      intensity: number;
+      speed: number;
+      noiseScale: number;
+      scale: number;
+      direction: 'Up' | 'Down';
+      blend: 'Add' | 'Darken' | 'Multiply';
+    }>;
+    embers: Partial<{ enabled: boolean; count: number; size: number; color: string }>;
+    selectiveBloom: boolean;
+    heatHaze: boolean;
+  }>;
   const matState: Record<Part, MatExt>
     = {
       blade: { color: '#b9c6ff', metalness: 0.8, roughness: 0.25, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337, envMapIntensity: 1, anisotropy: 0, anisotropyRotation: 0 },
@@ -326,24 +417,10 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     build: () => SwordParams;
     materials?: Partial<Record<Part, Partial<MatExt>>>;
     variants?: Array<{ id?: string; name: string; description?: string; parts: Partial<Record<Part, Partial<MatExt>>> }>;
-    render?: Partial<{
-      exposure: number;
-      ambient: number;
-      keyIntensity: number;
-      keyAz: number;
-      keyEl: number;
-      rimIntensity: number;
-      rimAz: number;
-      rimEl: number;
-      rimColor: string;
-      bloomEnabled: boolean;
-      bloomStrength: number;
-      bloomThreshold: number;
-      bloomRadius: number;
-      envIntensity: number;
-      bgColor: string;
-      bgBrightness: number;
-    }>;
+    render?: PresetRenderOverrides;
+    post?: PresetPostOverrides;
+    atmos?: PresetAtmosOverrides;
+    fx?: PresetFxOverrides;
   };
 
   const PARTS: Part[] = ['blade', 'guard', 'handle', 'pommel', 'scabbard', 'tassel'];
@@ -662,6 +739,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   let raf = 0; let needs = false;
   let renderVariantList = () => {};
   let syncLookDropdown = () => {};
+  let applyVisualOverrides = (_entry: PresetEntry) => { resetStateOnly(); };
   const applyMaterialStateToRenderer = (part: Part, state: MatExt) => {
     if (!render) return;
     const col = parseInt((state.color || '#ffffff').replace('#','0x'));
@@ -1187,9 +1265,194 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       (render as any).setEmbers?.(e.enabled, { count: Math.max(1, Math.floor(e.count)), size: e.size, color: hexToInt(e.color) });
     };
 
+    const envPresetOptions: Record<typeof atmosState.envPreset, { url?: string; asBackground: boolean }> = {
+      None: { url: '', asBackground: false },
+      Room: { url: '', asBackground: false },
+      'Royal Esplanade': {
+        url: 'https://threejs.org/examples/textures/equirectangular/royal_esplanade_1k.hdr',
+        asBackground: true
+      },
+      'Venice Sunset': {
+        url: 'https://threejs.org/examples/textures/equirectangular/venice_sunset_1k.hdr',
+        asBackground: true
+      }
+    };
+
+    const applyEnvPreset = (preset: typeof atmosState.envPreset, emitUi = false) => {
+      const config = envPresetOptions[preset] ?? envPresetOptions.None;
+      atmosState.envPreset = preset;
+      atmosState.envUrl = config.url ?? '';
+      atmosState.envAsBackground = config.asBackground;
+      applyEnvMap(atmosState.envUrl, atmosState.envAsBackground);
+      if (emitUi) {
+        registry.setValue('render-atmospherics', 'EnvMap URL', atmosState.envUrl);
+        registry.setValue('render-atmospherics', 'Env as Background', atmosState.envAsBackground);
+        registry.setValue('render-atmospherics', 'Env Preset', preset);
+      }
+    };
+
+    const QUALITY_PRESETS: Record<'Low' | 'Medium' | 'High', { aa: 'none'|'fxaa'|'smaa'; shadow: 1024|2048|4096; bloom: boolean; outline: boolean; dpr: number; shadowBias?: number }> = {
+      Low: { aa: 'none', shadow: 1024, bloom: false, outline: false, dpr: 1.0, shadowBias: -0.0005 },
+      Medium: { aa: 'fxaa', shadow: 2048, bloom: false, outline: false, dpr: 1.5, shadowBias: -0.0005 },
+      High: { aa: 'smaa', shadow: 2048, bloom: false, outline: false, dpr: 2.0, shadowBias: -0.0005 }
+    };
+
+    const applyQualityPreset = (preset: 'Low'|'Medium'|'High', emitUi = false) => {
+      const cfg = QUALITY_PRESETS[preset];
+      if (!cfg) return;
+      render.setAAMode(cfg.aa);
+      render.setShadowMapSize(cfg.shadow);
+      render.setBloom(cfg.bloom, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius);
+      render.setOutline(
+        cfg.outline,
+        postState.outlineStrength,
+        postState.outlineThickness,
+        parseInt(postState.outlineColor.replace('#', '0x'))
+      );
+      render.setDPRCap(cfg.dpr);
+      if (cfg.shadowBias !== undefined) render.setShadowBias(cfg.shadowBias);
+      rstate.aaMode = cfg.aa;
+      rstate.shadowMapSize = cfg.shadow;
+      rstate.qualityPreset = preset;
+      rstate.bloomEnabled = cfg.bloom;
+      postState.outlineEnabled = cfg.outline;
+      if (emitUi) {
+        registry.setValue('render-quality-exposure', 'AA Mode', cfg.aa);
+        registry.setValue('render-quality-exposure', 'Shadow Map', String(cfg.shadow));
+        registry.setValue('render-quality-exposure', 'Quality', preset);
+        registry.setValue('render-post', 'Bloom Enabled', cfg.bloom);
+        registry.setValue('render-post', 'Outline Enabled', cfg.outline);
+      }
+      refreshWarnings();
+    };
+
+    const applyRenderOverrides = (overrides?: PresetRenderOverrides) => {
+      if (!overrides) return;
+      if (overrides.qualityPreset) {
+        applyQualityPreset(overrides.qualityPreset, false);
+      }
+      if (overrides.aaMode !== undefined) {
+        rstate.aaMode = overrides.aaMode;
+        render.setAAMode(rstate.aaMode);
+      }
+      if (overrides.shadowMapSize !== undefined) {
+        rstate.shadowMapSize = overrides.shadowMapSize;
+        render.setShadowMapSize(rstate.shadowMapSize);
+      }
+      if (overrides.toneMapping !== undefined) {
+        rstate.toneMapping = overrides.toneMapping;
+        (render as any).setToneMapping?.(overrides.toneMapping);
+      }
+      if (overrides.dprCap !== undefined) {
+        render.setDPRCap(overrides.dprCap);
+      }
+      if (overrides.shadowBias !== undefined) {
+        render.setShadowBias(overrides.shadowBias);
+      }
+
+      const applyNumeric = <K extends keyof PresetRenderOverrides>(key: K, setter: (value: NonNullable<PresetRenderOverrides[K]>) => void) => {
+        const val = overrides[key];
+        if (val !== undefined) setter(val as NonNullable<PresetRenderOverrides[K]>);
+      };
+
+      applyNumeric('exposure', (v) => { rstate.exposure = v; render.setExposure(v); });
+      applyNumeric('ambient', (v) => { rstate.ambient = v; render.setAmbient(v); });
+      applyNumeric('keyIntensity', (v) => { rstate.keyIntensity = v; render.setKeyIntensity(v); });
+      applyNumeric('keyAz', (v) => { rstate.keyAz = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); });
+      applyNumeric('keyEl', (v) => { rstate.keyEl = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); });
+      applyNumeric('rimIntensity', (v) => { rstate.rimIntensity = v; render.setRimIntensity(v); });
+      applyNumeric('rimAz', (v) => { rstate.rimAz = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); });
+      applyNumeric('rimEl', (v) => { rstate.rimEl = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); });
+      if (overrides.rimColor !== undefined) {
+        rstate.rimColor = overrides.rimColor;
+        render.setRimColor(parseInt(rstate.rimColor.replace('#', '0x')));
+      }
+      applyNumeric('envIntensity', (v) => { rstate.envIntensity = v; render.setEnvIntensity(v); });
+      if (overrides.bgColor !== undefined) {
+        rstate.bgColor = overrides.bgColor;
+        render.setBackgroundColor(parseInt(rstate.bgColor.replace('#', '0x')));
+      }
+      applyNumeric('bgBrightness', (v) => { rstate.bgBrightness = v; render.setBackgroundBrightness(v); });
+
+      let bloomDirty = false;
+      if (overrides.bloomEnabled !== undefined) { rstate.bloomEnabled = overrides.bloomEnabled; bloomDirty = true; }
+      if (overrides.bloomStrength !== undefined) { rstate.bloomStrength = overrides.bloomStrength; bloomDirty = true; }
+      if (overrides.bloomThreshold !== undefined) { rstate.bloomThreshold = overrides.bloomThreshold; bloomDirty = true; }
+      if (overrides.bloomRadius !== undefined) { rstate.bloomRadius = overrides.bloomRadius; bloomDirty = true; }
+      if (bloomDirty) {
+        render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius);
+      }
+    };
+
+    const applyPostOverrides = (overrides?: PresetPostOverrides) => {
+      if (!overrides) return;
+      Object.assign(postState, overrides);
+      render.setOutline(
+        postState.outlineEnabled,
+        postState.outlineStrength,
+        postState.outlineThickness,
+        parseInt(postState.outlineColor.replace('#', '0x'))
+      );
+      render.setInkOutline(postState.inkEnabled, postState.inkThickness, parseInt(postState.inkColor.replace('#', '0x')));
+      render.setVignette(postState.vignetteEnabled, postState.vignetteStrength, postState.vignetteSoftness);
+      render.setBladeGradientWear(
+        postState.bladeGradientEnabled,
+        parseInt(postState.gradBase.replace('#', '0x')),
+        parseInt(postState.gradEdge.replace('#', '0x')),
+        postState.gradFade,
+        postState.gradWear
+      );
+    };
+
+    const applyAtmosOverrides = (overrides?: PresetAtmosOverrides) => {
+      if (!overrides) return;
+      if (overrides.envPreset !== undefined) {
+        applyEnvPreset(overrides.envPreset, false);
+      }
+      let envUpdated = false;
+      if (overrides.envUrl !== undefined) {
+        atmosState.envUrl = overrides.envUrl;
+        envUpdated = true;
+      }
+      if (overrides.envAsBackground !== undefined) {
+        atmosState.envAsBackground = overrides.envAsBackground;
+        envUpdated = true;
+      }
+      if (envUpdated) {
+        applyEnvMap(atmosState.envUrl, atmosState.envAsBackground);
+      }
+      if (overrides.fogColor !== undefined) atmosState.fogColor = overrides.fogColor;
+      if (overrides.fogDensity !== undefined) atmosState.fogDensity = overrides.fogDensity;
+      (render as any).setFog?.(hexToInt(atmosState.fogColor), atmosState.fogDensity);
+      if (overrides.fresnelColor !== undefined) atmosState.fresnelColor = overrides.fresnelColor;
+      if (overrides.fresnelIntensity !== undefined) atmosState.fresnelIntensity = overrides.fresnelIntensity;
+      if (overrides.fresnelPower !== undefined) atmosState.fresnelPower = overrides.fresnelPower;
+      if (overrides.fresnelEnabled !== undefined) atmosState.fresnelEnabled = overrides.fresnelEnabled;
+      applyFresnel();
+      if (overrides.bladeInvisible !== undefined) atmosState.bladeInvisible = overrides.bladeInvisible;
+      if (overrides.occludeInvisible !== undefined) atmosState.occludeInvisible = overrides.occludeInvisible;
+      applyBladeVisibility();
+    };
+
+    const applyFxOverrides = (overrides?: PresetFxOverrides) => {
+      if (!overrides) return;
+      if (overrides.innerGlow) Object.assign(fxState.innerGlow, overrides.innerGlow);
+      if (overrides.mist) Object.assign(fxState.mist, overrides.mist);
+      if (overrides.flame) Object.assign(fxState.flame, overrides.flame);
+      if (overrides.embers) Object.assign(fxState.embers, overrides.embers);
+      if (overrides.selectiveBloom !== undefined) fxState.selectiveBloom = overrides.selectiveBloom;
+      if (overrides.heatHaze !== undefined) fxState.heatHaze = overrides.heatHaze;
+      applyInnerGlow();
+      applyMist();
+      applyFlame();
+      applyEmbers();
+      (render as any).setSelectiveBloom?.(fxState.selectiveBloom, 1.1, 0.8, 0.35, 1.0);
+      (render as any).setHeatHaze?.(fxState.heatHaze, 0.004);
+    };
+
     resetRenderAndFx = () => {
       resetStateOnly();
-
+      applyQualityPreset(rstate.qualityPreset, false);
       render.setExposure(rstate.exposure);
       render.setAmbient(rstate.ambient);
       render.setKeyIntensity(rstate.keyIntensity);
@@ -1203,8 +1466,9 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       render.setBackgroundColor(parseInt(rstate.bgColor.replace('#', '0x')));
       render.setAAMode?.(rstate.aaMode);
       render.setShadowMapSize?.(rstate.shadowMapSize);
+      (render as any).setToneMapping?.(rstate.toneMapping);
 
-      applyEnvMap(atmosState.envUrl, atmosState.envAsBackground);
+      applyEnvPreset(atmosState.envPreset, false);
       (render as any).setFog?.(hexToInt(atmosState.fogColor), atmosState.fogDensity);
       applyFresnel();
       applyBladeVisibility();
@@ -1231,6 +1495,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       applyEmbers();
       (render as any).setSelectiveBloom?.(fxState.selectiveBloom, 1.1, 0.8, 0.35, 1.0);
       (render as any).setHeatHaze?.(fxState.heatHaze, 0.004);
+    };
+
+    applyVisualOverrides = (entry) => {
+      resetRenderAndFx();
+      applyRenderOverrides(entry.render);
+      applyPostOverrides(entry.post);
+      applyAtmosOverrides(entry.atmos);
+      applyFxOverrides(entry.fx);
     };
 
     // Material Base (Render tab)
@@ -1474,29 +1746,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     // Quality & AA
     select(rQual, 'AA Mode', ['none','fxaa','smaa'], rstate.aaMode, (v) => { rstate.aaMode = v as 'none'|'fxaa'|'smaa'; render.setAAMode(rstate.aaMode); }, () => {}, 'Anti-aliasing mode.');
     select(rQual, 'Quality', ['Low','Medium','High'], 'Medium', (v) => {
-      type Preset = { aa: 'none'|'fxaa'|'smaa'; shadow: 1024|2048|4096; bloom: boolean; outline: boolean; dpr: number; };
-      const presets: Record<string, Preset> = {
-        Low: { aa: 'none', shadow: 1024, bloom: false, outline: false, dpr: 1.0 },
-        Medium: { aa: 'fxaa', shadow: 2048, bloom: false, outline: false, dpr: 1.5 },
-        High: { aa: 'smaa', shadow: 2048, bloom: false, outline: false, dpr: 2.0 }
-      };
-      const preset = presets[v] || presets.Medium;
-      render.setAAMode(preset.aa);
-      render.setShadowMapSize(preset.shadow);
-      render.setBloom(preset.bloom, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius);
-      render.setOutline(preset.outline);
-      render.setDPRCap(preset.dpr);
-      rstate.bloomEnabled = preset.bloom;
-      postState.outlineEnabled = preset.outline;
-      rstate.aaMode = preset.aa;
-      rstate.shadowMapSize = preset.shadow;
-      rstate.qualityPreset = v as 'Low'|'Medium'|'High';
-      registry.setValue('render-quality-exposure', 'AA Mode', preset.aa);
-      registry.setValue('render-quality-exposure', 'Shadow Map', String(preset.shadow));
-      registry.setValue('render-quality-exposure', 'Quality', rstate.qualityPreset);
-      registry.setValue('render-post', 'Bloom Enabled', preset.bloom);
-      registry.setValue('render-post', 'Outline Enabled', preset.outline);
-      refreshWarnings();
+      applyQualityPreset(v as 'Low'|'Medium'|'High', true);
     }, () => {}, 'Quality preset (affects AA, shadows, DPR).');
     select(rQual, 'Shadow Map', ['1024','2048','4096'], '2048', (v) => { const size = parseInt(v,10) as 1024|2048|4096; rstate.shadowMapSize = size; render.setShadowMapSize(size); }, () => {}, 'Shadow map resolution.');
     slider(rQual, 'Shadow Bias', -0.01, 0.01, 0.0001, -0.0005, (v) => { render.setShadowBias(v); }, () => {}, 'Shadow acne/peter-panning tweak.');
@@ -1547,19 +1797,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       registry.setValue('render-atmospherics', 'Env as Background', atmosState.envAsBackground);
     }, 'Equirectangular image URL.');
     select(rAtmos, 'Env Preset', ['None','Room','Royal Esplanade','Venice Sunset'], atmosState.envPreset, (v) => {
-      const preset = v as 'None' | 'Room' | 'Royal Esplanade' | 'Venice Sunset';
-      const map: Record<typeof preset, string | undefined> = {
-        None: undefined,
-        Room: undefined,
-        'Royal Esplanade': 'https://threejs.org/examples/textures/equirectangular/royal_esplanade_1k.hdr',
-        'Venice Sunset': 'https://threejs.org/examples/textures/equirectangular/venice_sunset_1k.hdr'
-      } as any;
-      atmosState.envPreset = preset;
-      atmosState.envUrl = map[preset] ?? '';
-      atmosState.envAsBackground = preset !== 'None';
-      applyEnvMap(atmosState.envUrl, atmosState.envAsBackground);
-      registry.setValue('render-atmospherics', 'EnvMap URL', atmosState.envUrl);
-      registry.setValue('render-atmospherics', 'Env as Background', atmosState.envAsBackground);
+      applyEnvPreset(v as typeof atmosState.envPreset, true);
     }, () => {}, 'Quick env presets (loads remote HDR).');
     checkbox(rAtmos, 'Env as Background', atmosState.envAsBackground, (v) => {
       atmosState.envAsBackground = v;
@@ -2172,7 +2410,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     assignParams(state, next);
     matPart = 'blade';
 
-    resetRenderAndFx();
+    applyVisualOverrides(entry);
 
     for (const part of PARTS) {
       const base = JSON.parse(JSON.stringify(matDefaults[part])) as MatExt;

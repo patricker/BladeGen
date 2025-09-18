@@ -44,6 +44,7 @@ import { validateSwordParams } from './sword/validation';
 import { TextureCache } from './sword/textures';
 import { createMaterial } from './sword/materials';
 import { disposeObject3D, deepEqual } from './sword/utils';
+import { clearHighlight as clearMaterialHighlight, setHighlight as applyMaterialHighlight } from './render/materialMutators';
 import { buildScabbard, buildTassel, type ScabbardBuildResult } from './sword/accessories';
 // Re-export selected helpers for existing consumers
 export { buildBladeOutlinePoints, bladeOutlineToSVG } from './sword/bladeGeometry';
@@ -121,7 +122,12 @@ export class SwordGenerator {
   }
   /** Apply new material presets and rebind to existing meshes/groups. */
   public setMaterials(mats: MaterialMap) {
-    this.mats = mats; this.reapplyMaterials();
+    this.mats = mats;
+    this.reapplyMaterials();
+    if (this.highlighted) {
+      clearMaterialHighlight(this);
+      applyMaterialHighlight(this, this.highlighted);
+    }
   }
   /**
    * Create a MeshPhysicalMaterial for a given part using shared material factory.
@@ -211,37 +217,11 @@ export class SwordGenerator {
 
   /** Enable emissive highlighting for a single named part. */
   public setHighlight(part: MaterialPart | null) {
-    // Reset previous
-    const setEmissive = (obj: THREE.Object3D | null, on: boolean) => {
-      if (!obj) return;
-      obj.traverse((o) => {
-        const m = o as THREE.Mesh;
-        if (!m.isMesh) return;
-        const mat = m.material as THREE.MeshStandardMaterial;
-        if (!mat || !(mat as any).emissive) return;
-        (mat as any).emissive?.setHex(on ? 0x333333 : 0x000000);
-        (mat as any).emissiveIntensity = on ? 0.6 : 1.0;
-      });
-    };
-    setEmissive(this.bladeMesh, false);
-    setEmissive(this.guardMesh, false);
-    setEmissive(this.guardGroup, false);
-    setEmissive(this.handleMesh, false);
-    setEmissive(this.handleGroup, false);
-    setEmissive(this.pommelMesh, false);
-    setEmissive(this.scabbardGroup, false);
-    setEmissive(this.tasselGroup, false);
-
+    clearMaterialHighlight(this);
     this.highlighted = part;
-    if (part === 'blade') setEmissive(this.bladeMesh, true);
-    if (part === 'guard') {
-      setEmissive(this.guardMesh, true);
-      setEmissive(this.guardGroup, true);
+    if (part) {
+      applyMaterialHighlight(this, part);
     }
-    if (part === 'handle') { setEmissive(this.handleMesh, true); setEmissive(this.handleGroup, true); }
-    if (part === 'pommel') setEmissive(this.pommelMesh, true);
-    if (part === 'scabbard') setEmissive(this.scabbardGroup, true);
-    if (part === 'tassel') setEmissive(this.tasselGroup, true);
   }
 
   /** Dispose and rebuild blade and its visual overlays (fullers, hamon, engravings). */

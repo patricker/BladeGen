@@ -669,11 +669,19 @@ export function setupScene(canvas: HTMLCanvasElement) {
       }
     },
     setEnvIntensity: (v: number) => {
-      // Traverse materials and set envMapIntensity where supported
       sword.group.traverse((o) => {
-        const m = (o as any).material as THREE.Material | THREE.Material[] | undefined;
-        const apply = (mat: any) => { if (mat && 'envMapIntensity' in mat) mat.envMapIntensity = v; };
-        if (Array.isArray(m)) m.forEach(apply); else apply(m);
+        const material = (o as any).material as THREE.Material | THREE.Material[] | undefined;
+        const apply = (mat: any) => {
+          if (!mat || !('envMapIntensity' in mat)) return;
+          const storeKey = '__baseEnvMapIntensity';
+          if (mat[storeKey] === undefined) {
+            const current = typeof mat.envMapIntensity === 'number' ? mat.envMapIntensity : 1;
+            mat[storeKey] = current;
+          }
+          mat.envMapIntensity = mat[storeKey] * v;
+          mat.needsUpdate = true;
+        };
+        if (Array.isArray(material)) material.forEach(apply); else apply(material);
       });
     },
     // Material base controls per part

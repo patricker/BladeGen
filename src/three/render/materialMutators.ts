@@ -15,7 +15,7 @@ function getPartRoots(sword: SwordGenerator, part: SwordPart): Array<THREE.Objec
     case 'guard':
       return [sword.guardMesh, swordAny.guardGroup]
     case 'handle':
-      return [sword.handleMesh]
+      return [sword.handleMesh, swordAny.handleGroup]
     case 'pommel':
       return [sword.pommelMesh]
     case 'scabbard':
@@ -109,4 +109,47 @@ export function setPartBump(
     }
     material.needsUpdate = true
   })
+}
+
+const HIGHLIGHT_COLOR = 0x333333
+const HIGHLIGHT_INTENSITY = 0.6
+const BASE_EMISSIVE_KEY = '__baseEmissiveColor'
+const BASE_INTENSITY_KEY = '__baseEmissiveIntensity'
+
+function storeBaseEmissive(mat: AnyMaterial) {
+  if (!('emissive' in mat)) return
+  if (mat[BASE_EMISSIVE_KEY] === undefined && mat.emissive) {
+    mat[BASE_EMISSIVE_KEY] = mat.emissive.getHex()
+  }
+  if (mat[BASE_INTENSITY_KEY] === undefined) {
+    mat[BASE_INTENSITY_KEY] = typeof mat.emissiveIntensity === 'number' ? mat.emissiveIntensity : 1
+  }
+}
+
+function applyHighlightState(mat: AnyMaterial, enabled: boolean, color = HIGHLIGHT_COLOR, intensity = HIGHLIGHT_INTENSITY) {
+  if (!('emissive' in mat) || !mat.emissive) return
+  storeBaseEmissive(mat)
+  if (enabled) {
+    mat.emissive.setHex(color)
+    if ('emissiveIntensity' in mat) mat.emissiveIntensity = intensity
+  } else {
+    if (mat[BASE_EMISSIVE_KEY] !== undefined) mat.emissive.setHex(mat[BASE_EMISSIVE_KEY])
+    if ('emissiveIntensity' in mat && mat[BASE_INTENSITY_KEY] !== undefined) {
+      mat.emissiveIntensity = mat[BASE_INTENSITY_KEY]
+    }
+  }
+  mat.needsUpdate = true
+}
+
+export function clearHighlight(sword: SwordGenerator) {
+  const parts: SwordPart[] = ['blade', 'guard', 'handle', 'pommel', 'scabbard', 'tassel']
+  for (const part of parts) {
+    visitPartMaterials(sword, part, (material) => applyHighlightState(material, false))
+  }
+}
+
+export function setHighlight(sword: SwordGenerator, part: SwordPart, options?: { color?: number; intensity?: number }) {
+  const color = options?.color ?? HIGHLIGHT_COLOR
+  const intensity = options?.intensity ?? HIGHLIGHT_INTENSITY
+  visitPartMaterials(sword, part, (material) => applyHighlightState(material, true, color, intensity))
 }

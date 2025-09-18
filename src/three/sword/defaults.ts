@@ -8,6 +8,7 @@ import type { SwordParams } from './types'
 export function defaultSwordParams(): SwordParams {
   return {
     blade: {
+      family: 'straight',
       length: 3.0,
       baseWidth: 0.25,
       tipWidth: 0.05,

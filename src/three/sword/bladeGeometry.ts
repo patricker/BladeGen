@@ -121,14 +121,34 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   const shapeFactor = (u: number) => {
     const cs = b.crossSection ?? 'flat'
     const au = Math.abs(u)
-    if (cs === 'diamond') { const pow = THREE.MathUtils.lerp(1.0, 2.5, bevel); return 1 - Math.pow(au, pow) }
-    if (cs === 'lenticular') { const g = THREE.MathUtils.lerp(1.4, 0.8, bevel); const base = Math.max(0, 1 - au * au); return Math.pow(base, 0.5 * g) }
-    if (cs === 'hexagonal') { const p = THREE.MathUtils.lerp(0.4, 1.0, bevel); return Math.pow(1 - au, Math.max(0.2, p)) }
-    if (cs === 'triangular') { const slope = THREE.MathUtils.lerp(1.0, 0.3, bevel); return Math.max(0, 1 - Math.pow(au, slope)) }
+    if (cs === 'diamond') {
+      const pow = THREE.MathUtils.lerp(1.0, 2.5, bevel)
+      return 1 - Math.pow(au, pow)
+    }
+    if (cs === 'lenticular') {
+      const g = THREE.MathUtils.lerp(1.4, 0.8, bevel)
+      const base = Math.max(0, 1 - au * au)
+      return Math.pow(base, 0.5 * g)
+    }
+    if (cs === 'hexagonal') {
+      const p = THREE.MathUtils.lerp(0.35, 1.1, bevel)
+      return Math.pow(Math.max(0, 1 - au), Math.max(0.2, p))
+    }
+    if (cs === 'compound') {
+      const primary = Math.pow(Math.max(0, 1 - Math.pow(au, THREE.MathUtils.lerp(1.0, 1.8, bevel))), 1.1)
+      const shoulderWidth = THREE.MathUtils.lerp(0.6, 0.35, bevel)
+      const shoulder = Math.pow(Math.max(0, 1 - Math.pow(au / Math.max(0.01, shoulderWidth), 4.0)), 1.8)
+      return THREE.MathUtils.lerp(primary, shoulder, 0.55)
+    }
+    if (cs === 'triangular') {
+      const slope = THREE.MathUtils.lerp(1.0, 0.35, bevel)
+      return Math.max(0, 1 - Math.pow(au, slope))
+    }
     if (cs === 'tSpine') {
-      const ridgeWidth = THREE.MathUtils.lerp(0.18, 0.05, bevel)
-      const ridge = Math.max(0, 1 - Math.pow(au / Math.max(0.01, ridgeWidth), 2))
-      return Math.pow(ridge, 1.5)
+      const ridgeWidth = THREE.MathUtils.lerp(0.2, 0.05, bevel)
+      const rib = Math.pow(Math.max(0, 1 - Math.pow(au / Math.max(0.01, ridgeWidth), 2)), 1.6)
+      const web = Math.pow(Math.max(0, 1 - Math.pow(au, 2.6)), 0.9)
+      return Math.max(rib, web * 0.45)
     }
     return 0
   }

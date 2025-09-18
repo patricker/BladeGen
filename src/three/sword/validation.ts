@@ -9,6 +9,7 @@ import type {
   BladeWaviness,
   HollowGrindProfile,
   FullerSlot,
+  FullerFaceConfig,
   AccessoriesParams,
   ScabbardParams,
   TasselParams
@@ -110,6 +111,31 @@ const sanitizeFullers = (raw: any, blade: BladeParams): Array<FullerSlot> | unde
   return result.length ? result : undefined
 }
 
+const sanitizeFullerFaces = (raw: any, blade: BladeParams): { faces: FullerFaceConfig; slots: Array<FullerSlot> } | undefined => {
+  if (!raw || typeof raw !== 'object') return undefined
+  const combined: any[] = []
+  const collect = (side: 'left' | 'right') => {
+    const entries = Array.isArray(raw[side]) ? raw[side] : []
+    for (const entry of entries.slice(0, 3)) {
+      if (!entry || typeof entry !== 'object') continue
+      combined.push({ ...entry, side })
+    }
+  }
+  collect('left')
+  collect('right')
+  if (!combined.length) return undefined
+  const slots = sanitizeFullers(combined, blade)
+  if (!slots || !slots.length) return undefined
+  const faces: FullerFaceConfig = {}
+  for (const slot of slots) {
+    const { side, ...rest } = slot
+    if (!side) continue
+    const arr = (faces[side] ??= [])
+    arr.push(rest)
+  }
+  return { faces, slots }
+}
+
 const buildLegacyFullers = (blade: BladeParams): Array<FullerSlot> | undefined => {
   if (!(blade.fullerEnabled ?? false)) return undefined
   const count = Math.max(0, Math.min(3, Math.round(blade.fullerCount ?? 0)))
@@ -155,7 +181,10 @@ const buildLegacyFullers = (blade: BladeParams): Array<FullerSlot> | undefined =
  */
 export function validateSwordParams(params: SwordParams): SwordParams {
   const b = params.blade
+  const rawFamily = (b as any).family
+  const family: BladeParams['family'] = rawFamily === 'flamberge' || rawFamily === 'kris' ? rawFamily : 'straight'
   const blade: BladeParams = {
+    family,
     length: clamp(b.length, 0.1, 20),
     baseWidth: clamp(b.baseWidth, 0.02, 5),
     tipWidth: clamp(b.tipWidth, 0, 5),
@@ -207,6 +236,19 @@ export function validateSwordParams(params: SwordParams): SwordParams {
     falseEdgeDepth: clamp((b as any).falseEdgeDepth ?? 0, 0, 0.2)
   }
 
+  const allowedCrossSections = ['flat', 'lenticular', 'diamond', 'hexagonal', 'triangular', 'tSpine', 'compound'] as const
+  if (!allowedCrossSections.includes((blade.crossSection ?? 'flat') as any)) {
+    blade.crossSection = 'flat'
+  }
+
+  if (family === 'kris' || typeof (b as any).krisWaveCount === 'number') {
+    let waves = clamp(Math.round((b as any).krisWaveCount ?? 7), 1, 21)
+    if (waves % 2 === 0) {
+      waves = waves >= 21 ? waves - 1 : waves + 1
+    }
+    blade.krisWaveCount = waves
+  }
+
   const curveProfile = sanitizeCurveProfile(b.curveProfile)
   if (curveProfile) blade.curveProfile = curveProfile
   const widthProfile = sanitizeWidthProfile(b.widthProfile)
@@ -215,14 +257,50 @@ export function validateSwordParams(params: SwordParams): SwordParams {
   if (thicknessPts) blade.thicknessProfile = { points: thicknessPts }
   const waviness = sanitizeWaviness((b as any).waviness, blade.baseWidth)
   if (waviness) blade.waviness = waviness
+  if (!blade.waviness) {
+    if (family === 'flamberge') {
+      const baseAmp = clamp(blade.baseWidth * 0.14, 0.001, Math.max(0.002, blade.baseWidth * 1.0))
+      const waves = clamp(Math.round(blade.length * 3.5), 3, 18)
+      blade.waviness = {
+        amplitude: baseAmp,
+        frequency: waves,
+        mode: 'both',
+        taper: 1.2,
+        phase: 0,
+        offset: 0
+      }
+    } else if (family === 'kris') {
+      const waves = blade.krisWaveCount ?? 7
+      const amp = clamp(blade.baseWidth * 0.18, 0.001, Math.max(0.004, blade.baseWidth * 1.2))
+      blade.waviness = {
+        amplitude: amp,
+        frequency: waves,
+        mode: 'centerline',
+        taper: 0.6,
+        phase: 0,
+        offset: 0
+      }
+    }
+  }
   const hollow = sanitizeHollowGrind((b as any).hollowGrind)
   if (hollow) blade.hollowGrind = hollow
-  const advancedFullers = sanitizeFullers((b as any).fullers, blade)
-  if (advancedFullers && advancedFullers.length) {
-    blade.fullers = advancedFullers
+  const faceFullers = sanitizeFullerFaces((b as any).fullerFaces, blade)
+  if (faceFullers) {
+    blade.fullerFaces = faceFullers.faces
+    blade.fullers = faceFullers.slots
+    blade.fullerEnabled = true
   } else {
-    const legacy = buildLegacyFullers(blade)
-    if (legacy) blade.fullers = legacy
+    const advancedFullers = sanitizeFullers((b as any).fullers, blade)
+    if (advancedFullers && advancedFullers.length) {
+      blade.fullers = advancedFullers
+      blade.fullerEnabled = true
+    } else {
+      const legacy = buildLegacyFullers(blade)
+      if (legacy) {
+        blade.fullers = legacy
+        blade.fullerEnabled = true
+      }
+    }
   }
 
   const g = params.guard

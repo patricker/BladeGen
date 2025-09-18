@@ -17,9 +17,9 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 ## Geometry & Dynamics
 - [x] Distal taper thicknessProfile (Bezier/points) varying Z thickness along Y.
 - [x] Derived metrics: PoB (cmY), CoP, polar moment; expose in UI (readout).
-- [ ] Blade families: wavy/flamberge; kris with odd wave counts.
-- [ ] Cross‑section upgrades: hollow grind (radius/depth), compound grinds; triangular and T‑spine.
-- [ ] Fuller v2: per‑face array with width/offsetFromSpine/taper (1–3 per side).
+- [x] Blade families: wavy/flamberge; kris with odd wave counts.
+- [x] Cross‑section upgrades: hollow grind (radius/depth), compound grinds; triangular and T‑spine.
+- [x] Fuller v2: per‑face array with width/offsetFromSpine/taper (1–3 per side).
 
 ## Guard & Hilt
 - [ ] Shell guards (simple lathed/extruded shells).

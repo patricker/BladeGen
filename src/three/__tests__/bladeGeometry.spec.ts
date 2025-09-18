@@ -10,6 +10,20 @@ const baseBlade = {
   curvature: 0,
 } as any
 
+const sampleThickness = (geo: THREE.BufferGeometry, rowT = 0.5, colT = 0.5) => {
+  const pos = geo.getAttribute('position') as THREE.BufferAttribute
+  const cols = 12
+  const rowStride = (cols + 1) * 2
+  const rows = Math.max(1, pos.count / rowStride)
+  const row = Math.max(0, Math.min(rows - 1, Math.round(rowT * (rows - 1))))
+  const col = Math.max(0, Math.min(cols, Math.round(colT * cols)))
+  const frontIndex = row * rowStride + col * 2
+  const backIndex = frontIndex + 1
+  const zFront = pos.getZ(frontIndex)
+  const zBack = pos.getZ(backIndex)
+  return Math.abs(zBack - zFront)
+}
+
 describe('bladeGeometry helpers', () => {
   it('bendOffsetX respects curvature and baseAngle', () => {
     const L = 2
@@ -160,5 +174,27 @@ describe('bladeGeometry helpers', () => {
     const straightMaxX = Math.max(...straight.map((p) => p.x))
     const wavyMaxX = Math.max(...wavy.map((p) => p.x))
     expect(wavyMaxX).toBeGreaterThan(straightMaxX)
+  })
+
+  it('compound cross section thickens the spine relative to flat', () => {
+    const flat = buildBladeGeometry({ ...baseBlade, crossSection: 'flat', bevel: 0.4 })
+    const compound = buildBladeGeometry({ ...baseBlade, crossSection: 'compound', bevel: 0.6 })
+    const flatSpine = sampleThickness(flat, 0.5, 0.5)
+    const compoundSpine = sampleThickness(compound, 0.5, 0.5)
+    expect(compoundSpine).toBeGreaterThan(flatSpine)
+  })
+
+  it('hollow grind reduces face thickness while keeping edges', () => {
+    const diamond = buildBladeGeometry({ ...baseBlade, crossSection: 'diamond', bevel: 0.6 })
+    const hollow = buildBladeGeometry({
+      ...baseBlade,
+      crossSection: 'diamond',
+      bevel: 0.6,
+      hollowGrind: { enabled: true, mix: 1, depth: 0.6, radius: 0.8, bias: 0 }
+    })
+    const faceIndex = 0.35
+    const diamondFace = sampleThickness(diamond, 0.5, faceIndex)
+    const hollowFace = sampleThickness(hollow, 0.5, faceIndex)
+    expect(hollowFace).toBeLessThan(diamondFace)
   })
 })

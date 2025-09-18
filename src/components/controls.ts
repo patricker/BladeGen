@@ -1986,6 +1986,48 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
 
   }
 
+  const ensureHollow = () => {
+    if (!state.blade.hollowGrind) {
+      state.blade.hollowGrind = { enabled: false, mix: 0.65, depth: 0.45, radius: 0.6, bias: 0 }
+    }
+    return state.blade.hollowGrind
+  }
+
+  const ensureFullerFaces = () => {
+    if (!state.blade.fullerFaces) {
+      state.blade.fullerFaces = { left: [], right: [] }
+    }
+    return state.blade.fullerFaces
+  }
+
+  const cleanupFullerFaces = () => {
+    if (!state.blade.fullerFaces) return
+    const faces = state.blade.fullerFaces
+    const prune = (side: 'left' | 'right') => {
+      if (!faces[side]) return
+      faces[side] = faces[side]!.filter((slot) => !!slot) as any
+      if (!faces[side]?.length) delete faces[side]
+    }
+    prune('left');
+    prune('right');
+    if (!faces.left && !faces.right) {
+      delete state.blade.fullerFaces
+      state.blade.fullerEnabled = false
+    }
+  }
+
+  const ensureFullerSlot = (side: 'left' | 'right', index: number) => {
+    const faces = ensureFullerFaces()
+    const arr = faces[side] ?? (faces[side] = [])
+    if (!arr[index]) {
+      const base = state.blade.baseWidth || defaults.blade.baseWidth
+      const defaultWidth = (state.blade.fullerWidth && state.blade.fullerWidth > 0) ? state.blade.fullerWidth : base * 0.3
+      const defaultOffset = (side === 'left' ? -1 : 1) * base * 0.12
+      arr[index] = { width: defaultWidth, offsetFromSpine: defaultOffset, taper: 0 }
+    }
+    return arr[index]!
+  }
+
   // Blade controls
   // Sub-heading: Serrations (non-collapsible, keeps controls within Blade)
   const bSerr = addSubheading(sections.Blade, 'Serrations');
@@ -1996,13 +2038,87 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   select(sections.Blade, 'Fuller Profile', ['u','v','flat'], (state.blade as any).fullerProfile ?? 'u', (v) => { (state.blade as any).fullerProfile = v as any; }, rerender, 'Cross-section profile for carved fuller.');
   slider(sections.Blade, 'Fuller Width', 0, 0.6, 0.001, (state.blade as any).fullerWidth ?? 0, (v) => { (state.blade as any).fullerWidth = v; }, rerender, 'Groove width across the blade face (scene units). 0 = auto.');
   slider(sections.Blade, 'Fuller Inset', 0, 0.2, 0.001, (state.blade as any).fullerInset ?? (state.blade.fullerDepth ?? 0), (v) => { (state.blade as any).fullerInset = v; }, rerender, 'Groove depth inside thickness when carving. Defaults to Fuller Depth.');
+  const fullerLayout = addSubheading(sections.Blade, 'Fuller Layout (Per Side)');
+  const buildFullerControls = (side: 'left' | 'right', index: number) => {
+    const labelPrefix = side === 'left' ? 'Left' : 'Right';
+    const slot = state.blade.fullerFaces?.[side]?.[index] ?? null;
+    const enabled = !!slot;
+    checkbox(fullerLayout, `${labelPrefix} Fuller ${index + 1}`, enabled, (checked) => {
+      if (checked) {
+        const s = ensureFullerSlot(side, index);
+        s.width = s.width ?? ((state.blade.fullerWidth && state.blade.fullerWidth > 0) ? state.blade.fullerWidth : state.blade.baseWidth * 0.3);
+        state.blade.fullerEnabled = true;
+      } else if (state.blade.fullerFaces?.[side]) {
+        state.blade.fullerFaces[side]![index] = null as any;
+        cleanupFullerFaces();
+      }
+    }, rerender, `Enable groove ${index + 1} on the ${labelPrefix.toLowerCase()} face.`);
+    const baseWidth = state.blade.baseWidth || defaults.blade.baseWidth;
+    const widthDefault = (state.blade.fullerWidth && state.blade.fullerWidth > 0) ? state.blade.fullerWidth : baseWidth * 0.3;
+    const offsetRange = Math.max(0.05, baseWidth * 0.75);
+    slider(fullerLayout, `${labelPrefix} F${index + 1} Width`, 0.005, Math.max(0.05, baseWidth), 0.001, slot?.width ?? widthDefault, (v) => {
+      const s = ensureFullerSlot(side, index);
+      s.width = v;
+      state.blade.fullerEnabled = true;
+    }, rerender, 'Groove width on this face (scene units).');
+    slider(fullerLayout, `${labelPrefix} F${index + 1} Offset`, -offsetRange, offsetRange, 0.001, slot?.offsetFromSpine ?? ((side === 'left' ? -1 : 1) * baseWidth * 0.12), (v) => {
+      const s = ensureFullerSlot(side, index);
+      s.offsetFromSpine = v;
+      state.blade.fullerEnabled = true;
+    }, rerender, 'Offset from spine (negative toward −X, positive toward +X).');
+    slider(fullerLayout, `${labelPrefix} F${index + 1} Taper`, 0, 1, 0.01, slot?.taper ?? 0, (v) => {
+      const s = ensureFullerSlot(side, index);
+      s.taper = v;
+      state.blade.fullerEnabled = true;
+    }, rerender, 'Linear taper amount toward the tip (0 none, 1 full).');
+  }
+  for (let i = 0; i < 3; i++) buildFullerControls('left', i);
+  for (let i = 0; i < 3; i++) buildFullerControls('right', i);
+  let krisWaveField = ''
+  select(sections.Blade, 'Blade Family', ['straight', 'flamberge', 'kris'], (state.blade.family ?? 'straight') as string, (v) => {
+    state.blade.family = v as any;
+    if (state.blade.family === 'kris' && typeof state.blade.krisWaveCount !== 'number') {
+      state.blade.krisWaveCount = 7;
+      if (krisWaveField) registry.setValueByField(krisWaveField, state.blade.krisWaveCount);
+    }
+  }, rerender, 'Preset silhouette helpers. Straight is neutral. Flamberge adds wavy edges; Kris introduces centerline undulation.');
+  krisWaveField = slider(sections.Blade, 'Kris Waves', 1, 21, 2, (state.blade.krisWaveCount ?? 7), (v) => {
+    let waves = Math.max(1, Math.min(21, Math.round(v)));
+    if (waves % 2 === 0) waves = waves >= 21 ? waves - 1 : waves + 1;
+    state.blade.krisWaveCount = waves;
+    if (waves !== v) registry.setValueByField(krisWaveField, waves);
+  }, rerender, 'Odd wave count for kris centerline modulation (1..21).');
   slider(sections.Blade, 'Length', 0.5, 6, 0.01, state.blade.length, (v) => (state.blade.length = v), rerender);
   slider(sections.Blade, 'Base Width', 0.05, 1.0, 0.005, state.blade.baseWidth, (v) => (state.blade.baseWidth = v), rerender);
   slider(sections.Blade, 'Tip Width', 0, 0.5, 0.005, state.blade.tipWidth, (v) => (state.blade.tipWidth = v), rerender);
   select(sections.Blade, 'Tip Shape', ['pointed', 'rounded', 'leaf', 'clip', 'tanto', 'spear', 'sheepsfoot'], (state.blade.tipShape ?? 'pointed') as string, (v) => (state.blade.tipShape = v as any), rerender, 'Tip family: Pointed, Rounded, Leaf, Clip, Tanto, Spear, Sheepsfoot.');
   slider(sections.Blade, 'Leaf Bulge', 0, 1, 0.01, state.blade.tipBulge ?? 0.2, (v) => (state.blade.tipBulge = v), rerender, 'Mid-blade bulge for Leaf tip shape.');
-  select(sections.Blade, 'Cross Section', ['flat', 'diamond', 'lenticular', 'hexagonal'], (state.blade.crossSection ?? 'flat') as string, (v) => (state.blade.crossSection = v as any), rerender, 'Blade cross-section profile.');
+  select(sections.Blade, 'Cross Section', ['flat', 'diamond', 'lenticular', 'hexagonal', 'triangular', 'tSpine', 'compound'], (state.blade.crossSection ?? 'flat') as string, (v) => (state.blade.crossSection = v as any), rerender, 'Transverse profile: add facets, ridges, or compound grinds.');
   slider(sections.Blade, 'Edge Bevel', 0, 1, 0.01, state.blade.bevel ?? 0.5, (v) => (state.blade.bevel = v), rerender, '0 sharp (thin spine), 1 thickened spine/facets.');
+  checkbox(sections.Blade, 'Hollow Grind', !!state.blade.hollowGrind?.enabled, (v) => {
+    const h = ensureHollow();
+    h.enabled = v;
+  }, rerender, 'Enable concave face carving. Mix/depth sliders auto-enable when adjusted.');
+  slider(sections.Blade, 'Hollow Mix', 0, 1, 0.01, state.blade.hollowGrind?.mix ?? 0.65, (v) => {
+    const h = ensureHollow();
+    h.mix = v;
+    if (!h.enabled && v > 0) h.enabled = true;
+  }, rerender, 'Blend between flat (0) and hollowed (1) faces.');
+  slider(sections.Blade, 'Hollow Depth', 0, 1, 0.01, state.blade.hollowGrind?.depth ?? 0.45, (v) => {
+    const h = ensureHollow();
+    h.depth = v;
+    if (!h.enabled && v > 0) h.enabled = true;
+  }, rerender, 'Relative carve depth inside the face.');
+  slider(sections.Blade, 'Hollow Radius', 0.1, 6, 0.01, state.blade.hollowGrind?.radius ?? 0.6, (v) => {
+    const h = ensureHollow();
+    h.radius = v;
+    if (!h.enabled) h.enabled = true;
+  }, rerender, 'Lower radius = tighter concave wall; higher = shallow.');
+  slider(sections.Blade, 'Hollow Bias', -1, 1, 0.01, state.blade.hollowGrind?.bias ?? 0, (v) => {
+    const h = ensureHollow();
+    h.bias = v;
+    if (!h.enabled) h.enabled = true;
+  }, rerender, 'Shift hollow toward the edge (+) or spine (-).');
   slider(sections.Blade, 'Blade Thickness', 0.02, 0.2, 0.001, state.blade.thickness, (v) => (state.blade.thickness = v), rerender);
   slider(sections.Blade, 'Left Thickness', 0.003, 0.2, 0.001, state.blade.thicknessLeft ?? state.blade.thickness, (v) => (state.blade.thicknessLeft = v), rerender, 'Z thickness at left edge (−X).');
   slider(sections.Blade, 'Right Thickness', 0.003, 0.2, 0.001, state.blade.thicknessRight ?? state.blade.thickness, (v) => (state.blade.thicknessRight = v), rerender, 'Z thickness at right edge (+X).');
@@ -3309,6 +3425,8 @@ function refreshInputs(registry: ControlRegistry, params: SwordParams) {
       'Length': blade.length,
       'Base Width': blade.baseWidth,
       'Tip Width': blade.tipWidth,
+      'Blade Family': blade.family ?? 'straight',
+      'Kris Waves': blade.family === 'kris' ? (blade.krisWaveCount ?? 7) : 'n/a',
       'Tip Shape': blade.tipShape ?? 'pointed',
       'Leaf Bulge': blade.tipBulge ?? 0.2,
       'Cross Section': blade.crossSection ?? 'flat',
@@ -3353,6 +3471,11 @@ function refreshInputs(registry: ControlRegistry, params: SwordParams) {
       'Ricasso %': Math.round((blade.ricassoLength ?? 0) * 100),
       'False Edge %': Math.round((blade.falseEdgeLength ?? 0) * 100),
       'False Edge Depth': blade.falseEdgeDepth ?? 0,
+      'Hollow Enabled': blade.hollowGrind?.enabled ?? false,
+      'Hollow Mix': blade.hollowGrind?.mix ?? 0.65,
+      'Hollow Depth': blade.hollowGrind?.depth ?? 0.45,
+      'Hollow Radius': blade.hollowGrind?.radius ?? 0.6,
+      'Hollow Bias': blade.hollowGrind?.bias ?? 0,
       'Twist Angle': toDeg(blade.twistAngle ?? 0),
     },
     guard: {
@@ -3476,6 +3599,19 @@ function refreshInputs(registry: ControlRegistry, params: SwordParams) {
       'Pommel:Blade': ratios.pommelSizeToBlade ?? 0.05,
     },
   };
+
+  const applyFullerFaceSummary = (side: 'left' | 'right', label: 'Left' | 'Right') => {
+    const arr = (blade.fullerFaces?.[side] ?? []) as Array<any>
+    for (let i = 0; i < 3; i++) {
+      const slot = arr[i]
+      sections.blade[`${label} Fuller ${i + 1}`] = !!slot
+      sections.blade[`${label} F${i + 1} Width`] = slot?.width ?? 0
+      sections.blade[`${label} F${i + 1} Offset`] = slot?.offsetFromSpine ?? 0
+      sections.blade[`${label} F${i + 1} Taper`] = slot?.taper ?? 0
+    }
+  }
+  applyFullerFaceSummary('left', 'Left')
+  applyFullerFaceSummary('right', 'Right')
 
   for (const [section, entries] of Object.entries(sections)) {
     for (const [label, value] of Object.entries(entries)) {

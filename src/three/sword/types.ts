@@ -56,6 +56,8 @@ export type HollowGrindProfile = {
   bias?: number;
 };
 
+export type BladeFamily = 'straight' | 'flamberge' | 'kris';
+
 export type FullerSlot = {
   /** Which side(s) receive this groove. */
   side?: 'left' | 'right' | 'both';
@@ -79,7 +81,16 @@ export type FullerSlot = {
   taper?: number;
 };
 
+export type FullerFaceConfig = {
+  left?: Array<Omit<FullerSlot, 'side'>>;
+  right?: Array<Omit<FullerSlot, 'side'>>;
+};
+
 export type BladeParams = {
+  /** High-level silhouette family for presets (straight default). */
+  family?: BladeFamily;
+  /** Odd wave count helper for kris family (>=1). */
+  krisWaveCount?: number;
   /** Total blade length along +Y, in scene units (meters-ish). */
   length: number;
   /** Width near guard (at y=0). */
@@ -160,7 +171,7 @@ export type BladeParams = {
   /** Total twist from base to tip, radians. */
   twistAngle?: number;
   /** Cross section profile family. */
-  crossSection?: 'flat' | 'lenticular' | 'diamond' | 'hexagonal' | 'triangular' | 'tSpine';
+  crossSection?: 'flat' | 'lenticular' | 'diamond' | 'hexagonal' | 'triangular' | 'tSpine' | 'compound';
   /** Cross-section bevel intensity 0..1. */
   bevel?: number;
   /** Tip family. Controls taper behavior near tip. */
@@ -187,6 +198,8 @@ export type BladeParams = {
   hollowGrind?: HollowGrindProfile;
   /** Advanced fuller definition array supporting per-side grooves. */
   fullers?: Array<FullerSlot>;
+  /** Alternative per-face fuller configuration (mapped to fullers internally). */
+  fullerFaces?: FullerFaceConfig;
 };
 
 export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk' | 'basket' | 'knucklebow' | 'swept' | 'shell';

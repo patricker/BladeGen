@@ -42,4 +42,48 @@ describe('defaults + validation', () => {
     expect(v.pommel.peenVisible).toBe(true)
     expect(v.pommel.peenSize).toBeLessThanOrEqual(0.1)
   })
+
+  it('applies blade family presets for waviness', () => {
+    const flamberge = defaultSwordParams()
+    flamberge.blade.family = 'flamberge'
+    delete (flamberge.blade as any).waviness
+    const vf = validateSwordParams(flamberge)
+    expect(vf.blade.family).toBe('flamberge')
+    expect(vf.blade.waviness).toBeTruthy()
+    expect(vf.blade.waviness?.mode).toBe('both')
+    expect(vf.blade.waviness?.frequency).toBeGreaterThan(2)
+
+    const kris = defaultSwordParams()
+    kris.blade.family = 'kris'
+    ;(kris.blade as any).krisWaveCount = 10
+    delete (kris.blade as any).waviness
+    const vk = validateSwordParams(kris)
+    expect(vk.blade.family).toBe('kris')
+    expect(vk.blade.krisWaveCount).toBeDefined()
+    expect((vk.blade.krisWaveCount ?? 0) % 2).toBe(1)
+    expect(vk.blade.waviness?.mode).toBe('centerline')
+    expect(vk.blade.waviness?.frequency).toBe(vk.blade.krisWaveCount)
+  })
+
+  it('sanitizes per-face fuller configuration', () => {
+    const params = defaultSwordParams()
+    params.blade.fullerFaces = {
+      left: [
+        { width: 0.04, offsetFromSpine: -0.03, taper: 0.25 },
+        null as any,
+        { width: 0.02, offsetFromSpine: -0.05, taper: 0 }
+      ],
+      right: [
+        { width: 0.04, offsetFromSpine: 0.03, taper: 0.1 },
+        { width: 0.02, offsetFromSpine: 0.05, taper: 0.5 }
+      ]
+    }
+    const validated = validateSwordParams(params)
+    expect(validated.blade.fullerEnabled).toBe(true)
+    expect(validated.blade.fullers).toBeTruthy()
+    expect(validated.blade.fullers?.length).toBe(4)
+    expect(validated.blade.fullers?.every((slot) => slot.side === 'left' || slot.side === 'right')).toBe(true)
+    expect(validated.blade.fullerFaces?.left?.length).toBe(2)
+    expect(validated.blade.fullerFaces?.right?.length).toBe(2)
+  })
 })

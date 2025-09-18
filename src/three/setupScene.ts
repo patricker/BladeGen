@@ -27,6 +27,7 @@ import { createEmbers } from './fx/embers'
 import { buildInnerGlow as buildInnerGlowImported } from './fx/innerGlow'
 import { makeMistNoiseTexture, updateMistPositions, buildMist } from './fx/mist'
 import { makeValueNoiseTexture } from './fx/noise'
+import { setPartBump, setPartClearcoat, setPartClearcoatRoughness, setPartColor, setPartMetalness, setPartRoughness } from './render/materialMutators'
 import { FxManager } from './fx/manager'
 
 /**
@@ -615,24 +616,7 @@ export function setupScene(canvas: HTMLCanvasElement) {
     // setBladeGradientWear is defined below with an internal builder
     // Procedural bump/noise on selected part
     setPartBump: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => {
-      const apply = (obj?: THREE.Object3D|null) => {
-        if (!obj) return; obj.traverse((o)=>{
-          const mat = (o as any).material as any; if (!mat) return;
-          if (enabled) {
-            mat.bumpMap = makeValueNoiseTexture(noiseScale ?? 8, seed ?? 1337);
-            mat.bumpScale = (bumpScale ?? 0.02);
-          } else {
-            mat.bumpMap = null; mat.bumpScale = 0;
-          }
-          mat.needsUpdate = true;
-        });
-      };
-      if (part === 'blade') apply(sword.bladeMesh);
-      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any)['guardGroup']); }
-      if (part === 'handle') apply(sword.handleMesh);
-      if (part === 'pommel') apply(sword.pommelMesh);
-      if (part === 'scabbard') apply((sword as any).scabbardGroup);
-      if (part === 'tassel') apply((sword as any).tasselGroup);
+      setPartBump(sword, part, enabled, { bumpScale, noiseScale, seed }, makeValueNoiseTexture)
     },
     // Blade gradient/wear overlay (visible, no z-fight)
     setBladeGradientWear: (() => {
@@ -694,63 +678,19 @@ export function setupScene(canvas: HTMLCanvasElement) {
     },
     // Material base controls per part
     setPartColor: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', hex: number) => {
-      const apply = (mesh?: THREE.Object3D | null) => {
-        if (!mesh) return;
-        mesh.traverse((o) => {
-          const m = (o as any).material as any;
-          if (m && m.color) m.color.setHex(hex);
-        });
-      };
-      if (part === 'blade') apply(sword.bladeMesh);
-      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
-      if (part === 'handle') apply(sword.handleMesh);
-      if (part === 'pommel') apply(sword.pommelMesh);
-      if (part === 'scabbard') apply((sword as any).scabbardGroup);
-      if (part === 'tassel') apply((sword as any).tasselGroup);
+      setPartColor(sword, part, hex)
     },
     setPartMetalness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => {
-      const apply = (mesh?: THREE.Object3D | null) => {
-        if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'metalness' in m) m.metalness = v; });
-      };
-      if (part === 'blade') apply(sword.bladeMesh);
-      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
-      if (part === 'handle') apply(sword.handleMesh);
-      if (part === 'pommel') apply(sword.pommelMesh);
-      if (part === 'scabbard') apply((sword as any).scabbardGroup);
-      if (part === 'tassel') apply((sword as any).tasselGroup);
+      setPartMetalness(sword, part, v)
     },
     setPartRoughness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => {
-      const apply = (mesh?: THREE.Object3D | null) => {
-        if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'roughness' in m) m.roughness = v; });
-      };
-      if (part === 'blade') apply(sword.bladeMesh);
-      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
-      if (part === 'handle') apply(sword.handleMesh);
-      if (part === 'pommel') apply(sword.pommelMesh);
-      if (part === 'scabbard') apply((sword as any).scabbardGroup);
-      if (part === 'tassel') apply((sword as any).tasselGroup);
+      setPartRoughness(sword, part, v)
     },
     setPartClearcoat: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => {
-      const apply = (mesh?: THREE.Object3D | null) => {
-        if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'clearcoat' in m) m.clearcoat = v; });
-      };
-      if (part === 'blade') apply(sword.bladeMesh);
-      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
-      if (part === 'handle') apply(sword.handleMesh);
-      if (part === 'pommel') apply(sword.pommelMesh);
-      if (part === 'scabbard') apply((sword as any).scabbardGroup);
-      if (part === 'tassel') apply((sword as any).tasselGroup);
+      setPartClearcoat(sword, part, v)
     },
     setPartClearcoatRoughness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => {
-      const apply = (mesh?: THREE.Object3D | null) => {
-        if (!mesh) return; mesh.traverse((o)=>{ const m = (o as any).material as any; if (m && 'clearcoatRoughness' in m) m.clearcoatRoughness = v; });
-      };
-      if (part === 'blade') apply(sword.bladeMesh);
-      if (part === 'guard') { apply(sword.guardMesh); apply((sword as any).guardGroup); }
-      if (part === 'handle') apply(sword.handleMesh);
-      if (part === 'pommel') apply(sword.pommelMesh);
-      if (part === 'scabbard') apply((sword as any).scabbardGroup);
-      if (part === 'tassel') apply((sword as any).tasselGroup);
+      setPartClearcoatRoughness(sword, part, v)
     },
     setDPRCap: (cap: number) => {
       (renderer as any)._dprCap = cap;

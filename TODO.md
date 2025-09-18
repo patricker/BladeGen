@@ -8,6 +8,12 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - Edge/tip taxonomy: ricasso and false edge (implemented); tip families expanded (clip, tanto, spear, sheepsfoot) with asymmetric shaping; further refinement pending.
 - Render polish: MSAA (WebGL2), contact shadow plane, composer toggle, mobile heuristics, global envMapIntensity hook.
 
+## Architecture & Code Health
+- [ ] Split `src/three/setupScene.ts` into renderer/bootstrap, lighting, post, and FX modules; return a typed context instead of `any`/`scene.__renderHooks` so `src/main.ts` can import explicit hooks.
+- [ ] Introduce parameter diffing in `SwordGenerator.updateGeometry` so guard/handle/pommel/accessories only rebuild when their inputs change; reuse existing meshes to reduce GC churn.
+- [ ] Replace the JSON deep-clone in `resolveDerivedParams` with a typed normaliser that preserves texture/material references and shared objects.
+- [ ] Extract a render-material service so highlight/emissive toggles and material patching live outside the generator class (fewer side effects, easier testing).
+
 ## Geometry & Dynamics
 - [x] Distal taper thicknessProfile (Bezier/points) varying Z thickness along Y.
 - [x] Derived metrics: PoB (cmY), CoP, polar moment; expose in UI (readout).
@@ -60,7 +66,10 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [ ] Visual QA checklist and screenshot gallery (consistent lighting).
 - [ ] Blender import parity (sRGB/linear, exposure/shadows check).
 - [ ] Landing page presets and images; publish to Pages.
- - [ ] e2e sanity flow: load preset → tweak → export GLB/OBJ/SVG.
+- [ ] e2e sanity flow: load preset → tweak → export GLB/OBJ/SVG.
+- [ ] Expand Playwright coverage: drive render toggles (AA, bloom), export flows, and JSON import/export error paths.
+- [x] Add unit tests around accessories (scabbard/tassel anchor sampling) and render hook mutations to prevent regressions.
+- [ ] Validate schema vs `SwordParams` with a generated fixture per guard/handle/pommel style so Ajv tests cover more combinations.
 
 ---
 
@@ -81,3 +90,10 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [x] Enable Pages for the repo and verify Vite base path
 - [ ] Optional: Vercel/Netlify one‑click deploy
 - [ ] Landing presets and images on homepage
+
+## Sword Archetypes & Presets
+- [ ] Ship “Arming Sword” + “Hand-and-a-half” presets (double-edge, straight guard) leveraging existing blade/guard options.
+- [ ] Add “Katana / Uchigatana” presets demonstrating curvature, hamon, wrap, rayskin once wrap styles land.
+- [ ] Add “Rapier / Swept-hilt” preset using narrow diamond cross-section and basket/swept guard styles.
+- [ ] Document what’s blocking greatsword/Zweihänder presets (needs side rings/parrying lugs, extended ricasso support) and plan required knobs.
+- [ ] Outline fantasy variants we’re close to (flamberge with `waviness`, rune-etched blade using engravings) vs. ones blocked by tech (energy blades, segmented whips) in docs.

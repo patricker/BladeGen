@@ -1,5 +1,6 @@
 import type { AAMode, QualityPreset, QualityPresetMap } from './renderConfig'
 import { makeQualityPresets } from './renderConfig'
+import { hexToInt } from '../utils/color'
 
 type RenderHooks = {
   setAAMode: (mode: AAMode) => void
@@ -41,12 +42,7 @@ export function createApplyQualityPreset(
     render.setAAMode(cfg.aa)
     render.setShadowMapSize(cfg.shadow)
     render.setBloom(cfg.bloom, (rstate as any).bloomStrength, (rstate as any).bloomThreshold, (rstate as any).bloomRadius)
-    render.setOutline(
-      cfg.outline,
-      postState.outlineStrength,
-      postState.outlineThickness,
-      parseInt(postState.outlineColor.replace('#', '0x'))
-    )
+    render.setOutline(cfg.outline, postState.outlineStrength, postState.outlineThickness, hexToInt(postState.outlineColor))
     render.setDPRCap(cfg.dpr)
     if (cfg.shadowBias !== undefined) render.setShadowBias(cfg.shadowBias)
     rstate.aaMode = cfg.aa
@@ -64,4 +60,3 @@ export function createApplyQualityPreset(
     refreshWarnings()
   }
 }
-

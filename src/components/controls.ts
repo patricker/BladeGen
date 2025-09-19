@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { makeQualityPresets, type QualityPreset } from './renderConfig';
 import { createApplyQualityPreset } from './renderQuality';
 import { attachRenderQualityPanel } from './renderPanel';
+import { attachRenderBackgroundPanel } from './renderBackground';
+import { attachRenderLightsPanel } from './renderLights';
 import { attachRenderPostPanel } from './renderPost';
 import { attachRenderAtmosPanel } from './renderAtmos';
 import { hexToInt } from '../utils/color';
@@ -1798,19 +1800,23 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       rerender
     });
 
-    // Background
-    colorPicker(rBg, 'Background Color', rstate.bgColor, (hex) => { rstate.bgColor = hex; const n = hexToInt(hex); render.setBackgroundColor(n); }, () => {}, 'Renderer clear color.');
-    slider(rBg, 'Background Bright', 0, 1.0, 0.01, rstate.bgBrightness, (v) => { rstate.bgBrightness = v; render.setBackgroundBrightness(v); }, () => {}, 'Lighten/darken the background.');
+    attachRenderBackgroundPanel({
+      section: rBg,
+      render: render as any,
+      rstate: rstate as any,
+      colorPicker,
+      slider,
+      rerender,
+    })
 
-    // Lights
-    slider(rLights, 'Ambient Intensity', 0, 2.0, 0.01, rstate.ambient, (v) => { rstate.ambient = v; render.setAmbient(v); }, () => {}, 'Hemisphere ambient light.');
-    slider(rLights, 'Key Intensity', 0, 4.0, 0.01, rstate.keyIntensity, (v) => { rstate.keyIntensity = v; render.setKeyIntensity(v); }, () => {}, 'Directional key light intensity.');
-    slider(rLights, 'Key Azimuth', -180, 180, 1, rstate.keyAz, (v) => { rstate.keyAz = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light horizontal angle (deg).');
-    slider(rLights, 'Key Elevation', -10, 85, 1, rstate.keyEl, (v) => { rstate.keyEl = v; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }, () => {}, 'Key light elevation (deg).');
-    slider(rLights, 'Rim Intensity', 0, 3.0, 0.01, rstate.rimIntensity, (v) => { rstate.rimIntensity = v; render.setRimIntensity(v); }, () => {}, 'Back/rim light intensity.');
-    slider(rLights, 'Rim Azimuth', -180, 180, 1, rstate.rimAz, (v) => { rstate.rimAz = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light horizontal angle (deg).');
-    slider(rLights, 'Rim Elevation', -10, 85, 1, rstate.rimEl, (v) => { rstate.rimEl = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light elevation (deg).');
-    colorPicker(rLights, 'Rim Color', rstate.rimColor, (hex) => { rstate.rimColor = hex; const n = hexToInt(hex); render.setRimColor(n); }, () => {}, 'Rim light color.');
+    attachRenderLightsPanel({
+      section: rLights,
+      render: render as any,
+      rstate: rstate as any,
+      slider,
+      colorPicker,
+      rerender,
+    })
 
     attachRenderPostPanel({
       section: rPost,

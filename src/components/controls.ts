@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { makeQualityPresets, type QualityPreset } from './renderConfig';
 import { createApplyQualityPreset } from './renderQuality';
 import { attachRenderQualityPanel } from './renderPanel';
+import { attachRenderPostPanel } from './renderPost';
+import { attachRenderAtmosPanel } from './renderAtmos';
 import { hexToInt } from '../utils/color';
 import { SwordGenerator, SwordParams, defaultSwordParams, buildBladeOutlinePoints, bladeOutlineToSVG } from '../three/SwordGenerator';
 import { createMaterial } from '../three/sword/materials';
@@ -1810,75 +1812,35 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(rLights, 'Rim Elevation', -10, 85, 1, rstate.rimEl, (v) => { rstate.rimEl = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light elevation (deg).');
     colorPicker(rLights, 'Rim Color', rstate.rimColor, (hex) => { rstate.rimColor = hex; const n = hexToInt(hex); render.setRimColor(n); }, () => {}, 'Rim light color.');
 
-    // Post-processing
-    checkbox(rPost, 'Bloom Enabled', rstate.bloomEnabled, (v) => { rstate.bloomEnabled = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); refreshWarnings(); }, () => {}, 'Enable bloom post-process.');
-    slider(rPost, 'Bloom Strength', 0, 3.0, 0.01, rstate.bloomStrength, (v) => { rstate.bloomStrength = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom intensity.');
-    slider(rPost, 'Bloom Threshold', 0, 1.5, 0.01, rstate.bloomThreshold, (v) => { rstate.bloomThreshold = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom threshold.');
-    slider(rPost, 'Bloom Radius', 0, 1.0, 0.01, rstate.bloomRadius, (v) => { rstate.bloomRadius = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom radius.');
-    // Outline
-    checkbox(rPost, 'Outline Enabled', postState.outlineEnabled, (v) => { postState.outlineEnabled = v; render.setOutline(v, postState.outlineStrength, postState.outlineThickness, hexToInt(postState.outlineColor)); refreshWarnings(); }, () => {}, 'Enable Outline pass.');
-    slider(rPost, 'Outline Strength', 0.0, 10.0, 0.1, postState.outlineStrength, (v) => { postState.outlineStrength = v; if (postState.outlineEnabled) render.setOutline(true, v, postState.outlineThickness, hexToInt(postState.outlineColor)); }, () => {}, 'OutlinePass edgeStrength.');
-    slider(rPost, 'Outline Thickness', 0.0, 4.0, 0.05, postState.outlineThickness, (v) => { postState.outlineThickness = v; if (postState.outlineEnabled) render.setOutline(true, postState.outlineStrength, v, hexToInt(postState.outlineColor)); }, () => {}, 'OutlinePass edgeThickness.');
-    colorPicker(rPost, 'Outline Color', postState.outlineColor, (hex) => { postState.outlineColor = hex; const n = hexToInt(hex); if (postState.outlineEnabled) render.setOutline(true, postState.outlineStrength, postState.outlineThickness, n); }, () => {}, 'Outline visible edge color.');
-    // Ink outline (mesh based)
-    checkbox(rPost, 'Ink Outline', postState.inkEnabled, (v) => { postState.inkEnabled = v; render.setInkOutline(v, postState.inkThickness, hexToInt(postState.inkColor)); refreshWarnings(); }, () => {}, 'Back-face mesh outline.');
-    slider(rPost, 'Ink Thickness', 0, 0.2, 0.005, postState.inkThickness, (v) => { postState.inkThickness = v; if (postState.inkEnabled) render.setInkOutline(true, v, hexToInt(postState.inkColor)); }, () => {}, 'Scale factor for ink outline.');
-    colorPicker(rPost, 'Ink Color', postState.inkColor, (hex) => { postState.inkColor = hex; const n = hexToInt(hex); if (postState.inkEnabled) render.setInkOutline(true, postState.inkThickness, n); }, () => {}, 'Ink outline color.');
-    // Vignette
-    checkbox(rPost, 'Vignette', postState.vignetteEnabled, (v) => { postState.vignetteEnabled = v; render.setVignette(v, postState.vignetteStrength, postState.vignetteSoftness); refreshWarnings(); }, () => {}, 'Enable vignette shading.');
-    slider(rPost, 'Vignette Strength', 0, 1.0, 0.01, postState.vignetteStrength, (v) => { postState.vignetteStrength = v; if (postState.vignetteEnabled) render.setVignette(true, v, postState.vignetteSoftness); }, () => {}, 'Strength of vignette.');
-    slider(rPost, 'Vignette Softness', 0, 1.0, 0.01, postState.vignetteSoftness, (v) => { postState.vignetteSoftness = v; if (postState.vignetteEnabled) render.setVignette(true, postState.vignetteStrength, v); }, () => {}, 'Softness of vignette edge.');
+    attachRenderPostPanel({
+      section: rPost,
+      render: render as any,
+      rstate: rstate as any,
+      postState: postState as any,
+      refreshWarnings,
+      checkbox,
+      select,
+      slider,
+      colorPicker,
+      rerender
+    });
     // Blade gradient/wear overlay (moved to rGrad below)
-    // Environment & Atmospherics
-    textRow(rAtmos, 'EnvMap URL', atmosState.envUrl, (v) => {
-      atmosState.envUrl = v.trim();
-      atmosState.envPreset = 'None';
-      atmosState.envAsBackground = false;
-      applyEnvMap();
-      registry.setValue('render-atmospherics', 'Env Preset', 'None');
-      registry.setValue('render-atmospherics', 'Env as Background', atmosState.envAsBackground);
-    }, 'Equirectangular image URL.');
-    select(rAtmos, 'Env Preset', ['None','Room','Royal Esplanade','Venice Sunset'], atmosState.envPreset, (v) => {
-      applyEnvPreset(v as typeof atmosState.envPreset, true);
-    }, () => {}, 'Quick env presets (loads remote HDR).');
-    checkbox(rAtmos, 'Env as Background', atmosState.envAsBackground, (v) => {
-      atmosState.envAsBackground = v;
-      applyEnvMap(undefined, v);
-    }, () => {}, 'Use environment as background. Load URL first, then toggle.');
-    colorPicker(rAtmos, 'Fog Color', atmosState.fogColor, (hex) => {
-      atmosState.fogColor = hex;
-      (render as any).setFog?.(hexToInt(atmosState.fogColor), atmosState.fogDensity);
-    }, () => {}, 'Fog base color (exp2).');
-    slider(rAtmos, 'Fog Density', 0, 0.1, 0.001, atmosState.fogDensity, (v) => {
-      atmosState.fogDensity = v;
-      (render as any).setFog?.(hexToInt(atmosState.fogColor), atmosState.fogDensity);
-    }, () => {}, 'FogExp2 density (0 disables).');
-    // Fresnel edge accent
-    checkbox(rAtmos, 'Fresnel', atmosState.fresnelEnabled, (v) => {
-      atmosState.fresnelEnabled = v;
-      applyFresnel();
-    }, () => {}, 'Additive edge accent based on view angle.');
-    slider(rAtmos, 'Fresnel Intensity', 0, 2.0, 0.01, atmosState.fresnelIntensity, (v) => {
-      atmosState.fresnelIntensity = v;
-      applyFresnel();
-    }, () => {}, 'Fresnel intensity.');
-    slider(rAtmos, 'Fresnel Power', 0.5, 6.0, 0.1, atmosState.fresnelPower, (v) => {
-      atmosState.fresnelPower = v;
-      applyFresnel();
-    }, () => {}, 'Fresnel power exponent.');
-    colorPicker(rAtmos, 'Fresnel Color', atmosState.fresnelColor, (hex) => {
-      atmosState.fresnelColor = hex;
-      applyFresnel();
-    }, () => {}, 'Fresnel color.');
-    // Blade visibility controls (for "fire sword" / "sword of light")
-    checkbox(rAtmos, 'Blade Invisible', atmosState.bladeInvisible, (v) => {
-      atmosState.bladeInvisible = v;
-      applyBladeVisibility();
-    }, () => {}, 'Hide blade surface but keep effects like aura, glow, mist.');
-    checkbox(rAtmos, 'Occlude When Invisible', atmosState.occludeInvisible, (v) => {
-      atmosState.occludeInvisible = v;
-      applyBladeVisibility();
-    }, () => {}, 'When enabled, hidden blade still writes depth (occludes).');
+    attachRenderAtmosPanel({
+      section: rAtmos,
+      render: render as any,
+      atmosState: atmosState as any,
+      applyEnvMap,
+      applyEnvPreset: applyEnvPreset as any,
+      applyFresnel,
+      applyBladeVisibility,
+      registry,
+      checkbox,
+      select,
+      slider,
+      colorPicker,
+      textRow,
+      rerender
+    });
 
     // FX: Inner Glow (pulsing)
     checkbox(rFX, 'Inner Glow', fxState.innerGlow.enabled, (v) => {

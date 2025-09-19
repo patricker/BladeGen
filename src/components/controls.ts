@@ -48,6 +48,8 @@ type RenderHooks = {
   setPostFXEnabled?: (enabled: boolean) => void;
   supportedAAModes?: Array<'none'|'fxaa'|'smaa'|'msaa'>;
   getAAMode?: () => 'none'|'fxaa'|'smaa'|'msaa';
+  setAutoSpinEnabled?: (enabled: boolean) => void;
+  getAutoSpinEnabled?: () => boolean;
 };
 
 type ControlType = 'slider' | 'select' | 'checkbox' | 'color' | 'text';
@@ -752,6 +754,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   let renderVariantList = () => {};
   let syncLookDropdown = () => {};
   let applyVisualOverrides = (_entry: PresetEntry) => { resetStateOnly(); };
+  let autoSpinCheckbox: HTMLInputElement | null = null;
   const applyMaterialStateToRenderer = (part: Part, state: MatExt) => {
     if (!render) return;
     const col = parseInt((state.color || '#ffffff').replace('#','0x'));
@@ -956,6 +959,30 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   const btnSave = document.createElement('button');
   btnSave.textContent = 'Save Preset';
   toolbar.appendChild(btnSave);
+
+  if (render?.setAutoSpinEnabled && render.getAutoSpinEnabled) {
+    const autoSpinWrap = document.createElement('label');
+    autoSpinWrap.style.display = 'flex';
+    autoSpinWrap.style.alignItems = 'center';
+    autoSpinWrap.style.gap = '4px';
+    autoSpinWrap.style.marginLeft = '12px';
+    autoSpinWrap.title = 'Toggle automatic turntable spin';
+
+    autoSpinCheckbox = document.createElement('input');
+    autoSpinCheckbox.type = 'checkbox';
+    autoSpinCheckbox.checked = !!render.getAutoSpinEnabled();
+    autoSpinCheckbox.setAttribute('aria-label', 'Auto Spin');
+    autoSpinCheckbox.addEventListener('change', () => {
+      render.setAutoSpinEnabled?.(autoSpinCheckbox!.checked);
+    });
+
+    const autoSpinLabel = document.createElement('span');
+    autoSpinLabel.textContent = 'Auto Spin';
+
+    autoSpinWrap.appendChild(autoSpinCheckbox);
+    autoSpinWrap.appendChild(autoSpinLabel);
+    toolbar.appendChild(autoSpinWrap);
+  }
 
   const btnRandom = document.createElement('button');
   btnRandom.textContent = 'Randomize (full)';
@@ -1208,6 +1235,12 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     refreshInputs(registry, state);
     syncEngravingControls();
     if (render) {
+      if (autoSpinCheckbox && render.getAutoSpinEnabled) {
+        const spin = render.getAutoSpinEnabled();
+        if (typeof spin === 'boolean') {
+          autoSpinCheckbox.checked = spin;
+        }
+      }
       syncRenderControls();
       syncMaterialInputs(matPart);
       renderVariantList();
@@ -1215,6 +1248,24 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   };
 
   if (render) {
+    const renderResetRow = document.createElement('div');
+    renderResetRow.className = 'row full';
+    renderResetRow.style.marginBottom = '8px';
+    const renderResetBtn = document.createElement('button');
+    renderResetBtn.type = 'button';
+    renderResetBtn.textContent = 'Reset Render';
+    renderResetBtn.addEventListener('click', () => {
+      resetRenderAndFx();
+      syncUi();
+    });
+    const resetHint = document.createElement('span');
+    resetHint.style.marginLeft = '8px';
+    resetHint.style.fontSize = '12px';
+    resetHint.textContent = 'Reload render defaults & effects';
+    renderResetRow.appendChild(renderResetBtn);
+    renderResetRow.appendChild(resetHint);
+    sections.Render.appendChild(renderResetRow);
+
     // Subsections for Render tab
     const rQual = addSection(sections.Render, 'Render: Quality & Exposure');
     const rBg = addSection(sections.Render, 'Render: Background');
@@ -1758,6 +1809,9 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     });
 
     renderVariantList();
+
+    // Apply defaults on first load so launch baseline matches desired render settings (FXAA, fog, etc.)
+    try { resetRenderAndFx(); } catch {}
 
     // Quality & AA
     checkbox(rQual, 'Post FX Pipeline', rstate.postFxEnabled, (v) => {

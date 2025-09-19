@@ -34,12 +34,50 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
   const bootstrap = createBootstrap(canvas);
   const { renderer, scene, camera, controls, pmrem, envTexture, background, ground, groundClearance } = bootstrap;
 
+  const autoSpinStorageKey = 'swordmaker.autoSpinEnabled';
+  const readAutoSpinPreference = () => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const value = window.localStorage?.getItem(autoSpinStorageKey);
+      if (value === 'false') return false;
+      if (value === 'true') return true;
+    } catch {
+      // ignore storage access errors
+    }
+    return true;
+  };
+  const persistAutoSpinPreference = (enabled: boolean) => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage?.setItem(autoSpinStorageKey, enabled ? 'true' : 'false');
+    } catch {
+      // ignore storage access errors
+    }
+  };
+
+  let autoSpinEnabled = readAutoSpinPreference();
   // Control auto-rotation pause handling
   let isDragging = false;
-  let spinResumeAt = 0;
+  let spinResumeAt = autoSpinEnabled ? 0 : Number.POSITIVE_INFINITY;
   const resumeDelayMs = 1500;
   const nowMillis = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
-  const bumpResume = () => { spinResumeAt = nowMillis() + resumeDelayMs; };
+  const bumpResume = () => {
+    if (!autoSpinEnabled) {
+      spinResumeAt = Number.POSITIVE_INFINITY;
+      return;
+    }
+    spinResumeAt = nowMillis() + resumeDelayMs;
+  };
+  const setAutoSpinEnabled = (enabled: boolean) => {
+    autoSpinEnabled = !!enabled;
+    persistAutoSpinPreference(autoSpinEnabled);
+    if (autoSpinEnabled) {
+      spinResumeAt = nowMillis() + resumeDelayMs;
+    } else {
+      spinResumeAt = Number.POSITIVE_INFINITY;
+    }
+  };
+  const getAutoSpinEnabled = () => autoSpinEnabled;
   controls.addEventListener('start', () => { isDragging = true; });
   controls.addEventListener('change', () => { bumpResume(); });
   controls.addEventListener('end', () => { isDragging = false; bumpResume(); });
@@ -238,7 +276,7 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
 
   const beforeRender = () => {
     const dt = clock.getDelta();
-    const allowSpin = !isDragging && nowMillis() >= spinResumeAt;
+    const allowSpin = autoSpinEnabled && !isDragging && nowMillis() >= spinResumeAt;
     if (allowSpin) sword.group.rotation.y += dt * 0.25;
     sword.group.position.y = 0.0;
 
@@ -392,7 +430,11 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     applyBladeVisibility,
     setKeyLightAngles,
     setRimLightAngles,
-    setPostFXEnabled: pipeline.setPostFXEnabled
+    setPostFXEnabled: pipeline.setPostFXEnabled,
+    autoSpin: {
+      setEnabled: setAutoSpinEnabled,
+      getEnabled: getAutoSpinEnabled
+    }
   });
   (scene as any).__renderHooks = renderHooks;
 
@@ -403,6 +445,8 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     dbg.scene = scene;
     dbg.sword = sword;
     dbg.composer = post.composer;
+    dbg.setAutoSpinEnabled = setAutoSpinEnabled;
+    dbg.getAutoSpinEnabled = getAutoSpinEnabled;
     ((window as unknown) as Record<string, any>).__swordDebug = dbg;
   }
 

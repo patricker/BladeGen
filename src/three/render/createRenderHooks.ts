@@ -59,6 +59,8 @@ export type RenderHooks = {
   setPostFXEnabled: (enabled: boolean) => void
   supportedAAModes?: Array<'none'|'fxaa'|'smaa'|'msaa'>
   getAAMode?: () => 'none'|'fxaa'|'smaa'|'msaa'
+  setAutoSpinEnabled: (enabled: boolean) => void
+  getAutoSpinEnabled: () => boolean
 }
 
 export interface RenderHookFlags {
@@ -115,6 +117,7 @@ export interface RenderHookContext {
   setKeyLightAngles: (az: number, el: number) => void
   setRimLightAngles: (az: number, el: number) => void
   setPostFXEnabled: (enabled: boolean) => void
+  autoSpin: { setEnabled: (enabled: boolean) => void; getEnabled: () => boolean }
 }
 
 export function createRenderHooks(context: RenderHookContext): RenderHooks {
@@ -157,7 +160,8 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     applyBladeVisibility,
     setKeyLightAngles,
     setRimLightAngles,
-    setPostFXEnabled
+    setPostFXEnabled,
+    autoSpin
   } = context
 
   const desiredMsaaSamples = () => {
@@ -240,7 +244,18 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
 
   const renderHooks: RenderHooks = {
     setPartMaterial: (part, patch) => {
-      (materials as any)[part] = { ...(materials as any)[part], ...(patch || {}) }
+      let nextPatch = patch || {}
+      // Guard against anisotropy artifacts on geometry without tangents (e.g., blade)
+      if (part === 'blade') {
+        const geom: any = sword.bladeMesh?.geometry
+        const hasTangents = !!geom?.getAttribute?.('tangent')
+        if (!hasTangents && (nextPatch.anisotropy !== undefined || nextPatch.anisotropyRotation !== undefined)) {
+          nextPatch = { ...nextPatch }
+          delete (nextPatch as any).anisotropy
+          delete (nextPatch as any).anisotropyRotation
+        }
+      }
+      (materials as any)[part] = { ...(materials as any)[part], ...nextPatch }
       ;(scene as any).__materials = materials
       sword.setMaterials(materials)
       if (part === 'blade' && !bladeVisibility.visible) {
@@ -527,7 +542,11 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     },
     setPostFXEnabled: (enabled) => {
       setPostFXEnabled(enabled)
-    }
+    },
+    setAutoSpinEnabled: (enabled) => {
+      autoSpin.setEnabled(enabled)
+    },
+    getAutoSpinEnabled: () => autoSpin.getEnabled()
   }
 
   const supportedModes: Array<'none'|'fxaa'|'smaa'|'msaa'> = msaa.supported

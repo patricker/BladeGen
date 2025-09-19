@@ -139,6 +139,9 @@ export class SwordGenerator {
   private applyMaterialPart(obj: THREE.Object3D | null | undefined, part: MaterialPart) {
     if (!obj) return;
     const mat = this.makeMaterial(part);
+    if (part === 'blade') {
+      (mat as any).side = THREE.DoubleSide as any;
+    }
     obj.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if ((mesh as any).isMesh) mesh.material = mat;

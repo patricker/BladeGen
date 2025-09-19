@@ -310,6 +310,44 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
   geo.setIndex(indices)
   geo.computeVertexNormals()
+  // Provide a stable tangent frame for anisotropy without requiring UVs.
+  // Build per-vertex tangents by projecting the +Y axis onto the local tangent plane
+  // defined by the vertex normal. This yields a consistent along-blade direction.
+  try {
+    const normals = geo.getAttribute('normal') as THREE.BufferAttribute
+    if (normals && normals.count > 0) {
+      const count = normals.count
+      const tangents = new Float32Array(count * 4)
+      for (let i = 0; i < count; i++) {
+        const nx = normals.getX(i)
+        const ny = normals.getY(i)
+        const nz = normals.getZ(i)
+        // Base direction roughly along blade length (+Y)
+        let tx = 0, ty = 1, tz = 0
+        // Project base direction onto plane orthogonal to normal: t = v - n*(n·v)
+        const dot = nx * tx + ny * ty + nz * tz
+        let px = tx - nx * dot
+        let py = ty - ny * dot
+        let pz = tz - nz * dot
+        let len = Math.hypot(px, py, pz)
+        if (len < 1e-6) {
+          // Fallback: project +X if +Y was nearly parallel to the normal
+          tx = 1; ty = 0; tz = 0
+          const dot2 = nx * tx + ny * ty + nz * tz
+          px = tx - nx * dot2
+          py = ty - ny * dot2
+          pz = tz - nz * dot2
+          len = Math.hypot(px, py, pz)
+        }
+        if (len > 1e-12) { px /= len; py /= len; pz /= len }
+        tangents[i * 4 + 0] = px
+        tangents[i * 4 + 1] = py
+        tangents[i * 4 + 2] = pz
+        tangents[i * 4 + 3] = 1
+      }
+      geo.setAttribute('tangent', new THREE.BufferAttribute(tangents, 4))
+    }
+  } catch {}
   geo.computeBoundingBox()
   return geo
 }

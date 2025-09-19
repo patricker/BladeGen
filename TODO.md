@@ -99,3 +99,46 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [ ] Add “Rapier / Swept-hilt” preset using narrow diamond cross-section and basket/swept guard styles.
 - [x] Document what’s blocking greatsword/Zweihänder presets (needs side rings/parrying lugs, extended ricasso support) and plan required knobs.
 - [x] Outline fantasy variants we’re close to (flamberge with `waviness`, rune-etched blade using engravings) vs. ones blocked by tech (energy blades, segmented whips) in docs.
+
+---
+
+## Cleanup / Refactor (FX & UI)
+
+- Replace renderer._dprCap usage with a proper API
+  - Add `getDPRCap()` to `RenderHooks` and have `main.ts` read from it.
+  - Keep `setDPRCap()` as the single setter; avoid reaching into renderer internals.
+- Centralize hex color parsing
+  - Standardize a small `hexToInt(hex: string): number` helper and use it consistently across controls to avoid repeated inline conversions.
+- Extract quality/AA presets into a config module
+  - Move `QUALITY_PRESETS` and the render baseline into a typed module for reuse and unit testing.
+- Consider splitting the monolithic `controls.ts`
+  - Break into smaller modules: `registry`, `renderPanel`, `modelPanel`, `presets`, `exportImport`.
+- EnvMap PMREM lifecycle review
+  - Current env flow disposes the source textures and PMREM generator; consider explicit disposal of the PMREM render target if memory growth appears when flipping environments frequently.
+- Anisotropy guards for non‑blade parts (optional)
+  - If artifacts appear on guard/pommel on some GPUs, extend the guard used for the blade, or synthesize tangents for those meshes where feasible.
+- Stronger typing for material patches
+  - Replace `any` in `setPartMaterial` patch parameter with a `MaterialPatch` type to catch typos and ensure compile‑time safety.
+- Documentation updates
+  - Note blade tangent generation (enables anisotropy), Auto Spin persistence (`swordmaker.autoSpinEnabled`), and Reset Render baseline.
+
+## Tests to Add
+
+- Unit: Anisotropy guard behavior
+  - Verify anisotropy keys are stripped for the blade when tangents are missing; preserved when present.
+- Unit: Tangent synthesis on blade geometry
+  - Ensure `tangent` attribute exists, normalized, and orthogonal to normals.
+- Unit: Env intensity scaling
+  - Confirm `setEnvIntensity` scales from a stored base and is idempotent.
+- Unit: Material highlight store/restore
+  - Ensure emissive color/intensity are stored and restored properly.
+- Unit: Reset render idempotence
+  - Calling reset twice yields the same state (mock RenderHooks setters).
+- E2E: Preset keeps blade colorful (no B/W)
+  - Selecting Katana/Arming preserves blade anisotropy with tangents present; no harsh B/W blade.
+- E2E: Auto Spin persistence across reloads
+  - Toolbar Auto Spin persists via localStorage.
+- E2E: Reset Render baseline
+  - After tweaks, “Reset Render” returns to defaults (FXAA, fog density, etc.).
+- E2E: Quality preset propagation
+  - Quality dropdown updates AA mode and DPR cap accordingly.

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeQualityPresets, type QualityPreset } from './renderConfig';
 import { SwordGenerator, SwordParams, defaultSwordParams, buildBladeOutlinePoints, bladeOutlineToSVG } from '../three/SwordGenerator';
 import { createMaterial } from '../three/sword/materials';
 import { TextureCache } from '../three/sword/textures';
@@ -757,7 +758,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   let autoSpinCheckbox: HTMLInputElement | null = null;
   const applyMaterialStateToRenderer = (part: Part, state: MatExt) => {
     if (!render) return;
-    const col = parseInt((state.color || '#ffffff').replace('#','0x'));
+    const col = hexToInt(state.color || '#ffffff');
     render.setPartColor(part, col);
     render.setPartMetalness(part, state.metalness);
     render.setPartRoughness(part, state.roughness);
@@ -1354,17 +1355,9 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       }
     };
 
-    const lowAa: 'none'|'fxaa'|'smaa'|'msaa' = supportedAAModes.includes('none') ? 'none' : supportedAAModes[0];
-    const mediumAa: 'none'|'fxaa'|'smaa'|'msaa' = supportedAAModes.includes('fxaa') ? 'fxaa' : supportedAAModes[0];
-    const highAa: 'none'|'fxaa'|'smaa'|'msaa' = mediumAa;
+    const QUALITY_PRESETS = makeQualityPresets(supportedAAModes);
 
-    const QUALITY_PRESETS: Record<'Low' | 'Medium' | 'High', { aa: 'none'|'fxaa'|'smaa'|'msaa'; shadow: 1024|2048|4096; bloom: boolean; outline: boolean; dpr: number; shadowBias?: number }> = {
-      Low: { aa: lowAa, shadow: 1024, bloom: false, outline: false, dpr: 1.0, shadowBias: -0.0005 },
-      Medium: { aa: mediumAa, shadow: 2048, bloom: false, outline: false, dpr: 1.5, shadowBias: -0.0005 },
-      High: { aa: highAa, shadow: 2048, bloom: false, outline: false, dpr: 2.0, shadowBias: -0.0005 }
-    };
-
-    const applyQualityPreset = (preset: 'Low'|'Medium'|'High', emitUi = false) => {
+    const applyQualityPreset = (preset: QualityPreset, emitUi = false) => {
       const cfg = QUALITY_PRESETS[preset];
       if (!cfg) return;
       render.setAAMode(cfg.aa);
@@ -1432,12 +1425,12 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       applyNumeric('rimEl', (v) => { rstate.rimEl = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); });
       if (overrides.rimColor !== undefined) {
         rstate.rimColor = overrides.rimColor;
-        render.setRimColor(parseInt(rstate.rimColor.replace('#', '0x')));
+        render.setRimColor(hexToInt(rstate.rimColor));
       }
       applyNumeric('envMapIntensity', (v) => { rstate.envMapIntensity = v; render.setEnvIntensity(v); });
       if (overrides.bgColor !== undefined) {
         rstate.bgColor = overrides.bgColor;
-        render.setBackgroundColor(parseInt(rstate.bgColor.replace('#', '0x')));
+        render.setBackgroundColor(hexToInt(rstate.bgColor));
       }
       applyNumeric('bgBrightness', (v) => { rstate.bgBrightness = v; render.setBackgroundBrightness(v); });
 
@@ -1458,14 +1451,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         postState.outlineEnabled,
         postState.outlineStrength,
         postState.outlineThickness,
-        parseInt(postState.outlineColor.replace('#', '0x'))
+        hexToInt(postState.outlineColor)
       );
-      render.setInkOutline(postState.inkEnabled, postState.inkThickness, parseInt(postState.inkColor.replace('#', '0x')));
+      render.setInkOutline(postState.inkEnabled, postState.inkThickness, hexToInt(postState.inkColor));
       render.setVignette(postState.vignetteEnabled, postState.vignetteStrength, postState.vignetteSoftness);
       render.setBladeGradientWear(
         postState.bladeGradientEnabled,
-        parseInt(postState.gradBase.replace('#', '0x')),
-        parseInt(postState.gradEdge.replace('#', '0x')),
+        hexToInt(postState.gradBase),
+        hexToInt(postState.gradEdge),
         postState.gradFade,
         postState.gradWear
       );
@@ -1526,11 +1519,11 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       render.setKeyAngles(rstate.keyAz, rstate.keyEl);
       render.setRimIntensity(rstate.rimIntensity);
       render.setRimAngles(rstate.rimAz, rstate.rimEl);
-      render.setRimColor(parseInt(rstate.rimColor.replace('#', '0x')));
+      render.setRimColor(hexToInt(rstate.rimColor));
       render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius);
       render.setEnvIntensity(rstate.envMapIntensity);
       render.setBackgroundBrightness(rstate.bgBrightness);
-      render.setBackgroundColor(parseInt(rstate.bgColor.replace('#', '0x')));
+      render.setBackgroundColor(hexToInt(rstate.bgColor));
       render.setAAMode?.(rstate.aaMode);
       render.setShadowMapSize?.(rstate.shadowMapSize);
       (render as any).setToneMapping?.(rstate.toneMapping);
@@ -1544,14 +1537,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         postState.outlineEnabled,
         postState.outlineStrength,
         postState.outlineThickness,
-        parseInt(postState.outlineColor.replace('#', '0x'))
+        hexToInt(postState.outlineColor)
       );
-      render.setInkOutline(postState.inkEnabled, postState.inkThickness, parseInt(postState.inkColor.replace('#', '0x')));
+      render.setInkOutline(postState.inkEnabled, postState.inkThickness, hexToInt(postState.inkColor));
       render.setVignette(postState.vignetteEnabled, postState.vignetteStrength, postState.vignetteSoftness);
       render.setBladeGradientWear(
         postState.bladeGradientEnabled,
-        parseInt(postState.gradBase.replace('#', '0x')),
-        parseInt(postState.gradEdge.replace('#', '0x')),
+        hexToInt(postState.gradBase),
+        hexToInt(postState.gradEdge),
         postState.gradFade,
         postState.gradWear
       );
@@ -1577,7 +1570,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     matPart = 'blade';
     const rm = rMatSec || sections.Render;
     select(rm, 'Material Part', [...matPartOpts] as unknown as string[], 'blade', (v) => { matPart = v as Part; syncMaterialInputs(matPart); }, () => {});
-    colorPicker(rm, 'Base Color', matState[matPart].color, (hex) => { matState[matPart].color = hex; const n = parseInt(hex.replace('#','0x')); render.setPartColor(matPart, n); }, () => {}, 'Albedo color.');
+    colorPicker(rm, 'Base Color', matState[matPart].color, (hex) => { matState[matPart].color = hex; const n = hexToInt(hex); render.setPartColor(matPart, n); }, () => {}, 'Albedo color.');
     slider(rm, 'Metalness', 0, 1, 0.01, matState[matPart].metalness, (v) => { matState[matPart].metalness = v; render.setPartMetalness(matPart, v); }, () => {}, 'PBR metalness.');
     slider(rm, 'Roughness', 0, 1, 0.01, matState[matPart].roughness, (v) => { matState[matPart].roughness = v; render.setPartRoughness(matPart, v); }, () => {}, 'PBR roughness.');
     slider(rm, 'Clearcoat', 0, 1, 0.01, matState[matPart].clearcoat, (v) => { matState[matPart].clearcoat = v; render.setPartClearcoat(matPart, v); }, () => {}, 'Clearcoat layer (if supported).');
@@ -1637,7 +1630,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     resetBtn.addEventListener('click', () => {
       const def = JSON.parse(JSON.stringify(matDefaults[matPart])) as MatExt;
       matState[matPart] = def;
-      const c = parseInt(def.color.replace('#','0x'));
+      const c = hexToInt(def.color);
       render.setPartColor(matPart, c);
       render.setPartMetalness(matPart, def.metalness);
       render.setPartRoughness(matPart, def.roughness);
@@ -1842,7 +1835,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(rQual, 'Env Intensity', 0, 3.0, 0.01, rstate.envMapIntensity, (v) => { rstate.envMapIntensity = v; render.setEnvIntensity(v); }, () => {}, 'Environment map intensity (reflections).');
 
     // Background
-    colorPicker(rBg, 'Background Color', rstate.bgColor, (hex) => { rstate.bgColor = hex; const n = parseInt(hex.replace('#','0x')); render.setBackgroundColor(n); }, () => {}, 'Renderer clear color.');
+    colorPicker(rBg, 'Background Color', rstate.bgColor, (hex) => { rstate.bgColor = hex; const n = hexToInt(hex); render.setBackgroundColor(n); }, () => {}, 'Renderer clear color.');
     slider(rBg, 'Background Bright', 0, 1.0, 0.01, rstate.bgBrightness, (v) => { rstate.bgBrightness = v; render.setBackgroundBrightness(v); }, () => {}, 'Lighten/darken the background.');
 
     // Lights
@@ -1853,7 +1846,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(rLights, 'Rim Intensity', 0, 3.0, 0.01, rstate.rimIntensity, (v) => { rstate.rimIntensity = v; render.setRimIntensity(v); }, () => {}, 'Back/rim light intensity.');
     slider(rLights, 'Rim Azimuth', -180, 180, 1, rstate.rimAz, (v) => { rstate.rimAz = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light horizontal angle (deg).');
     slider(rLights, 'Rim Elevation', -10, 85, 1, rstate.rimEl, (v) => { rstate.rimEl = v; render.setRimAngles(rstate.rimAz, rstate.rimEl); }, () => {}, 'Rim light elevation (deg).');
-    colorPicker(rLights, 'Rim Color', rstate.rimColor, (hex) => { rstate.rimColor = hex; const n = parseInt(hex.replace('#','0x')); render.setRimColor(n); }, () => {}, 'Rim light color.');
+    colorPicker(rLights, 'Rim Color', rstate.rimColor, (hex) => { rstate.rimColor = hex; const n = hexToInt(hex); render.setRimColor(n); }, () => {}, 'Rim light color.');
 
     // Post-processing
     checkbox(rPost, 'Bloom Enabled', rstate.bloomEnabled, (v) => { rstate.bloomEnabled = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); refreshWarnings(); }, () => {}, 'Enable bloom post-process.');
@@ -1861,14 +1854,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     slider(rPost, 'Bloom Threshold', 0, 1.5, 0.01, rstate.bloomThreshold, (v) => { rstate.bloomThreshold = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom threshold.');
     slider(rPost, 'Bloom Radius', 0, 1.0, 0.01, rstate.bloomRadius, (v) => { rstate.bloomRadius = v; render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius); }, () => {}, 'Bloom radius.');
     // Outline
-    checkbox(rPost, 'Outline Enabled', postState.outlineEnabled, (v) => { postState.outlineEnabled = v; render.setOutline(v, postState.outlineStrength, postState.outlineThickness, parseInt(postState.outlineColor.replace('#','0x'))); refreshWarnings(); }, () => {}, 'Enable Outline pass.');
-    slider(rPost, 'Outline Strength', 0.0, 10.0, 0.1, postState.outlineStrength, (v) => { postState.outlineStrength = v; if (postState.outlineEnabled) render.setOutline(true, v, postState.outlineThickness, parseInt(postState.outlineColor.replace('#','0x'))); }, () => {}, 'OutlinePass edgeStrength.');
-    slider(rPost, 'Outline Thickness', 0.0, 4.0, 0.05, postState.outlineThickness, (v) => { postState.outlineThickness = v; if (postState.outlineEnabled) render.setOutline(true, postState.outlineStrength, v, parseInt(postState.outlineColor.replace('#','0x'))); }, () => {}, 'OutlinePass edgeThickness.');
-    colorPicker(rPost, 'Outline Color', postState.outlineColor, (hex) => { postState.outlineColor = hex; const n = parseInt(hex.replace('#','0x')); if (postState.outlineEnabled) render.setOutline(true, postState.outlineStrength, postState.outlineThickness, n); }, () => {}, 'Outline visible edge color.');
+    checkbox(rPost, 'Outline Enabled', postState.outlineEnabled, (v) => { postState.outlineEnabled = v; render.setOutline(v, postState.outlineStrength, postState.outlineThickness, hexToInt(postState.outlineColor)); refreshWarnings(); }, () => {}, 'Enable Outline pass.');
+    slider(rPost, 'Outline Strength', 0.0, 10.0, 0.1, postState.outlineStrength, (v) => { postState.outlineStrength = v; if (postState.outlineEnabled) render.setOutline(true, v, postState.outlineThickness, hexToInt(postState.outlineColor)); }, () => {}, 'OutlinePass edgeStrength.');
+    slider(rPost, 'Outline Thickness', 0.0, 4.0, 0.05, postState.outlineThickness, (v) => { postState.outlineThickness = v; if (postState.outlineEnabled) render.setOutline(true, postState.outlineStrength, v, hexToInt(postState.outlineColor)); }, () => {}, 'OutlinePass edgeThickness.');
+    colorPicker(rPost, 'Outline Color', postState.outlineColor, (hex) => { postState.outlineColor = hex; const n = hexToInt(hex); if (postState.outlineEnabled) render.setOutline(true, postState.outlineStrength, postState.outlineThickness, n); }, () => {}, 'Outline visible edge color.');
     // Ink outline (mesh based)
-    checkbox(rPost, 'Ink Outline', postState.inkEnabled, (v) => { postState.inkEnabled = v; render.setInkOutline(v, postState.inkThickness, parseInt(postState.inkColor.replace('#','0x'))); refreshWarnings(); }, () => {}, 'Back-face mesh outline.');
-    slider(rPost, 'Ink Thickness', 0, 0.2, 0.005, postState.inkThickness, (v) => { postState.inkThickness = v; if (postState.inkEnabled) render.setInkOutline(true, v, parseInt(postState.inkColor.replace('#','0x'))); }, () => {}, 'Scale factor for ink outline.');
-    colorPicker(rPost, 'Ink Color', postState.inkColor, (hex) => { postState.inkColor = hex; const n = parseInt(hex.replace('#','0x')); if (postState.inkEnabled) render.setInkOutline(true, postState.inkThickness, n); }, () => {}, 'Ink outline color.');
+    checkbox(rPost, 'Ink Outline', postState.inkEnabled, (v) => { postState.inkEnabled = v; render.setInkOutline(v, postState.inkThickness, hexToInt(postState.inkColor)); refreshWarnings(); }, () => {}, 'Back-face mesh outline.');
+    slider(rPost, 'Ink Thickness', 0, 0.2, 0.005, postState.inkThickness, (v) => { postState.inkThickness = v; if (postState.inkEnabled) render.setInkOutline(true, v, hexToInt(postState.inkColor)); }, () => {}, 'Scale factor for ink outline.');
+    colorPicker(rPost, 'Ink Color', postState.inkColor, (hex) => { postState.inkColor = hex; const n = hexToInt(hex); if (postState.inkEnabled) render.setInkOutline(true, postState.inkThickness, n); }, () => {}, 'Ink outline color.');
     // Vignette
     checkbox(rPost, 'Vignette', postState.vignetteEnabled, (v) => { postState.vignetteEnabled = v; render.setVignette(v, postState.vignetteStrength, postState.vignetteSoftness); refreshWarnings(); }, () => {}, 'Enable vignette shading.');
     slider(rPost, 'Vignette Strength', 0, 1.0, 0.01, postState.vignetteStrength, (v) => { postState.vignetteStrength = v; if (postState.vignetteEnabled) render.setVignette(true, v, postState.vignetteSoftness); }, () => {}, 'Strength of vignette.');
@@ -2966,14 +2959,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       }
       if (obj?.render && render) {
         const R = obj.render;
-        const col = typeof R.bgColor === 'string' ? parseInt(R.bgColor.replace('#','0x')) : undefined;
+        const col = typeof R.bgColor === 'string' ? hexToInt(R.bgColor) : undefined;
         if (typeof R.exposure === 'number') { rstate.exposure = R.exposure; render.setExposure(R.exposure); }
         if (typeof R.ambient === 'number') { rstate.ambient = R.ambient; render.setAmbient(R.ambient); }
         if (typeof R.keyIntensity === 'number') { rstate.keyIntensity = R.keyIntensity; render.setKeyIntensity(R.keyIntensity); }
         if (typeof R.keyAz === 'number' || typeof R.keyEl === 'number') { rstate.keyAz = R.keyAz ?? rstate.keyAz; rstate.keyEl = R.keyEl ?? rstate.keyEl; render.setKeyAngles(rstate.keyAz, rstate.keyEl); }
         if (typeof R.rimIntensity === 'number') { rstate.rimIntensity = R.rimIntensity; render.setRimIntensity(R.rimIntensity); }
         if (typeof R.rimAz === 'number' || typeof R.rimEl === 'number') { rstate.rimAz = R.rimAz ?? rstate.rimAz; rstate.rimEl = R.rimEl ?? rstate.rimEl; render.setRimAngles(rstate.rimAz, rstate.rimEl); }
-        if (typeof R.rimColor === 'string') { rstate.rimColor = R.rimColor; render.setRimColor(parseInt(R.rimColor.replace('#','0x'))); }
+        if (typeof R.rimColor === 'string') { rstate.rimColor = R.rimColor; render.setRimColor(hexToInt(R.rimColor)); }
         if (typeof R.bgBrightness === 'number') { rstate.bgBrightness = R.bgBrightness; render.setBackgroundBrightness(R.bgBrightness); }
         if (typeof col === 'number') { rstate.bgColor = R.bgColor; render.setBackgroundColor(col); }
         if (typeof R.bloomEnabled === 'boolean' || typeof R.bloomStrength === 'number' || typeof R.bloomThreshold === 'number' || typeof R.bloomRadius === 'number') {

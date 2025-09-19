@@ -17,7 +17,7 @@ let _fpsAccum = 0; let _fpsFrames = 0; let _fpsLast = performance.now();
 let disposed = false;
 function onResize() {
   if (disposed) return;
-  const cap = (renderer as any)._dprCap ?? 2;
+  const cap = (renderHooks as any).getDPRCap?.() ?? 2;
   const dpr = Math.min(window.devicePixelRatio || 1, cap);
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;

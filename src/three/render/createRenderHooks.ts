@@ -12,8 +12,41 @@ import { buildBladeGradientWearOverlay } from '../fx/overlays'
 import { makeValueNoiseTexture } from '../fx/noise'
 import { setPartBump, setPartClearcoat, setPartClearcoatRoughness, setPartColor, setPartMetalness, setPartRoughness } from './materialMutators'
 
+export type MaterialPatch = Partial<{
+  color: number
+  metalness: number
+  roughness: number
+  clearcoat: number
+  clearcoatRoughness: number
+  envMapIntensity: number
+  anisotropy: number
+  anisotropyRotation: number
+  emissiveColor: number | string
+  emissiveIntensity: number
+  transmission: number
+  ior: number
+  thickness: number
+  attenuationColor: number | string
+  attenuationDistance: number
+  sheen: number
+  sheenColor: number | string
+  iridescence: number
+  iridescenceIOR: number
+  iridescenceThicknessMin: number
+  iridescenceThicknessMax: number
+  map: string
+  normalMap: string
+  roughnessMap: string
+  metalnessMap: string
+  aoMap: string
+  bumpMap: string
+  displacementMap: string
+  alphaMap: string
+  clearcoatNormalMap: string
+}>
+
 export type RenderHooks = {
-  setPartMaterial: (part: 'blade'|'guard'|'handle'|'pommel', patch: any) => void
+  setPartMaterial: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', patch: MaterialPatch) => void
   setBladeVisible: (visible: boolean, occlude?: boolean) => void
   setExposure: (v: number) => void
   setToneMapping: (mode: 'None'|'Linear'|'Reinhard'|'Cineon'|'ACES') => void
@@ -51,6 +84,7 @@ export type RenderHooks = {
   setPartClearcoat: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => void
   setPartClearcoatRoughness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => void
   setDPRCap: (cap: number) => void
+  getDPRCap?: () => number
   setBladeGradientWear: (enabled: boolean, baseHex?: number, edgeHex?: number, edgeFade?: number, wear?: number) => void
   setPartBump: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => void
   setFresnel: (enabled: boolean, colorHex?: number, intensity?: number, power?: number) => void
@@ -163,6 +197,9 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     setPostFXEnabled,
     autoSpin
   } = context
+
+  // Keep a tracked DPR cap for external readers (e.g., resize logic)
+  let dprCap = 2
 
   const desiredMsaaSamples = () => {
     const { maxSamples } = msaa
@@ -470,9 +507,12 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
       })
     },
     setDPRCap: (cap) => {
-      (renderer as any)._dprCap = cap
+      dprCap = cap
+      // Back-compat shim in case any legacy code still reads this
+      ;(renderer as any)._dprCap = cap
       updateFXAA()
     },
+    getDPRCap: () => dprCap,
     setBladeGradientWear: (() => {
       let gwGroup: THREE.Group | null = null
       let gwLast: { enabled: boolean; base: number; edge: number; edgeFade: number; wear: number } | null = null

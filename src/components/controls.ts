@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { makeQualityPresets, type QualityPreset } from './renderConfig';
+import { createApplyQualityPreset } from './renderQuality';
+import { attachRenderQualityPanel } from './renderPanel';
+import { hexToInt } from '../utils/color';
 import { SwordGenerator, SwordParams, defaultSwordParams, buildBladeOutlinePoints, bladeOutlineToSVG } from '../three/SwordGenerator';
 import { createMaterial } from '../three/sword/materials';
 import { TextureCache } from '../three/sword/textures';
@@ -1280,7 +1283,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     rMatSec = rMat;
     rGradSec = rGrad;
 
-    const hexToInt = (hex: string) => parseInt(hex.replace('#', '0x'));
+    // hexToInt imported from ../utils/color
     const applyEnvMap = (url?: string | null, asBackground?: boolean) => {
       if (!render?.setEnvMap) return;
       const effectiveUrl = url === undefined ? atmosState.envUrl : (url || '');
@@ -1357,34 +1360,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
 
     const QUALITY_PRESETS = makeQualityPresets(supportedAAModes);
 
-    const applyQualityPreset = (preset: QualityPreset, emitUi = false) => {
-      const cfg = QUALITY_PRESETS[preset];
-      if (!cfg) return;
-      render.setAAMode(cfg.aa);
-      render.setShadowMapSize(cfg.shadow);
-      render.setBloom(cfg.bloom, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius);
-      render.setOutline(
-        cfg.outline,
-        postState.outlineStrength,
-        postState.outlineThickness,
-        parseInt(postState.outlineColor.replace('#', '0x'))
-      );
-      render.setDPRCap(cfg.dpr);
-      if (cfg.shadowBias !== undefined) render.setShadowBias(cfg.shadowBias);
-      rstate.aaMode = cfg.aa;
-      rstate.shadowMapSize = cfg.shadow;
-      rstate.qualityPreset = preset;
-      rstate.bloomEnabled = cfg.bloom;
-      postState.outlineEnabled = cfg.outline;
-      if (emitUi) {
-        registry.setValue('render-quality-exposure', 'AA Mode', cfg.aa);
-        registry.setValue('render-quality-exposure', 'Shadow Map', String(cfg.shadow));
-        registry.setValue('render-quality-exposure', 'Quality', preset);
-        registry.setValue('render-post', 'Bloom Enabled', cfg.bloom);
-        registry.setValue('render-post', 'Outline Enabled', cfg.outline);
-      }
-      refreshWarnings();
-    };
+    const applyQualityPreset = createApplyQualityPreset(render as any, rstate as any, postState as any, registry as any, refreshWarnings, supportedAAModes);
 
     const applyRenderOverrides = (overrides?: PresetRenderOverrides) => {
       if (!overrides) return;
@@ -1806,33 +1782,19 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     // Apply defaults on first load so launch baseline matches desired render settings (FXAA, fog, etc.)
     try { resetRenderAndFx(); } catch {}
 
-    // Quality & AA
-    checkbox(rQual, 'Post FX Pipeline', rstate.postFxEnabled, (v) => {
-      rstate.postFxEnabled = v;
-      render.setPostFXEnabled?.(v);
-      refreshWarnings();
-    }, () => {}, 'Disable to render directly without post-processing for a performance boost.');
-    select(
-      rQual,
-      'AA Mode',
+    attachRenderQualityPanel({
+      section: rQual,
+      render: render as any,
+      rstate: rstate as any,
+      postState: postState as any,
       supportedAAModes,
-      rstate.aaMode,
-      (v) => {
-        const next = v as 'none'|'fxaa'|'smaa'|'msaa'
-        rstate.aaMode = next
-        render.setAAMode(next)
-      },
-      () => {},
-      'Anti-aliasing mode. MSAA appears when WebGL2 multisampling is available.'
-    );
-    select(rQual, 'Quality', ['Low','Medium','High'], 'Medium', (v) => {
-      applyQualityPreset(v as 'Low'|'Medium'|'High', true);
-    }, () => {}, 'Quality preset (affects AA, shadows, DPR).');
-    select(rQual, 'Shadow Map', ['1024','2048','4096'], '2048', (v) => { const size = parseInt(v,10) as 1024|2048|4096; rstate.shadowMapSize = size; render.setShadowMapSize(size); }, () => {}, 'Shadow map resolution.');
-    slider(rQual, 'Shadow Bias', -0.01, 0.01, 0.0001, -0.0005, (v) => { render.setShadowBias(v); }, () => {}, 'Shadow acne/peter-panning tweak.');
-    select(rQual, 'Tone Mapping', ['ACES','Reinhard','Cineon','Linear','None'], 'ACES', (v) => { rstate.toneMapping = v as any; (render as any).setToneMapping?.(v as any); }, () => {}, 'Renderer tone mapping curve.');
-    slider(rQual, 'Exposure', 0.5, 2.0, 0.01, rstate.exposure, (v) => { rstate.exposure = v; render.setExposure(v); }, () => {} , 'Tone mapping exposure.');
-    slider(rQual, 'Env Intensity', 0, 3.0, 0.01, rstate.envMapIntensity, (v) => { rstate.envMapIntensity = v; render.setEnvIntensity(v); }, () => {}, 'Environment map intensity (reflections).');
+      applyQualityPreset,
+      refreshWarnings,
+      checkbox,
+      select,
+      slider,
+      rerender
+    });
 
     // Background
     colorPicker(rBg, 'Background Color', rstate.bgColor, (hex) => { rstate.bgColor = hex; const n = hexToInt(hex); render.setBackgroundColor(n); }, () => {}, 'Renderer clear color.');

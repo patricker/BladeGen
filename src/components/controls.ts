@@ -9,6 +9,7 @@ import { attachRenderAtmosPanel } from './renderAtmos';
 import { hexToInt } from '../utils/color';
 import { SwordGenerator, SwordParams, defaultSwordParams, buildBladeOutlinePoints, bladeOutlineToSVG } from '../three/SwordGenerator';
 import { createMaterial } from '../three/sword/materials';
+import { initHelp, attachHelp } from './help/HelpRegistry';
 import { TextureCache } from '../three/sword/textures';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
@@ -80,6 +81,14 @@ export class ControlRegistry {
     const labelSlug = slugify(label);
     const field = fieldOverride || `${section}.${labelSlug}`;
     row.dataset.field = field;
+    // Dev-only: collect all control ids for help coverage
+    try {
+      if ((import.meta as any)?.env?.DEV) {
+        const w = window as any;
+        w.__smkAllFields = w.__smkAllFields || new Set();
+        w.__smkAllFields.add(field);
+      }
+    } catch {}
     const handle: ControlHandle = { field, row, section, label: labelSlug, type, setValue };
     this.controls.set(field, handle);
     this.bySectionLabel.set(`${section}:${labelSlug}`, handle);
@@ -190,6 +199,26 @@ function slugify(text: string) {
 }
 
 export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: SwordParams, render?: RenderHooks) {
+  // Initialize contextual help wiring with 3D highlighter hookup
+  initHelp({ highlighter: (parts) => {
+    const part = (parts && parts[0]) as any;
+    try { sword.setHighlight(part ?? null); } catch {}
+  }});
+  // Lazy-load Help Panel on first use; set up lightweight shortcuts that import on demand
+  let helpPanelLoaded = false;
+  let helpPanelInitPromise: Promise<any> | null = null;
+  const loadHelpPanel = async () => {
+    if (helpPanelInitPromise) return helpPanelInitPromise;
+    helpPanelInitPromise = import('./help/HelpPanel').then((mod) => {
+      mod.initHelpPanel({ highlighter: (parts?: string[] | null) => {
+        const part = (parts && (parts[0] as any)) as any;
+        try { sword.setHighlight(part ?? null); } catch {}
+      }});
+      helpPanelLoaded = true;
+      return mod;
+    });
+    return helpPanelInitPromise;
+  };
   const registry = new ControlRegistry();
   const previousRegistry = activeRegistry;
   activeRegistry = registry;
@@ -967,6 +996,13 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   const btnSave = document.createElement('button');
   btnSave.textContent = 'Save Preset';
   toolbar.appendChild(btnSave);
+
+  const btnHelp = document.createElement('button');
+  btnHelp.textContent = 'Help';
+  btnHelp.title = 'Open Help (Cmd/Ctrl+/)';
+  btnHelp.style.marginLeft = '8px';
+  btnHelp.addEventListener('click', async () => { try { const mod = await loadHelpPanel(); mod.openHelpPanel(); } catch {} });
+  toolbar.appendChild(btnHelp);
 
   if (render?.setAutoSpinEnabled && render.getAutoSpinEnabled) {
     const autoSpinWrap = document.createElement('label');
@@ -3022,6 +3058,9 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
 
   syncUi();
   rerender();
+  // Handle deep links like #help=blade.curvature
+  try { handleHelpHash(); } catch {}
+  try { window.addEventListener('hashchange', () => handleHelpHash()); } catch {}
   activeRegistry = previousRegistry;
 }
 
@@ -3134,13 +3173,13 @@ function slider(
   row.dataset.defaultValue = String(value);
   const lab = document.createElement('label');
   lab.textContent = label;
+  let hi: HTMLElement | undefined;
   if (tooltip) {
-    lab.title = tooltip + ' — Double‑click label to reset';
-    const hi = document.createElement('span');
-    hi.className = 'help-icon';
-    hi.textContent = '?';
-    hi.title = tooltip;
-    lab.appendChild(hi);
+    const icon = document.createElement('span');
+    icon.className = 'help-icon';
+    icon.textContent = '?';
+    hi = icon;
+    lab.appendChild(icon);
   }
   lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const range = document.createElement('input');
@@ -3186,6 +3225,8 @@ function slider(
   });
 
   const field = registry.registerControl(parent, row, label, 'slider', (val) => commit(val, false), fieldOverride);
+  // Attach contextual help (micro‑tooltip + popover on '?')
+  attachHelp(row, lab, hi, tooltip ? tooltip + ' — Double‑click label to reset' : undefined);
   row.appendChild(lab);
   row.appendChild(range);
   row.appendChild(num);
@@ -3210,13 +3251,13 @@ function select(
   row.dataset.defaultValue = String(value);
   const lab = document.createElement('label');
   lab.textContent = label;
+  let hi: HTMLElement | undefined;
   if (tooltip) {
-    lab.title = tooltip + ' — Double‑click label to reset';
-    const hi = document.createElement('span');
-    hi.className = 'help-icon';
-    hi.textContent = '?';
-    hi.title = tooltip;
-    lab.appendChild(hi);
+    const icon = document.createElement('span');
+    icon.className = 'help-icon';
+    icon.textContent = '?';
+    hi = icon;
+    lab.appendChild(icon);
   }
   lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const sel = document.createElement('select');
@@ -3241,6 +3282,7 @@ function select(
   };
 
   const field = registry.registerControl(parent, row, label, 'select', setValue, fieldOverride);
+  attachHelp(row, lab, hi, tooltip ? tooltip + ' — Double‑click label to reset' : undefined);
   row.appendChild(lab);
   row.appendChild(sel);
   parent.appendChild(row);
@@ -3263,13 +3305,13 @@ function checkbox(
   row.dataset.defaultValue = String(!!value);
   const lab = document.createElement('label');
   lab.textContent = label;
+  let hi: HTMLElement | undefined;
   if (tooltip) {
-    lab.title = tooltip + ' — Double‑click label to reset';
-    const hi = document.createElement('span');
-    hi.className = 'help-icon';
-    hi.textContent = '?';
-    hi.title = tooltip;
-    lab.appendChild(hi);
+    const icon = document.createElement('span');
+    icon.className = 'help-icon';
+    icon.textContent = '?';
+    hi = icon;
+    lab.appendChild(icon);
   }
   lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const input = document.createElement('input');
@@ -3282,6 +3324,7 @@ function checkbox(
   const field = registry.registerControl(parent, row, label, 'checkbox', (val) => {
     input.checked = !!val;
   }, fieldOverride);
+  attachHelp(row, lab, hi, tooltip ? tooltip + ' — Double‑click label to reset' : undefined);
   row.appendChild(lab);
   const span = document.createElement('span');
   span.appendChild(input);
@@ -3316,13 +3359,13 @@ function colorPicker(
   row.dataset.defaultValue = initial;
   const lab = document.createElement('label');
   lab.textContent = label;
+  let hi: HTMLElement | undefined;
   if (tooltip) {
-    lab.title = tooltip + ' — Double‑click label to reset';
-    const hi = document.createElement('span');
-    hi.className = 'help-icon';
-    hi.textContent = '?';
-    hi.title = tooltip;
-    lab.appendChild(hi);
+    const icon = document.createElement('span');
+    icon.className = 'help-icon';
+    icon.textContent = '?';
+    hi = icon;
+    lab.appendChild(icon);
   }
   lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const input = document.createElement('input');
@@ -3336,6 +3379,7 @@ function colorPicker(
   const field = registry.registerControl(parent, row, label, 'color', (val) => {
     input.value = normalize(val);
   }, fieldOverride);
+  attachHelp(row, lab, hi, tooltip ? tooltip + ' — Double‑click label to reset' : undefined);
   row.appendChild(lab);
   const span = document.createElement('span');
   span.appendChild(input);
@@ -3359,7 +3403,8 @@ function textRow(
   row.dataset.defaultValue = value || '';
   const lab = document.createElement('label');
   lab.textContent = label;
-  if (tooltip) lab.title = tooltip + ' — Double‑click label to reset';
+  // Attach micro‑tooltip even for text rows (no '?' icon)
+  attachHelp(row, lab, null, tooltip ? tooltip + ' — Double‑click label to reset' : undefined);
   lab.addEventListener('dblclick', (e) => { if (!(e as MouseEvent).altKey) resetRow(row); });
   const input = document.createElement('input');
   input.type = 'text';
@@ -4046,3 +4091,15 @@ function presetSabre(): SwordParams {
 
   return p;
 }
+  // Keyboard shortcuts (lazy import): Cmd/Ctrl+/ opens panel, Cmd/Ctrl+K opens search
+  try {
+    window.addEventListener('keydown', async (e) => {
+      const meta = (e.ctrlKey || e.metaKey);
+      if (meta && (e.key === '/' || e.code === 'Slash')) { e.preventDefault(); const mod = await loadHelpPanel(); mod.openHelpPanel(); }
+      if (meta && (e.key?.toLowerCase?.() === 'k')) { e.preventDefault(); const mod = await loadHelpPanel(); mod.openHelpSearch(); }
+    });
+  } catch {}
+  // Deep link handler for #help=<id>
+  const hasHelpHash = () => { try { return /(?:^|&)help=([^&]+)/.test((location.hash || '').slice(1)); } catch { return false } };
+  if (hasHelpHash()) { try { loadHelpPanel().then((mod) => mod.handleHelpHash()); } catch {} }
+  try { window.addEventListener('hashchange', () => { if (hasHelpHash()) loadHelpPanel().then((mod) => mod.handleHelpHash()); }); } catch {}

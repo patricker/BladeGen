@@ -27,6 +27,13 @@ Parametric sword generator and renderer for the web.
 - Exports: `.glb` (GLTF), `.obj`, `.stl`, and SVG blueprint
 - Built-in historical & fantasy presets with curated material variants (exports via `KHR_materials_variants`)
 
+## In‑App Help
+
+- Micro-tooltips on every control label give a plain‑language summary.
+- Click the `?` icon to open a rich popover with details and related links.
+- Help Panel: press `Cmd/Ctrl+/` to open; `Cmd/Ctrl+K` to search topics.
+- Deep link any topic with `#help=<helpId>` (e.g., `#help=blade.curvature`).
+
 ### Included presets
 
 | Preset | Highlights |

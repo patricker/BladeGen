@@ -1,6 +1,6 @@
 # SwordMaker Roadmap (Phase 8+)
 
-Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knobs and UX).
+Reference specs: see `VISION.md` (goals), `uxplan.md` (in‑app help), and `KNOBS.md` (controls/parameters).
 
 ## Near‑Term Priorities
 - Distal taper + dynamics readouts: thicknessProfile along blade; compute PoB, CoP, inertia; show in UI/export.
@@ -39,7 +39,7 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 ## Materials & Export
 - [ ] glTF KHR_materials_variants and a simple Look switcher in UI.
 - [ ] Anisotropy direction UI and helper maps (beyond current fake direction).
- - [ ] Damascus blade look: procedural or texture‑driven maps; expose as a blade material preset.
+- [ ] Damascus blade look: procedural or texture‑driven maps; expose as a blade material preset.
 
 ## Accessories
 - [x] Scabbard generator (throat/locket/chape) matching blade profile + sword knot/tassel; simple rope curve with idle.
@@ -48,6 +48,73 @@ Reference specs: see newfeatures.md (Phase 8) and new2features.md (extended knob
 - [ ] Archetype‑first start screen (family presets grid).
 - [ ] Goal sliders (Cut↔Thrust, Agility↔Authority, Elegant↔Brutal) driving grouped knobs.
 - [ ] Progressive disclosure polish for advanced controls.
+
+## UX — In‑App Help & Docs
+
+Context: implement contextual help as described in uxplan.md. Ship in phases with minimal UI disruption and clear a11y.
+
+### Decisions (pick before Phase 1)
+- [ ] Tooltip/Popover: choose Native Popover API vs Floating UI vs Tippy.js (standardize across UI).
+- [ ] Search: choose MiniSearch vs Lunr.js for in‑memory index.
+- [ ] Guided tours: choose Shepherd.js vs Driver.js.
+
+### Phase 1 — Tooltips & Popovers
+- [x] Introduce HelpRegistry (in‑memory map `helpId → doc`) in `src/ui/help/` with `getDoc(id)`, `getSummary(id)`, `preload()`.
+- [x] Define doc front‑matter schema: `id`, `label`, `summary`, `details[]`, `parts[]`, `dependsOn[]`, `affects[]`, `related[]`, `warnings[]`, `tryThis[]` (authoring under `docs/help/controls/`).
+- [x] Author starter docs for 10–15 top controls (Blade length/width/curvature/fullers, Guard width/tilt, Handle wrap, Pommel shape). (Seeded 25+ topics.)
+- [x] Replace `title` attributes with micro‑tooltips (hover/focus) using chosen tech; 120‑char max, no jargon.
+- [x] Add `?` icon click to open rich popover: details bullets (≤6), related links, and “Try this” micro‑demo placeholder.
+- [x] Wire 3D highlight: on popover open/hover call `sword.setHighlight(parts)`; clear on close.
+- [x] A11y: tooltip and popover roles, `Esc` to dismiss, restore focus to trigger, keyboard access from labels. (Plus visible focus row flash.)
+- [x] Fallback: if `helpId` missing, show plain `title` tooltip (non‑blocking). (Also auto-add `?` icon when a doc exists.)
+
+### Phase 2 — Help Panel & Search
+- [x] Add `HelpPanel` (right slide‑out) toggled by header Help button and `Cmd/Ctrl+/`; render doc with summary/details and “Related” chips.
+- [x] Build docs index at build time; index id/title/summary/text to `public/help-index.json`; search uses it when available.
+- [x] Add command‑palette overlay (`Cmd/Ctrl+K`) for global search; arrow‑key nav; `Enter` opens doc and flashes the target control.
+- [x] Highlight query matches in results and in the panel body (inline span highlight).
+- [x] Deep links: support `#help=<helpId>` to open directly to a topic (and on hashchange).
+- [x] Synonyms: basic aliases (rib/blood groove → fuller) in search.
+
+### Phase 3 — Explain Mode (3D‑first)
+- [ ] Add Explain toggle (UI + hotkey `E`).
+- [ ] Add Three.js CSS2DRenderer overlay; anchor part labels (“Blade”, “Fuller”, “Edge”); clicking opens popover/panel.
+- [ ] Tag scene graph with sub‑parts (e.g., `blade.fuller`, `blade.edge`, `guard.quillon`) for precise highlights.
+
+### Phase 4 — Guided Tours / Task Walkthroughs
+- [ ] Implement short, skippable first‑run tour (4–6 steps: viewport, tabs, slider, export, Help); add “Replay Intro” in Help.
+- [ ] Add 2–4 task guides (e.g., Add a fuller; Make a leaf blade; Export to STL) launched from Help.
+
+### Authoring & Governance
+- [x] Doc lint script: validate required fields; enforce length limits (summary ≤120 chars; popover ≤6 bullets).
+- [x] Authoring guide in `docs/help/README.md` (tone, bullets, relations, images policy, i18n key).
+
+### Accessibility & Interaction
+- [ ] Tooltips: delay on hover; show on focus; dismiss on `Esc`/pointer out; don’t block arrow keys reaching inputs (WAI‑ARIA APG).
+- [ ] Popovers: non‑modal for info; modal‑like focus trap only if interactive; always restore focus to trigger on close.
+- [ ] Feature‑detect Native Popover API; minimal polyfill if required.
+- [ ] Explain labels: keyboard reachable or non‑interactive; don’t interfere with OrbitControls when not hovered.
+
+### Analytics & Quality Loop
+- [x] Instrument events: `help.tooltip_shown`, `help.popover_opened`, `help.panel_opened`, `help.search_query`, `help.search_result_opened`.
+- [ ] Collect “no‑result” searches and most‑opened topics to prioritize missing docs and UI simplifications.
+
+### Performance & Packaging
+- [x] Pre‑bundle MD → JSON at build time.
+- [x] Lazy‑load HelpPanel CSS/JS on first open.
+- [ ] Tree‑shake/lazy‑load optional libs (Floating UI/Tippy.js, mark.js, Shepherd/Driver, MiniSearch/Lunr).
+- [ ] Limit CSS2D labels; render only in Explain Mode; detach on exit.
+
+### Wiring & Integration
+- [x] Controls pass `helpId` (read `row.dataset.field`); register micro‑tooltips/popover triggers during `registerControl()`.
+- [x] Expose API to open HelpPanel programmatically by `helpId`.
+- [x] URL hash handler for `#help=<helpId>` deep‑linking.
+
+### Milestones (exit criteria)
+- [x] Phase 1: micro‑tooltips and popovers for the top 15 controls; 3D highlight works; a11y and fallback verified.
+- [x] Phase 2: HelpPanel + search + deep‑links + synonyms; keyboard flow validated.
+- [ ] Phase 3: Explain labels on ≥5 key parts; open correct topics; performance acceptable.
+- [ ] Phase 4: First‑run tour and ≥2 task guides; replayable from Help.
 
 ## Render & Performance
 - [x] MSAA path for WebGL2 (fallback to FXAA/SMAA; UI toggle).

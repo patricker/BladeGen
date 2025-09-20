@@ -1,0 +1,564 @@
+[
+  {
+    "id": "blade.base-width",
+    "label": "Base Width",
+    "summary": "Blade width at base; wider reads heavier, narrower quicker.",
+    "details": [
+      "Controls silhouette at the guard.",
+      "Pair with tip width and distal taper."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.tip-width"
+    ]
+  },
+  {
+    "id": "blade.blade-family",
+    "label": "Blade Family",
+    "summary": "Preset silhouette helpers: straight, flamberge, kris.",
+    "details": [
+      "Flamberge: wavy edges; Kris: centerline undulation.",
+      "Kris uses odd wave counts."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.kris-waves"
+    ]
+  },
+  {
+    "id": "blade.blade-thickness",
+    "label": "Blade Thickness",
+    "summary": "Thickness (Z) through the blade; affects stiffness and mass.",
+    "details": [
+      "Pair with taper % for realistic dynamics.",
+      "Left/Right thickness bias allows asymmetry."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.left-thickness",
+      "blade.right-thickness"
+    ]
+  },
+  {
+    "id": "blade.cross-section",
+    "label": "Cross Section",
+    "summary": "Transverse profile: flat, diamond, lenticular, hex, triangular, T-spine.",
+    "details": [
+      "Changes edge geometry and how light rolls.",
+      "Some sections suit certain eras/styles."
+    ],
+    "parts": [
+      "blade"
+    ]
+  },
+  {
+    "id": "blade.curvature",
+    "label": "Blade Curvature",
+    "summary": "Curves the blade into an arc. Higher = more curved.",
+    "details": [
+      "Positive arcs toward the edge; negative away.",
+      "Curvature interacts with fuller placement and tip style."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "tryThis": [
+      {
+        "label": "Animate curvature"
+      }
+    ]
+  },
+  {
+    "id": "blade.edge-bevel",
+    "label": "Edge Bevel",
+    "summary": "Bevels the edge versus the spine; higher thickens the spine/facets.",
+    "details": [
+      "0 = sharp thin spine, 1 = thick facets.",
+      "Changes how light sweeps across faces."
+    ],
+    "parts": [
+      "blade"
+    ]
+  },
+  {
+    "id": "blade.fuller-inset",
+    "label": "Fuller Inset",
+    "summary": "Groove depth inside thickness for carved fullers.",
+    "details": [
+      "Defaults to Fuller Depth if unset.",
+      "Too deep may weaken the spine on thin blades."
+    ],
+    "parts": [
+      "blade"
+    ]
+  },
+  {
+    "id": "blade.fuller-mode",
+    "label": "Fuller Mode",
+    "summary": "Overlay (visual ribbons) or carve (actual groove).",
+    "details": [
+      "Overlay is faster; carve reduces thickness.",
+      "Carved fullers interact with thickness/taper."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.fuller-profile",
+      "blade.fuller-width",
+      "blade.fuller-inset"
+    ]
+  },
+  {
+    "id": "blade.fuller-profile",
+    "label": "Fuller Profile",
+    "summary": "Groove shape: U, V, or flat-bottom.",
+    "details": [
+      "Profile affects highlights and depth feel."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "dependsOn": [
+      "blade.fuller-mode"
+    ]
+  },
+  {
+    "id": "blade.fuller-width",
+    "label": "Fuller Width",
+    "summary": "Groove width across a blade face; set per-carve or auto.",
+    "details": [
+      "Wider fullers lighten the blade visually.",
+      "Use per-side slots for multiple grooves."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.fuller-inset"
+    ],
+    "tryThis": [
+      {
+        "label": "Sweep width"
+      }
+    ]
+  },
+  {
+    "id": "blade.hollow-bias",
+    "label": "Hollow Bias",
+    "summary": "Offsets hollow grind toward edge or spine.",
+    "details": [
+      "Negative = toward edge; positive = toward spine."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "dependsOn": [
+      "blade.hollow-grind"
+    ]
+  },
+  {
+    "id": "blade.hollow-depth",
+    "label": "Hollow Depth",
+    "summary": "How deep the hollow grind cuts into the face.",
+    "details": [
+      "Higher = stronger concavity.",
+      "Works with Radius and Bias."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "dependsOn": [
+      "blade.hollow-grind"
+    ]
+  },
+  {
+    "id": "blade.hollow-grind",
+    "label": "Hollow Grind",
+    "summary": "Enable concave grind; tune radius/depth/bias.",
+    "details": [
+      "Smaller radius = deeper concavity.",
+      "Depth controls how far the hollow bites into the face."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.hollow-radius",
+      "blade.hollow-depth",
+      "blade.hollow-bias"
+    ]
+  },
+  {
+    "id": "blade.hollow-mix",
+    "label": "Hollow Mix",
+    "summary": "Blend between flat (0) and hollowed (1) faces.",
+    "details": [
+      "Increases concavity contribution to faces."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "dependsOn": [
+      "blade.hollow-grind"
+    ]
+  },
+  {
+    "id": "blade.hollow-radius",
+    "label": "Hollow Radius",
+    "summary": "Curvature radius for the hollow grind arc.",
+    "details": [
+      "Smaller radius curves more.",
+      "Pairs with depth for overall concavity."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "dependsOn": [
+      "blade.hollow-grind"
+    ]
+  },
+  {
+    "id": "blade.kris-waves",
+    "label": "Kris Waves",
+    "summary": "Number of centerline undulations for Kris blades.",
+    "details": [
+      "Use odd counts for traditional look."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "dependsOn": [
+      "blade.blade-family"
+    ]
+  },
+  {
+    "id": "blade.leaf-bulge",
+    "label": "Leaf Bulge",
+    "summary": "Adds a belly to the blade for leaf shapes.",
+    "details": [
+      "Increases width mid-blade, tapering toward the tip."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "dependsOn": [
+      "blade.tip-shape"
+    ]
+  },
+  {
+    "id": "blade.left-thickness",
+    "label": "Left Thickness",
+    "summary": "Z thickness along left edge (−X).",
+    "details": [
+      "Bias thickness for asymmetrical grinds.",
+      "Keep within structural limits."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.right-thickness"
+    ]
+  },
+  {
+    "id": "blade.length",
+    "label": "Blade Length",
+    "summary": "Overall blade length along Y; longer shifts balance forward.",
+    "details": [
+      "Sets span from guard to tip.",
+      "Impacts mass, center of mass, and point of balance."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "affects": [
+      "dynamics.balance"
+    ]
+  },
+  {
+    "id": "blade.right-thickness",
+    "label": "Right Thickness",
+    "summary": "Z thickness along right edge (+X).",
+    "details": [
+      "Mirror of Left Thickness.",
+      "Balance with bevel and cross-section."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.left-thickness"
+    ]
+  },
+  {
+    "id": "blade.sori-bias",
+    "label": "Sori Bias",
+    "summary": "Exponent bias for the selected sori curve.",
+    "details": [
+      "Fine-tunes where curvature concentrates."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "dependsOn": [
+      "blade.curvature",
+      "blade.sori-profile"
+    ]
+  },
+  {
+    "id": "blade.sori-profile",
+    "label": "Sori Profile",
+    "summary": "Curvature distribution: centered (torii), base (koshi), or tip (saki).",
+    "details": [
+      "Requires non-zero curvature.",
+      "Shapes where the arc is strongest."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "dependsOn": [
+      "blade.curvature"
+    ]
+  },
+  {
+    "id": "blade.taper-base",
+    "label": "Taper Base %",
+    "summary": "Thickness scale at base (100% = no change).",
+    "details": [
+      "Controls starting thickness near guard."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.taper-mid",
+      "blade.taper-tip"
+    ]
+  },
+  {
+    "id": "blade.taper-mid",
+    "label": "Taper Mid %",
+    "summary": "Thickness scale around mid-blade.",
+    "details": [
+      "Adjusts mass through the working region."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.taper-base",
+      "blade.taper-tip"
+    ]
+  },
+  {
+    "id": "blade.taper-tip",
+    "label": "Taper Tip %",
+    "summary": "Thickness scale at the tip.",
+    "details": [
+      "Lower values thin the tip."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.taper-base",
+      "blade.taper-mid"
+    ]
+  },
+  {
+    "id": "blade.tip-shape",
+    "label": "Tip Shape",
+    "summary": "Choose tip family: pointed, rounded, leaf, clip, tanto, spear, sheepsfoot.",
+    "details": [
+      "Alters the last portion of the outline.",
+      "Leaf unlocks Leaf Bulge control."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "related": [
+      "blade.leaf-bulge"
+    ]
+  },
+  {
+    "id": "blade.tip-width",
+    "label": "Tip Width",
+    "summary": "Width near the tip. Lower = finer point and less drag.",
+    "details": [
+      "Affects penetration and visual sharpness.",
+      "Keep reasonable vs base width to avoid stubby tips."
+    ],
+    "parts": [
+      "blade"
+    ],
+    "dependsOn": [
+      "blade.base-width"
+    ]
+  },
+  {
+    "id": "guard.blend-fillet",
+    "label": "Blend Fillet",
+    "summary": "Small bridge piece between blade and guard.",
+    "details": [
+      "Adds a smoother transition.",
+      "Use Fillet Style to pick shape."
+    ],
+    "parts": [
+      "guard"
+    ],
+    "related": [
+      "guard.fillet-style"
+    ]
+  },
+  {
+    "id": "guard.fillet-style",
+    "label": "Fillet Style",
+    "summary": "Shape of the bridge piece: box or smooth.",
+    "details": [
+      "Smooth transitions blend into the blade more organically."
+    ],
+    "parts": [
+      "guard"
+    ],
+    "dependsOn": [
+      "guard.blend-fillet"
+    ]
+  },
+  {
+    "id": "guard.style",
+    "label": "Guard Style",
+    "summary": "Choose guard family: bar, winged, claw, disk, knucklebow, swept, basket.",
+    "details": [
+      "Affects silhouette and period feel.",
+      "Some styles unlock extra options (basket rods/rings)."
+    ],
+    "parts": [
+      "guard"
+    ]
+  },
+  {
+    "id": "guard.tilt",
+    "label": "Guard Tilt",
+    "summary": "Rotates the guard around the blade axis (radians).",
+    "details": [
+      "Small negative tilts favor downward quillons.",
+      "Affects hand clearance and aesthetics."
+    ],
+    "parts": [
+      "guard"
+    ]
+  },
+  {
+    "id": "guard.width",
+    "label": "Guard Width",
+    "summary": "Crossguard span left–right for protection and balance.",
+    "details": [
+      "Match blade base width for classical looks.",
+      "Very wide guards can clip accessories."
+    ],
+    "parts": [
+      "guard"
+    ]
+  },
+  {
+    "id": "handle.wrap-depth",
+    "label": "Wrap Depth",
+    "summary": "Radial amplitude of the wrap pattern.",
+    "details": [
+      "Higher depth is more pronounced.",
+      "Balance with hand comfort and silhouette."
+    ],
+    "parts": [
+      "handle"
+    ],
+    "dependsOn": [
+      "handle.wrap-style"
+    ]
+  },
+  {
+    "id": "handle.wrap-style",
+    "label": "Wrap Style",
+    "summary": "Adds stylized grip wrapping (hineri, katate, wire).",
+    "details": [
+      "Enable texture for katate to show diagonals.",
+      "Combine with Turns and Depth."
+    ],
+    "parts": [
+      "handle"
+    ],
+    "related": [
+      "handle.wrap-turns",
+      "handle.wrap-depth"
+    ]
+  },
+  {
+    "id": "handle.wrap-turns",
+    "label": "Wrap Turns",
+    "summary": "Number of helical cycles along the grip.",
+    "details": [
+      "More turns = denser cross-over pattern.",
+      "Adjust depth to keep comfort."
+    ],
+    "parts": [
+      "handle"
+    ],
+    "dependsOn": [
+      "handle.wrap-style"
+    ]
+  },
+  {
+    "id": "pommel.size",
+    "label": "Pommel Size",
+    "summary": "Overall pommel scale; larger shifts balance toward the hand.",
+    "details": [
+      "Use with Balance slider for auto-target.",
+      "Keep proportionate to blade length."
+    ],
+    "parts": [
+      "pommel"
+    ]
+  },
+  {
+    "id": "pommel.style",
+    "label": "Pommel Style",
+    "summary": "Choose pommel family (orb, disk, spike, wheel, ring, crown).",
+    "details": [
+      "Affects balance and period feel.",
+      "Some options unlock extra controls (spike, ring, crown)."
+    ],
+    "parts": [
+      "pommel"
+    ]
+  },
+  {
+    "id": "render-post.bloom-enabled",
+    "label": "Bloom Enabled",
+    "summary": "Enable bright glow around high-intensity areas.",
+    "details": [
+      "Increase strength for more glow; threshold controls when it kicks in."
+    ]
+  },
+  {
+    "id": "render-post.outline-enabled",
+    "label": "Outline Enabled",
+    "summary": "Edge-outline pass for a stylized look.",
+    "details": [
+      "Strength and thickness control line feel; color sets edge tint."
+    ]
+  },
+  {
+    "id": "render-post.vignette",
+    "label": "Vignette",
+    "summary": "Darken corners to frame the subject.",
+    "details": [
+      "Use sparingly; strength and softness adjust fade."
+    ]
+  }
+]

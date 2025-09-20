@@ -108,6 +108,121 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
 
   const clock = new THREE.Clock();
   const bbox = new THREE.Box3();
+  // Explain Mode overlay (labels anchored to parts)
+  let explainEnabled = false;
+  let explainOverlay: HTMLElement | null = null;
+  const explainLabels: Record<string, { el: HTMLElement; id: string }> = {};
+  let explainClickHandler: ((id: string) => void) | null = null;
+  let explainHoverHandler: ((parts: string[] | null) => void) | null = null;
+  function ensureExplainStyles() {
+    if (document.getElementById('smk-explain-styles')) return;
+    const css = document.createElement('style');
+    css.id = 'smk-explain-styles';
+    css.textContent = `
+      .smk-explain{ position:fixed; inset:0; pointer-events:none; z-index:10001; }
+      .smk-explain-label{ position:absolute; pointer-events:auto; background:#0b0f16cc; color:#e5e7eb; border:1px solid #283141; border-radius:999px; padding:3px 8px; font:12px/1.2 system-ui, -apple-system, Segoe UI, Roboto; cursor:pointer; user-select:none }
+      .smk-explain-label:hover{ background:#101a2bcc }
+    `;
+    document.head.appendChild(css);
+  }
+  function ensureExplainOverlay() {
+    if (explainOverlay) return;
+    ensureExplainStyles();
+    explainOverlay = document.createElement('div');
+    explainOverlay.className = 'smk-explain';
+    document.body.appendChild(explainOverlay);
+  }
+  function makeLabel(id: string, text: string): HTMLElement {
+    ensureExplainOverlay();
+    const el = document.createElement('div');
+    el.className = 'smk-explain-label';
+    el.textContent = text;
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', `Explain: ${text}`);
+    el.addEventListener('click', () => { try { explainClickHandler?.(id) } catch {} });
+    el.addEventListener('keydown', (e) => {
+      const ke = e as KeyboardEvent;
+      if (ke.key === 'Enter' || ke.key === ' ') { ke.preventDefault(); try { explainClickHandler?.(id) } catch {} }
+    });
+    el.addEventListener('mouseenter', () => { try { explainHoverHandler?.([id.split('.')[0]]) } catch {} });
+    el.addEventListener('mouseleave', () => { try { explainHoverHandler?.(null) } catch {} });
+    explainOverlay!.appendChild(el);
+    explainLabels[id] = { el, id };
+    return el;
+  }
+  function setExplainEnabled(v: boolean) {
+    explainEnabled = !!v;
+    ensureExplainOverlay();
+    if (!explainOverlay) return;
+    explainOverlay.style.display = explainEnabled ? 'block' : 'none';
+    if (explainEnabled) {
+      // Create basic labels on first enable
+      if (!explainLabels['blade']) makeLabel('blade', 'Blade');
+      if (!explainLabels['guard']) makeLabel('guard', 'Guard');
+      if (!explainLabels['handle']) makeLabel('handle', 'Handle');
+      if (!explainLabels['pommel']) makeLabel('pommel', 'Pommel');
+      if (!explainLabels['blade.fuller']) makeLabel('blade.fuller', 'Fuller');
+      if (!explainLabels['blade.edge']) makeLabel('blade.edge', 'Edge');
+      if (!explainLabels['blade.edge-left']) makeLabel('blade.edge-left', 'Edge L');
+      if (!explainLabels['blade.edge-right']) makeLabel('blade.edge-right', 'Edge R');
+      if (!explainLabels['blade.tip']) makeLabel('blade.tip', 'Tip');
+      if (!explainLabels['guard.fillet']) makeLabel('guard.fillet', 'Fillet');
+    }
+  }
+  const getExplainEnabled = () => explainEnabled;
+  function setExplainHandlers(onClick?: (id: string)=>void, onHover?: (parts: string[]|null)=>void) { explainClickHandler = onClick || null; explainHoverHandler = onHover || null }
+  function worldToScreen(pos: THREE.Vector3, out: THREE.Vector2) {
+    const v = pos.clone().project(camera);
+    const widthHalf = 0.5 * renderer.domElement.clientWidth;
+    const heightHalf = 0.5 * renderer.domElement.clientHeight;
+    out.set((v.x * widthHalf) + widthHalf, (-v.y * heightHalf) + heightHalf);
+    return out;
+  }
+  const tmpV = new THREE.Vector3();
+  const tmp2 = new THREE.Vector2();
+  function updateExplainOverlay() {
+    if (!explainEnabled || !explainOverlay) return;
+    const canvasRect = renderer.domElement.getBoundingClientRect();
+    const place = (id: string, obj: THREE.Object3D | null, yBias = 0) => {
+      const rec = explainLabels[id];
+      if (!rec || !obj) { if (rec) rec.el.style.display = 'none'; return; }
+      const box = new THREE.Box3().setFromObject(obj);
+      if (!isFinite(box.min.x)) { rec.el.style.display = 'none'; return; }
+      tmpV.set((box.min.x + box.max.x) * 0.5, (box.min.y + box.max.y) * 0.5 + yBias, (box.min.z + box.max.z) * 0.5);
+      worldToScreen(tmpV, tmp2);
+      rec.el.style.display = 'block';
+      rec.el.style.left = `${Math.round(canvasRect.left + tmp2.x)}px`;
+      rec.el.style.top = `${Math.round(canvasRect.top + tmp2.y)}px`;
+    };
+    const sg: any = sword as any;
+    place('blade', sword.bladeMesh, 0.0);
+    place('guard', sword.guardMesh ?? sg['guardGroup'] ?? null, 0.0);
+    place('handle', sword.handleMesh ?? sg['handleGroup'] ?? null, 0.0);
+    place('pommel', sword.pommelMesh, 0.0);
+    place('blade.fuller', sg['fullerGroup'] ?? null, 0.0);
+    // Use anchors for sub-parts if available
+    place('blade.edge', sg['anchorBladeEdge'] ?? null, 0.0);
+    place('blade.edge-left', sg['anchorBladeEdgeL'] ?? null, 0.0);
+    place('blade.edge-right', sg['anchorBladeEdgeR'] ?? null, 0.0);
+    place('blade.tip', sg['anchorBladeTip'] ?? null, -8);
+    place('guard.quillon', sg['anchorQuillonR'] ?? sg['anchorQuillonL'] ?? null, 0.0);
+    // Guard fillet fallback: place label near top-center of guard
+    const guardObj = sword.guardMesh ?? sg['guardGroup'] ?? null;
+    const filletRec = explainLabels['guard.fillet'];
+    if (filletRec) {
+      if (guardObj) {
+        const bb = new THREE.Box3().setFromObject(guardObj);
+        tmpV.set((bb.min.x + bb.max.x) * 0.5, bb.max.y, (bb.min.z + bb.max.z) * 0.5);
+        worldToScreen(tmpV, tmp2);
+        filletRec.el.style.display = 'block';
+        filletRec.el.style.left = `${Math.round(canvasRect.left + tmp2.x)}px`;
+        filletRec.el.style.top = `${Math.round(canvasRect.top + tmp2.y)}px`;
+      } else {
+        filletRec.el.style.display = 'none';
+      }
+    }
+  }
 
   const flameMesh = { current: null as THREE.Mesh | null };
   const flameState = {
@@ -285,6 +400,9 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
       (innerGlowMaterial.current.uniforms as any).time.value = innerGlowState.time;
     }
 
+    // Update Explain overlay positions last
+    updateExplainOverlay();
+
     if (mistState.enabled) {
       mistTime += dt;
     }
@@ -436,6 +554,10 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
       getEnabled: getAutoSpinEnabled
     }
   });
+  // Augment render hooks with Explain Mode controls (optional for UI)
+  (renderHooks as any).setExplainEnabled = setExplainEnabled;
+  (renderHooks as any).getExplainEnabled = getExplainEnabled;
+  (renderHooks as any).setExplainHandlers = setExplainHandlers;
   (scene as any).__renderHooks = renderHooks;
 
   if (typeof window !== 'undefined') {

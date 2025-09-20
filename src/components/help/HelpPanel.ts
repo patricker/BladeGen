@@ -18,7 +18,11 @@ const SYNONYMS: Record<string, string[]> = {
   'vignette': ['darken corners','corner fade'],
   'curvature': ['sori','curve'],
   'sori': ['curvature','curve'],
-  'anisotropy': ['brushed','polish','directional polish']
+  'anisotropy': ['brushed','polish','directional polish'],
+  'quillon': ['guard','quillons'],
+  'quillons': ['quillon','guard'],
+  'tip': ['point','blade tip'],
+  'fillet': ['blend','guard']
 }
 
 function ensureStyles() {
@@ -40,6 +44,7 @@ function ensureStyles() {
   .smk-chip{ font-size:11px; background:#111827; border:1px solid #283141; color:#e5e7eb; padding:2px 6px; border-radius:999px; cursor:pointer }
   .smk-chip:hover{ background:#172133 }
   .smk-meta{ margin-top:8px; color:#9ca3af; font-size:11px }
+  .smk-help-header button{ margin-left:6px }
   .smk-search{ position:fixed; inset:0; display:none; align-items:flex-start; justify-content:center; background:rgba(0,0,0,.35); z-index:10005 }
   .smk-search.open{ display:flex }
   .smk-search-box{ margin-top:10vh; width:640px; background:#0b0f16; border:1px solid #283141; border-radius:10px; overflow:hidden; box-shadow:0 30px 60px rgba(0,0,0,.5) }
@@ -180,6 +185,43 @@ function renderIndex(body: HTMLElement) {
     }
     body.appendChild(chips)
   }
+  // Analytics summary (dev): most opened topics and no-result queries
+  try {
+    const w = window as any
+    const ev: Array<{ event: string; data?: any }> = (w.__smkHelpEvents || [])
+    const byTopic = new Map<string, number>()
+    const noResult = new Map<string, number>()
+    for (const e of ev) {
+      if (e.event === 'help.popover_opened' || e.event === 'help.panel_opened' || e.event === 'help.search_result_opened') {
+        const id = e.data?.id
+        if (id) byTopic.set(id, (byTopic.get(id) || 0) + 1)
+      }
+      if (e.event === 'help.search_no_result') {
+        const q = (e.data?.q || '').trim().toLowerCase()
+        if (q) noResult.set(q, (noResult.get(q) || 0) + 1)
+      }
+    }
+    const topTopics = Array.from(byTopic.entries()).sort((a,b) => b[1]-a[1]).slice(0,5)
+    const topNoRes = Array.from(noResult.entries()).sort((a,b) => b[1]-a[1]).slice(0,5)
+    if ((import.meta as any)?.env?.DEV && (topTopics.length || topNoRes.length)) {
+      const sep = document.createElement('div'); sep.className = 'smk-meta'; sep.textContent = 'Insights (dev)'; body.appendChild(sep)
+      const tools = document.createElement('div'); tools.className = 'smk-chips'
+      const reset = document.createElement('button'); reset.className = 'smk-chip'; reset.textContent = 'Reset stats'; reset.addEventListener('click', () => { try { (window as any).__smkHelpEvents = [] } catch {}; openById('help.index') })
+      tools.appendChild(reset)
+      body.appendChild(tools)
+      if (topTopics.length) {
+        const chips = document.createElement('div'); chips.className = 'smk-chips'
+        topTopics.forEach(([id, n]) => { const c = document.createElement('button'); c.className = 'smk-chip'; c.textContent = `${id} (${n})`; c.addEventListener('click', () => openById(id)); chips.appendChild(c) })
+        body.appendChild(chips)
+      }
+      if (topNoRes.length) {
+        const label = document.createElement('div'); label.className = 'smk-meta'; label.textContent = 'No‑result queries'; body.appendChild(label)
+        const chips = document.createElement('div'); chips.className = 'smk-chips'
+        topNoRes.forEach(([q, n]) => { const c = document.createElement('span'); c.className = 'smk-chip'; c.textContent = `${q} (${n})`; chips.appendChild(c) })
+        body.appendChild(chips)
+      }
+    }
+  } catch {}
   // Dev coverage: list missing help ids discovered at runtime
   try {
     const w = window as any
@@ -192,6 +234,14 @@ function renderIndex(body: HTMLElement) {
         sep.className = 'smk-meta'
         sep.textContent = `Missing topics (dev): ${missing.length}`
         body.appendChild(sep)
+        const tools = document.createElement('div')
+        tools.className = 'smk-chips'
+        const copyBtn = document.createElement('button')
+        copyBtn.className = 'smk-chip'
+        copyBtn.textContent = 'Copy list'
+        copyBtn.addEventListener('click', async () => { try { await navigator.clipboard?.writeText(missing.join('\n')) } catch {} })
+        tools.appendChild(copyBtn)
+        body.appendChild(tools)
         const chips = document.createElement('div')
         chips.className = 'smk-chips'
         for (const id of missing) {
@@ -310,6 +360,7 @@ function openSearch() {
       }).filter(x => query ? x.score > 0 : true)
       scored.sort((a,b) => b.score - a.score)
       const list = (query ? scored.map(x => x.d) : items).slice(0, 50)
+      if (query && list.length === 0) { try { (window as any).__smkHelpEvents?.push({ t: Date.now(), event: 'help.search_no_result', data: { q: query } }) } catch {} }
       list.forEach((d, i) => {
         const row = document.createElement('div')
         row.className = 'smk-result' + (i === activeIndex ? ' active' : '')

@@ -33,6 +33,7 @@ Parametric sword generator and renderer for the web.
 - Click the `?` icon to open a rich popover with details and related links.
 - Help Panel: press `Cmd/Ctrl+/` to open; `Cmd/Ctrl+K` to search topics.
 - Deep link any topic with `#help=<helpId>` (e.g., `#help=blade.curvature`).
+- Explain Mode: press `E` to toggle labels in the viewport; click a label to open help for that part.
 
 ### Included presets
 

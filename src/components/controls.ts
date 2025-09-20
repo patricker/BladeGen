@@ -1004,6 +1004,48 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   btnHelp.addEventListener('click', async () => { try { const mod = await loadHelpPanel(); mod.openHelpPanel(); } catch {} });
   toolbar.appendChild(btnHelp);
 
+  // Explain Mode toggle
+  let explainEnabled = false;
+  const btnExplain = document.createElement('button');
+  btnExplain.textContent = 'Explain';
+  btnExplain.title = 'Toggle Explain Mode (E)';
+  btnExplain.style.marginLeft = '8px';
+  btnExplain.addEventListener('click', async () => {
+    explainEnabled = !explainEnabled;
+    try {
+      (render as any).setExplainEnabled?.(explainEnabled);
+      btnExplain.classList.toggle('active', explainEnabled);
+      // Wire label click/hover to Help and highlight on first enable
+      (render as any).setExplainHandlers?.(
+        async (id: string) => {
+          try {
+            const mod = await loadHelpPanel();
+            // Map generic part ids to representative docs or index
+            const map: Record<string, string | null> = {
+              'blade': null,
+              'guard': 'guard.width',
+              'handle': 'handle.wrap-style',
+              'pommel': 'pommel.style',
+              'blade.fuller': 'concept.fuller',
+              'blade.edge': 'blade.edge-bevel',
+              'blade.edge-left': 'blade.edge-bevel',
+              'blade.edge-right': 'blade.edge-bevel',
+              'blade.tip': 'blade.tip-shape',
+              'guard.quillon': 'guard.style',
+              'guard.fillet': 'guard.blend-fillet'
+            };
+            const target = map[id];
+            if (target === null) mod.openHelpPanel(); // open index
+            else if (target) mod.openHelpPanel(target);
+            else mod.openHelpPanel(id);
+          } catch {}
+        },
+        (parts: string[] | null) => { const part = (parts && (parts[0] as any)) as any; try { sword.setHighlight(part ?? null); } catch {} }
+      );
+    } catch {}
+  });
+  toolbar.appendChild(btnExplain);
+
   if (render?.setAutoSpinEnabled && render.getAutoSpinEnabled) {
     const autoSpinWrap = document.createElement('label');
     autoSpinWrap.style.display = 'flex';
@@ -4097,6 +4139,14 @@ function presetSabre(): SwordParams {
       const meta = (e.ctrlKey || e.metaKey);
       if (meta && (e.key === '/' || e.code === 'Slash')) { e.preventDefault(); const mod = await loadHelpPanel(); mod.openHelpPanel(); }
       if (meta && (e.key?.toLowerCase?.() === 'k')) { e.preventDefault(); const mod = await loadHelpPanel(); mod.openHelpSearch(); }
+      // Explain Mode hotkey (E), ignore when typing in inputs
+      if (!meta && !e.altKey && !e.shiftKey && (e.key?.toLowerCase?.() === 'e')) {
+        const t = e.target as HTMLElement | null;
+        const tag = (t && (t.tagName || '')).toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || (t && t.isContentEditable)) return;
+        e.preventDefault();
+        btnExplain.click();
+      }
     });
   } catch {}
   // Deep link handler for #help=<id>

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 40,
+  "count": 42,
   "index": {
     "0": [
       "blade.edge-bevel",
@@ -25,7 +25,8 @@
       "blade.fuller-width",
       "blade.leaf-bulge",
       "blade.tip-width",
-      "guard.width"
+      "guard.width",
+      "task.add-fuller"
     ],
     "blade": [
       "blade.base-width",
@@ -36,11 +37,13 @@
       "blade.leaf-bulge",
       "blade.length",
       "blade.taper-mid",
+      "concept.fuller",
       "guard.blend-fillet",
       "guard.fillet-style",
       "guard.tilt",
       "guard.width",
-      "pommel.size"
+      "pommel.size",
+      "task.add-fuller"
     ],
     "at": [
       "blade.base-width",
@@ -49,7 +52,8 @@
     ],
     "wider": [
       "blade.base-width",
-      "blade.fuller-width"
+      "blade.fuller-width",
+      "concept.fuller"
     ],
     "reads": [
       "blade.base-width"
@@ -98,7 +102,8 @@
       "handle.wrap-depth",
       "handle.wrap-turns",
       "pommel.size",
-      "render-post.vignette"
+      "render-post.vignette",
+      "task.add-fuller"
     ],
     "guard": [
       "blade.base-width",
@@ -123,7 +128,8 @@
       "blade.right-thickness",
       "handle.wrap-depth",
       "handle.wrap-style",
-      "pommel.size"
+      "pommel.size",
+      "task.add-fuller"
     ],
     "tip": [
       "blade.base-width",
@@ -146,6 +152,7 @@
       "blade.length",
       "blade.right-thickness",
       "blade.tip-width",
+      "concept.fuller",
       "guard.blend-fillet",
       "guard.style",
       "guard.tilt",
@@ -154,7 +161,8 @@
       "handle.wrap-style",
       "pommel.style",
       "render-post.outline-enabled",
-      "render-post.vignette"
+      "render-post.vignette",
+      "task.add-fuller"
     ],
     "distal": [
       "blade.base-width"
@@ -245,12 +253,14 @@
       "pommel.style"
     ],
     "stiffness": [
-      "blade.blade-thickness"
+      "blade.blade-thickness",
+      "concept.fuller"
     ],
     "mass": [
       "blade.blade-thickness",
       "blade.length",
-      "blade.taper-mid"
+      "blade.taper-mid",
+      "concept.fuller"
     ],
     "for": [
       "blade.blade-thickness",
@@ -261,11 +271,13 @@
       "blade.leaf-bulge",
       "blade.left-thickness",
       "blade.sori-bias",
+      "concept.fuller",
       "guard.width",
       "handle.wrap-style",
       "pommel.size",
       "render-post.bloom-enabled",
-      "render-post.outline-enabled"
+      "render-post.outline-enabled",
+      "task.add-fuller"
     ],
     "realistic": [
       "blade.blade-thickness"
@@ -313,7 +325,8 @@
     "profile": [
       "blade.cross-section",
       "blade.fuller-profile",
-      "blade.sori-profile"
+      "blade.sori-profile",
+      "task.add-fuller"
     ],
     "flat": [
       "blade.cross-section",
@@ -461,10 +474,13 @@
       "blade.fuller-inset",
       "blade.fuller-mode",
       "blade.fuller-profile",
-      "blade.fuller-width"
+      "blade.fuller-width",
+      "concept.fuller",
+      "task.add-fuller"
     ],
     "placement": [
-      "blade.curvature"
+      "blade.curvature",
+      "concept.fuller"
     ],
     "style": [
       "blade.curvature",
@@ -513,13 +529,16 @@
       "blade.hollow-mix"
     ],
     "inset": [
-      "blade.fuller-inset"
+      "blade.fuller-inset",
+      "task.add-fuller"
     ],
     "groove": [
       "blade.fuller-inset",
       "blade.fuller-mode",
       "blade.fuller-profile",
-      "blade.fuller-width"
+      "blade.fuller-width",
+      "concept.fuller",
+      "task.add-fuller"
     ],
     "depth": [
       "blade.fuller-inset",
@@ -527,21 +546,25 @@
       "blade.hollow-depth",
       "blade.hollow-grind",
       "blade.hollow-radius",
+      "concept.fuller",
       "handle.wrap-depth",
       "handle.wrap-style",
-      "handle.wrap-turns"
+      "handle.wrap-turns",
+      "task.add-fuller"
     ],
     "inside": [
       "blade.fuller-inset"
     ],
     "carved": [
       "blade.fuller-inset",
-      "blade.fuller-mode"
+      "blade.fuller-mode",
+      "task.add-fuller"
     ],
     "fullers": [
       "blade.fuller-inset",
       "blade.fuller-mode",
-      "blade.fuller-width"
+      "blade.fuller-width",
+      "concept.fuller"
     ],
     "defaults": [
       "blade.fuller-inset"
@@ -552,11 +575,13 @@
       "blade.leaf-bulge",
       "blade.length",
       "blade.tip-width",
+      "concept.fuller",
       "guard.blend-fillet",
       "handle.wrap-style",
       "handle.wrap-turns",
       "pommel.size",
-      "render-post.vignette"
+      "render-post.vignette",
+      "task.add-fuller"
     ],
     "if": [
       "blade.fuller-inset"
@@ -588,19 +613,25 @@
       "blade.fuller-inset",
       "blade.fuller-mode",
       "blade.fuller-profile",
-      "blade.fuller-width"
+      "blade.fuller-width",
+      "concept.fuller",
+      "task.add-fuller"
     ],
     "blood": [
       "blade.fuller-inset",
       "blade.fuller-mode",
       "blade.fuller-profile",
-      "blade.fuller-width"
+      "blade.fuller-width",
+      "concept.fuller",
+      "task.add-fuller"
     ],
     "mode": [
-      "blade.fuller-mode"
+      "blade.fuller-mode",
+      "task.add-fuller"
     ],
     "overlay": [
-      "blade.fuller-mode"
+      "blade.fuller-mode",
+      "task.add-fuller"
     ],
     "visual": [
       "blade.fuller-mode",
@@ -615,11 +646,14 @@
       "blade.fuller-width",
       "blade.hollow-bias",
       "blade.sori-profile",
-      "guard.fillet-style"
+      "concept.fuller",
+      "guard.fillet-style",
+      "task.add-fuller"
     ],
     "carve": [
       "blade.fuller-mode",
-      "blade.fuller-width"
+      "blade.fuller-width",
+      "task.add-fuller"
     ],
     "actual": [
       "blade.fuller-mode"
@@ -627,6 +661,7 @@
     "is": [
       "blade.fuller-mode",
       "blade.sori-profile",
+      "concept.fuller",
       "handle.wrap-depth"
     ],
     "faster": [
@@ -665,16 +700,20 @@
     "a": [
       "blade.fuller-width",
       "blade.leaf-bulge",
+      "concept.fuller",
       "guard.blend-fillet",
-      "render-post.outline-enabled"
+      "render-post.outline-enabled",
+      "task.add-fuller"
     ],
     "face": [
       "blade.fuller-width",
       "blade.hollow-depth",
-      "blade.hollow-grind"
+      "blade.hollow-grind",
+      "concept.fuller"
     ],
     "set": [
-      "blade.fuller-width"
+      "blade.fuller-width",
+      "task.add-fuller"
     ],
     "per": [
       "blade.fuller-width"
@@ -684,7 +723,8 @@
       "pommel.size"
     ],
     "lighten": [
-      "blade.fuller-width"
+      "blade.fuller-width",
+      "task.add-fuller"
     ],
     "visually": [
       "blade.fuller-width"
@@ -694,7 +734,8 @@
       "blade.kris-waves",
       "guard.blend-fillet",
       "pommel.size",
-      "render-post.vignette"
+      "render-post.vignette",
+      "task.add-fuller"
     ],
     "side": [
       "blade.fuller-width"
@@ -753,7 +794,8 @@
       "blade.hollow-grind"
     ],
     "tune": [
-      "blade.hollow-grind"
+      "blade.hollow-grind",
+      "concept.fuller"
     ],
     "smaller": [
       "blade.hollow-grind",
@@ -822,7 +864,8 @@
     ],
     "look": [
       "blade.kris-waves",
-      "render-post.outline-enabled"
+      "render-post.outline-enabled",
+      "task.add-fuller"
     ],
     "leaf": [
       "blade.leaf-bulge",
@@ -855,6 +898,7 @@
       "blade.left-thickness",
       "blade.length",
       "blade.right-thickness",
+      "concept.fuller",
       "handle.wrap-turns"
     ],
     "x": [
@@ -1098,6 +1142,52 @@
     "tips": [
       "blade.tip-width"
     ],
+    "what": [
+      "concept.fuller"
+    ],
+    "longitudinal": [
+      "concept.fuller"
+    ],
+    "reduce": [
+      "concept.fuller"
+    ],
+    "also": [
+      "concept.fuller"
+    ],
+    "called": [
+      "concept.fuller"
+    ],
+    "myth": [
+      "concept.fuller"
+    ],
+    "weight": [
+      "concept.fuller"
+    ],
+    "without": [
+      "concept.fuller"
+    ],
+    "greatly": [
+      "concept.fuller"
+    ],
+    "sacrificing": [
+      "concept.fuller"
+    ],
+    "rigidity": [
+      "concept.fuller"
+    ],
+    "matter": [
+      "concept.fuller"
+    ],
+    "strength": [
+      "concept.fuller",
+      "render-post.bloom-enabled",
+      "render-post.outline-enabled",
+      "render-post.vignette"
+    ],
+    "aesthetics": [
+      "concept.fuller",
+      "guard.tilt"
+    ],
     "fillet": [
       "guard.blend-fillet",
       "guard.fillet-style"
@@ -1211,9 +1301,6 @@
     "clearance": [
       "guard.tilt"
     ],
-    "aesthetics": [
-      "guard.tilt"
-    ],
     "crossguard": [
       "guard.width"
     ],
@@ -1316,7 +1403,8 @@
     ],
     "adjust": [
       "handle.wrap-turns",
-      "render-post.vignette"
+      "render-post.vignette",
+      "task.add-fuller"
     ],
     "pommel": [
       "pommel.size",
@@ -1377,11 +1465,6 @@
     "increase": [
       "render-post.bloom-enabled"
     ],
-    "strength": [
-      "render-post.bloom-enabled",
-      "render-post.outline-enabled",
-      "render-post.vignette"
-    ],
     "threshold": [
       "render-post.bloom-enabled"
     ],
@@ -1432,6 +1515,24 @@
     ],
     "fade": [
       "render-post.vignette"
+    ],
+    "task": [
+      "task.add-fuller"
+    ],
+    "add": [
+      "task.add-fuller"
+    ],
+    "its": [
+      "task.add-fuller"
+    ],
+    "preview": [
+      "task.add-fuller"
+    ],
+    "explain": [
+      "task.add-fuller"
+    ],
+    "highlight": [
+      "task.add-fuller"
     ]
   }
 }

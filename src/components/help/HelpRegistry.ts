@@ -306,7 +306,18 @@ export function attachHelp(row: HTMLElement, labelEl: HTMLElement, helpIconEl?: 
   let hoverTimer: number | null = null;
   const begin = () => {
     if (!summary) return;
-    hoverTimer = window.setTimeout(() => showTooltip(labelEl, summary), 180);
+    hoverTimer = window.setTimeout(() => {
+      // Track first display per id per session
+      try {
+        const w = window as any;
+        w.__smkTooltipShown = w.__smkTooltipShown || new Set();
+        if (!w.__smkTooltipShown.has(helpId)) {
+          w.__smkTooltipShown.add(helpId);
+          track('help.tooltip_shown', { id: helpId });
+        }
+      } catch {}
+      showTooltip(labelEl, summary)
+    }, 180);
   };
   const end = () => { if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; } destroyTooltip(); };
   labelEl.addEventListener('mouseenter', begin);

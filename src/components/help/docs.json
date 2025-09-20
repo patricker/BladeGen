@@ -403,6 +403,21 @@
     ]
   },
   {
+    "id": "concept.fuller",
+    "label": "What is a Fuller?",
+    "summary": "A longitudinal groove along a blade face to reduce mass and tune stiffness.",
+    "details": [
+      "Also called a rib or blood groove (myth).",
+      "Wider fullers reduce weight without greatly sacrificing rigidity.",
+      "Placement and depth matter for strength and aesthetics."
+    ],
+    "related": [
+      "blade.fuller-mode",
+      "blade.fuller-width",
+      "blade.fuller-profile"
+    ]
+  },
+  {
     "id": "guard.blend-fillet",
     "label": "Blend Fillet",
     "summary": "Small bridge piece between blade and guard.",
@@ -559,6 +574,23 @@
     "summary": "Darken corners to frame the subject.",
     "details": [
       "Use sparingly; strength and softness adjust fade."
+    ]
+  },
+  {
+    "id": "task.add-fuller",
+    "label": "Task: Add a Fuller",
+    "summary": "Add a groove to lighten the blade and adjust its look.",
+    "details": [
+      "Set Fuller Mode to Carve or Overlay.",
+      "Adjust width and profile; use inset for carved depth.",
+      "Preview with Explain Mode and highlight the blade."
+    ],
+    "related": [
+      "concept.fuller",
+      "blade.fuller-mode",
+      "blade.fuller-width",
+      "blade.fuller-profile",
+      "blade.fuller-inset"
     ]
   }
 ]

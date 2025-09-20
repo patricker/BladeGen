@@ -62,6 +62,13 @@ export class SwordGenerator {
   public pommelMesh: THREE.Mesh | null = null;
   public scabbardGroup: THREE.Group | null = null;
   public tasselGroup: THREE.Group | null = null;
+  // Sub-part anchors (Explain Mode labels)
+  public anchorBladeEdge: THREE.Object3D | null = null;
+  public anchorBladeEdgeL: THREE.Object3D | null = null;
+  public anchorBladeEdgeR: THREE.Object3D | null = null;
+  public anchorBladeTip: THREE.Object3D | null = null;
+  public anchorQuillonL: THREE.Object3D | null = null;
+  public anchorQuillonR: THREE.Object3D | null = null;
   private guardGroup: THREE.Group | null = null;
   private handleGroup: THREE.Group | null = null;
   private fullerGroup: THREE.Group | null = null;
@@ -82,6 +89,13 @@ export class SwordGenerator {
    */
   constructor(initial: SwordParams, materials?: MaterialMap) {
     this.mats = materials;
+    // create anchors early
+    this.anchorBladeEdge = new THREE.Object3D(); this.anchorBladeEdge.name = 'anchor.blade.edge'; this.group.add(this.anchorBladeEdge);
+    this.anchorBladeEdgeL = new THREE.Object3D(); this.anchorBladeEdgeL.name = 'anchor.blade.edgeL'; this.group.add(this.anchorBladeEdgeL);
+    this.anchorBladeEdgeR = new THREE.Object3D(); this.anchorBladeEdgeR.name = 'anchor.blade.edgeR'; this.group.add(this.anchorBladeEdgeR);
+    this.anchorBladeTip = new THREE.Object3D(); this.anchorBladeTip.name = 'anchor.blade.tip'; this.group.add(this.anchorBladeTip);
+    this.anchorQuillonL = new THREE.Object3D(); this.anchorQuillonL.name = 'anchor.guard.quillonL'; this.group.add(this.anchorQuillonL);
+    this.anchorQuillonR = new THREE.Object3D(); this.anchorQuillonR.name = 'anchor.guard.quillonR'; this.group.add(this.anchorQuillonR);
     this.updateGeometry(initial);
   }
   /**
@@ -216,6 +230,8 @@ export class SwordGenerator {
     if (bladeChanged || !this.derived) {
       this.derived = computeBladeDynamics(p.blade);
     }
+    // Update anchors after rebuilds
+    this.updateAnchors();
   }
 
   /** Enable emissive highlighting for a single named part. */
@@ -278,6 +294,7 @@ export class SwordGenerator {
       this.hamonGroup.position.copy(this.bladeMesh.position);
       this.group.add(this.hamonGroup);
     }
+    this.updateAnchors();
   }
 
   /** Dispose and rebuild guard (core and decorations). */
@@ -310,6 +327,7 @@ export class SwordGenerator {
     if (built.guardGroup) { this.guardGroup = built.guardGroup; this.group.add(this.guardGroup) }
     const deco = decorateGuard(g, { swordGroup: this.group, guardGroup: this.guardGroup, bladeMesh: this.bladeMesh, handleMesh: this.handleMesh, bladeParams: this.lastParams?.blade ?? null, makeMaterial: (p)=> this.makeMaterial(p) })
     if (!this.guardGroup && deco.guardGroup) { this.guardGroup = deco.guardGroup }
+    this.updateAnchors();
   }
 
   /** Dispose and rebuild handle and its attached group/layers. */
@@ -320,6 +338,7 @@ export class SwordGenerator {
     this.handleMesh = built.handleMesh
     this.handleGroup = built.handleGroup
     this.group.add(this.handleGroup)
+    this.updateAnchors();
   }
 
   /** Dispose and rebuild the pommel, placing it below the handle. */
@@ -327,6 +346,7 @@ export class SwordGenerator {
     if (this.pommelMesh) { this.group.remove(this.pommelMesh); disposeObject3D(this.pommelMesh); this.pommelMesh = null }
     this.pommelMesh = buildPommel(p, { handleMesh: this.handleMesh, blade: this.lastParams?.blade ?? null }, (part)=> this.makeMaterial(part))
     this.group.add(this.pommelMesh)
+    this.updateAnchors();
   }
 
   private rebuildAccessories(accessories: SwordParams['accessories'], blade: BladeParams) {
@@ -365,6 +385,57 @@ export class SwordGenerator {
           this.group.add(this.tasselGroup)
           this.applyMaterialPart(this.tasselGroup, 'tassel')
         }
+      }
+    }
+    this.updateAnchors();
+  }
+
+  /** Compute/update anchor positions for Explain Mode labels. */
+  private updateAnchors() {
+    // Blade edge anchors: use bounds at mid height for left/right and center Z
+    if (this.anchorBladeEdge) {
+      if (this.bladeMesh) {
+        const bb = new THREE.Box3().setFromObject(this.bladeMesh)
+        const y = (bb.min.y + bb.max.y) * 0.5
+        const z = (bb.min.z + bb.max.z) * 0.5
+        this.anchorBladeEdge.position.set((bb.min.x + bb.max.x) * 0.5, y, z)
+        this.anchorBladeEdge.visible = Number.isFinite(y + z)
+        if (this.anchorBladeEdgeL) { this.anchorBladeEdgeL.position.set(bb.min.x, y, z); this.anchorBladeEdgeL.visible = Number.isFinite(y + z) }
+        if (this.anchorBladeEdgeR) { this.anchorBladeEdgeR.position.set(bb.max.x, y, z); this.anchorBladeEdgeR.visible = Number.isFinite(y + z) }
+      } else {
+        this.anchorBladeEdge.visible = false
+        if (this.anchorBladeEdgeL) this.anchorBladeEdgeL.visible = false
+        if (this.anchorBladeEdgeR) this.anchorBladeEdgeR.visible = false
+      }
+    }
+    // Blade tip anchor: highest Y of blade bounds
+    if (this.anchorBladeTip) {
+      if (this.bladeMesh) {
+        const bb = new THREE.Box3().setFromObject(this.bladeMesh)
+        const x = (bb.min.x + bb.max.x) * 0.5
+        const y = bb.max.y
+        const z = (bb.min.z + bb.max.z) * 0.5
+        this.anchorBladeTip.position.set(x, y, z)
+        this.anchorBladeTip.visible = Number.isFinite(x + y + z)
+      } else {
+        this.anchorBladeTip.visible = false
+      }
+    }
+    // Guard quillons: approximate with guard bounds extremes on X
+    const guardObj = this.guardMesh ?? this.guardGroup
+    if (this.anchorQuillonL && this.anchorQuillonR) {
+      if (guardObj) {
+        const bb = new THREE.Box3().setFromObject(guardObj)
+        const y = (bb.min.y + bb.max.y) * 0.5
+        const z = (bb.min.z + bb.max.z) * 0.5
+        this.anchorQuillonL.position.set(bb.min.x, y, z)
+        this.anchorQuillonR.position.set(bb.max.x, y, z)
+        const ok = (v: number) => Number.isFinite(v)
+        this.anchorQuillonL.visible = ok(this.anchorQuillonL.position.x + y + z)
+        this.anchorQuillonR.visible = ok(this.anchorQuillonR.position.x + y + z)
+      } else {
+        this.anchorQuillonL.visible = false
+        this.anchorQuillonR.visible = false
       }
     }
   }

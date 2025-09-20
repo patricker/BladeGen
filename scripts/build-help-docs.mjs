@@ -8,7 +8,11 @@ import { resolve, join, dirname, extname } from 'node:path'
 // ```
 
 const ROOT = process.cwd()
-const mdRoot = resolve(ROOT, 'docs/help/controls')
+const mdRoots = [
+  resolve(ROOT, 'docs/help/controls'),
+  resolve(ROOT, 'docs/help/concepts'),
+  resolve(ROOT, 'docs/help/tasks')
+]
 const jsonTarget = resolve(ROOT, 'src/components/help/docs.json')
 
 function walk(dir) {
@@ -40,8 +44,8 @@ function readExistingDocsJSON() {
 }
 
 try {
-  const files = walk(mdRoot)
   const incoming = []
+  const files = mdRoots.flatMap((dir) => walk(dir))
   for (const f of files) {
     try {
       const md = readFileSync(f, 'utf8')
@@ -61,4 +65,3 @@ try {
   console.error('[help-docs] Failed to build docs.json from Markdown:', err)
   process.exit(0)
 }
-

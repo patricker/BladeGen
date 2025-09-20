@@ -54,9 +54,9 @@ Reference specs: see `VISION.md` (goals), `uxplan.md` (in‑app help), and `KNOB
 Context: implement contextual help as described in uxplan.md. Ship in phases with minimal UI disruption and clear a11y.
 
 ### Decisions (pick before Phase 1)
-- [ ] Tooltip/Popover: choose Native Popover API vs Floating UI vs Tippy.js (standardize across UI).
-- [ ] Search: choose MiniSearch vs Lunr.js for in‑memory index.
-- [ ] Guided tours: choose Shepherd.js vs Driver.js.
+- [x] Tooltip/Popover: custom lightweight micro-tooltips and popovers (no external lib) to minimize deps and maximize control; revisit Native Popover/Floating UI if complexity grows.
+- [x] Search: custom build-time index (`scripts/build-help-index.mjs`) + runtime filter with simple synonyms; defer MiniSearch/Lunr to future if needed.
+- [ ] Guided tours: TBD; lean toward Shepherd.js (MIT, vanilla support) when implementing Phase 4.
 
 ### Phase 1 — Tooltips & Popovers
 - [x] Introduce HelpRegistry (in‑memory map `helpId → doc`) in `src/ui/help/` with `getDoc(id)`, `getSummary(id)`, `preload()`.
@@ -77,8 +77,8 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
 - [x] Synonyms: basic aliases (rib/blood groove → fuller) in search.
 
 ### Phase 3 — Explain Mode (3D‑first)
-- [ ] Add Explain toggle (UI + hotkey `E`).
-- [ ] Add Three.js CSS2DRenderer overlay; anchor part labels (“Blade”, “Fuller”, “Edge”); clicking opens popover/panel.
+- [x] Add Explain toggle (UI + hotkey `E`).
+- [x] Add labels overlay anchored to parts (“Blade”, “Guard”, “Handle”, “Pommel”, “Fuller”); clicking opens Help Panel.
 - [ ] Tag scene graph with sub‑parts (e.g., `blade.fuller`, `blade.edge`, `guard.quillon`) for precise highlights.
 
 ### Phase 4 — Guided Tours / Task Walkthroughs
@@ -90,14 +90,14 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
 - [x] Authoring guide in `docs/help/README.md` (tone, bullets, relations, images policy, i18n key).
 
 ### Accessibility & Interaction
-- [ ] Tooltips: delay on hover; show on focus; dismiss on `Esc`/pointer out; don’t block arrow keys reaching inputs (WAI‑ARIA APG).
-- [ ] Popovers: non‑modal for info; modal‑like focus trap only if interactive; always restore focus to trigger on close.
+- [x] Tooltips: delay on hover; show on focus; dismiss on `Esc`/pointer out; don’t block arrow keys reaching inputs (WAI‑ARIA APG).
+- [x] Popovers: non‑modal for info; always restore focus to trigger on close. (Defer focus trap until needed.)
 - [ ] Feature‑detect Native Popover API; minimal polyfill if required.
-- [ ] Explain labels: keyboard reachable or non‑interactive; don’t interfere with OrbitControls when not hovered.
+- [x] Explain labels: keyboard reachable; don’t interfere with OrbitControls when not hovered.
 
 ### Analytics & Quality Loop
 - [x] Instrument events: `help.tooltip_shown`, `help.popover_opened`, `help.panel_opened`, `help.search_query`, `help.search_result_opened`.
-- [ ] Collect “no‑result” searches and most‑opened topics to prioritize missing docs and UI simplifications.
+- [x] Collect “no‑result” searches and most‑opened topics; show insights + reset in Help index (dev).
 
 ### Performance & Packaging
 - [x] Pre‑bundle MD → JSON at build time.

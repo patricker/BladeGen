@@ -20,7 +20,7 @@ Notes
 - Images are optional; rely on in‑scene highlight where possible.
 
 Authoring format (Markdown + JSON block)
-- Each file under `docs/help/controls/**` starts with a fenced JSON block defining the doc (example below). Any prose after the block is optional and currently ignored by the app.
+- Each file under `docs/help/controls/**`, `docs/help/concepts/**`, or `docs/help/tasks/**` starts with a fenced JSON block defining the doc (example below). Any prose after the block is optional and currently ignored by the app.
 
 Example (`docs/help/controls/blade/curvature.md`):
 

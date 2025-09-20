@@ -82,7 +82,7 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
 - [x] Tag scene graph with sub‑parts (anchors under `group.__subparts`) for precise labels/highlights.
 
 - ### Phase 4 — Guided Tours / Task Walkthroughs
-- [ ] Implement short, skippable first‑run tour (4–6 steps: viewport, tabs, slider, export, Help). (Prompt added; full auto‑start TBD.)
+- [x] Implement short, skippable first‑run tour (prompt with optional auto‑start and “Don’t show again”).
 - [x] Add “Replay Intro” in Help (Start Intro Tour button on Help index). Uses Driver.js with fallback.
 - [x] Add task guide: Add a fuller (Driver.js) launched from Help.
 - [ ] Add remaining task guides (Make a leaf blade; Export to STL).

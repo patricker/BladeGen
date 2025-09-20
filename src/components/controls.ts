@@ -1063,23 +1063,51 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       prompt.style.color = '#e5e7eb'
       const text = document.createElement('span')
       text.textContent = 'New here? Take a quick tour.'
+      const dont = document.createElement('label')
+      dont.style.display = 'inline-flex'
+      dont.style.alignItems = 'center'
+      dont.style.gap = '4px'
+      const dontCb = document.createElement('input')
+      dontCb.type = 'checkbox'
+      const dontTx = document.createElement('span')
+      dontTx.textContent = "Don't show again"
+      dont.appendChild(dontCb)
+      dont.appendChild(dontTx)
       const start = document.createElement('button')
       start.textContent = 'Start Tour'
       start.addEventListener('click', async () => {
         try {
           const mod = await import('./help/HelpTourDriver')
           mod.startIntroTourDriver?.()
-          ls.setItem(tourKey, 'completed')
+          ls.setItem(tourKey, dontCb.checked ? 'disabled' : 'completed')
         } catch {}
         prompt.remove()
       })
       const skip = document.createElement('button')
       skip.textContent = 'Skip'
-      skip.addEventListener('click', () => { try { ls.setItem(tourKey, 'dismissed') } catch {}; prompt.remove() })
+      skip.addEventListener('click', () => { try { ls.setItem(tourKey, dontCb.checked ? 'disabled' : 'dismissed') } catch {}; prompt.remove() })
       prompt.appendChild(text)
+      prompt.appendChild(dont)
       prompt.appendChild(start)
       prompt.appendChild(skip)
       toolbar.appendChild(prompt)
+      // Auto-start once after a short delay if not dismissed
+      const autoKey = 'swordmaker.tourAutoStart'
+      const autoState = ls.getItem(autoKey) // 'done' | null
+      if (!autoState) {
+        setTimeout(async () => {
+          // if prompt still exists and not disabled, start automatically
+          if (document.body.contains(prompt) && !dontCb.checked) {
+            try {
+              const mod = await import('./help/HelpTourDriver')
+              mod.startIntroTourDriver?.()
+              ls.setItem(tourKey, 'completed')
+            } catch {}
+            prompt.remove()
+          }
+          ls.setItem(autoKey, 'done')
+        }, 6000)
+      }
     }
   } catch {}
 

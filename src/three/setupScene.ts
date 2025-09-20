@@ -155,7 +155,14 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     explainEnabled = !!v;
     ensureExplainOverlay();
     if (!explainOverlay) return;
-    explainOverlay.style.display = explainEnabled ? 'block' : 'none';
+    if (!explainEnabled) {
+      // Detach overlay and clear labels to free DOM/memory
+      try { explainOverlay.remove() } catch {}
+      explainOverlay = null;
+      for (const k of Object.keys(explainLabels)) { delete (explainLabels as any)[k] }
+      return;
+    }
+    explainOverlay.style.display = 'block';
     if (explainEnabled) {
       // Create basic labels on first enable
       if (!explainLabels['blade']) makeLabel('blade', 'Blade');

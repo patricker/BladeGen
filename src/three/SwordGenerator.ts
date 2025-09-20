@@ -438,6 +438,20 @@ export class SwordGenerator {
         this.anchorQuillonR.visible = false
       }
     }
+    // Expose a simple lookup map on the group for consumers (Explain/Help)
+    const map: Record<string, THREE.Object3D | null> = {
+      'blade': this.bladeMesh,
+      'guard': this.guardMesh ?? this.guardGroup,
+      'handle': this.handleMesh ?? this.handleGroup,
+      'pommel': this.pommelMesh,
+      'blade.fuller': this.fullerGroup,
+      'blade.edge': this.anchorBladeEdge,
+      'blade.edge-left': this.anchorBladeEdgeL,
+      'blade.edge-right': this.anchorBladeEdgeR,
+      'blade.tip': this.anchorBladeTip,
+      'guard.quillon': this.anchorQuillonR ?? this.anchorQuillonL,
+    }
+    ;(this.group as any).__subparts = map
   }
 
   private resolveTasselAnchor(

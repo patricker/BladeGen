@@ -95,6 +95,40 @@ function renderDoc(doc: HelpDoc) {
   const body = document.createElement('div')
   body.className = 'smk-help-body'
   if (doc.id === 'help.index') {
+    // Add quick actions on index
+    const actions = document.createElement('div')
+    actions.className = 'smk-chips'
+    const btnIntro = document.createElement('button')
+    btnIntro.className = 'smk-chip'
+    btnIntro.textContent = 'Start Intro Tour'
+    btnIntro.addEventListener('click', async () => {
+      try { const mod = await import('./HelpTourDriver'); (mod as any).startIntroTourDriver?.(); return } catch {}
+      try { const mod = await import('./HelpTour'); (mod as any).startIntroTour?.() } catch {}
+    })
+    actions.appendChild(btnIntro)
+    const btnTask = document.createElement('button')
+    btnTask.className = 'smk-chip'
+    btnTask.textContent = 'Guide: Add a Fuller'
+    btnTask.addEventListener('click', async () => {
+      try { const mod = await import('./HelpTourDriver'); (mod as any).startAddFullerTourDriver?.(); return } catch {}
+      try { const mod = await import('./HelpTour'); (mod as any).startIntroTour?.() } catch {}
+    })
+    actions.appendChild(btnTask)
+    const btnLeaf = document.createElement('button')
+    btnLeaf.className = 'smk-chip'
+    btnLeaf.textContent = 'Guide: Make a Leaf Blade'
+    btnLeaf.addEventListener('click', async () => {
+      try { const mod = await import('./HelpTourDriver'); (mod as any).startLeafBladeTourDriver?.(); return } catch {}
+    })
+    actions.appendChild(btnLeaf)
+    const btnStl = document.createElement('button')
+    btnStl.className = 'smk-chip'
+    btnStl.textContent = 'Guide: Export to STL'
+    btnStl.addEventListener('click', async () => {
+      try { const mod = await import('./HelpTourDriver'); (mod as any).startExportStlTourDriver?.(); return } catch {}
+    })
+    actions.appendChild(btnStl)
+    body.appendChild(actions)
     renderIndex(body)
     const container = document.createElement('div')
     container.appendChild(header)

@@ -1046,6 +1046,43 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   });
   toolbar.appendChild(btnExplain);
 
+  // First-run tour prompt (non-blocking)
+  try {
+    const ls = window.localStorage
+    const tourKey = 'swordmaker.tourPrompt'
+    const state = ls.getItem(tourKey) // 'dismissed' | 'completed' | null
+    if (!state) {
+      const prompt = document.createElement('div')
+      prompt.style.display = 'flex'
+      prompt.style.alignItems = 'center'
+      prompt.style.gap = '6px'
+      prompt.style.padding = '4px 8px'
+      prompt.style.border = '1px solid #475569'
+      prompt.style.borderRadius = '6px'
+      prompt.style.background = '#1f2430'
+      prompt.style.color = '#e5e7eb'
+      const text = document.createElement('span')
+      text.textContent = 'New here? Take a quick tour.'
+      const start = document.createElement('button')
+      start.textContent = 'Start Tour'
+      start.addEventListener('click', async () => {
+        try {
+          const mod = await import('./help/HelpTourDriver')
+          mod.startIntroTourDriver?.()
+          ls.setItem(tourKey, 'completed')
+        } catch {}
+        prompt.remove()
+      })
+      const skip = document.createElement('button')
+      skip.textContent = 'Skip'
+      skip.addEventListener('click', () => { try { ls.setItem(tourKey, 'dismissed') } catch {}; prompt.remove() })
+      prompt.appendChild(text)
+      prompt.appendChild(start)
+      prompt.appendChild(skip)
+      toolbar.appendChild(prompt)
+    }
+  } catch {}
+
   if (render?.setAutoSpinEnabled && render.getAutoSpinEnabled) {
     const autoSpinWrap = document.createElement('label');
     autoSpinWrap.style.display = 'flex';

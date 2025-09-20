@@ -124,6 +124,7 @@ function destroyPopover() {
     // restore focus back to trigger
     activePopoverAnchor?.focus?.();
   }
+  try { (activePopover as any)?.hidePopover?.() } catch {}
   activePopover?.remove();
   activePopover = null;
   activePopoverAnchor = null;
@@ -271,6 +272,38 @@ function openPopover(anchor: HTMLElement, doc: HelpDoc, labelText?: string) {
   btn.addEventListener('click', () => destroyPopover());
   pop.appendChild(btn);
   document.body.appendChild(pop);
+  try { (pop as any).setAttribute?.('popover','manual'); (pop as any).showPopover?.() } catch {}
+  // Focus management & optional focus trap when interactive
+  const focusableSel = 'a[href],button:not([disabled]),textarea,select,input:not([disabled]),[tabindex]:not([tabindex="-1"])'
+  const focusables = Array.from(pop.querySelectorAll<HTMLElement>(focusableSel))
+  if (focusables.length > 0) {
+    pop.setAttribute('aria-modal', 'true')
+    const first = focusables[0]
+    const last = focusables[focusables.length - 1]
+    // Move focus inside the popover
+    setTimeout(() => { (first || pop).focus?.() }, 0)
+    const onTrap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const active = document.activeElement as HTMLElement | null
+      if (!active) return
+      if (e.shiftKey) {
+        if (active === first || !pop.contains(active)) { e.preventDefault(); (last || pop).focus?.() }
+      } else {
+        if (active === last || !pop.contains(active)) { e.preventDefault(); (first || pop).focus?.() }
+      }
+    }
+    window.addEventListener('keydown', onTrap, true)
+    // Clean up trap with destroy
+    const prevDestroy = destroyPopover
+    ;(destroyPopover as any) = function patchedDestroy() {
+      window.removeEventListener('keydown', onTrap, true)
+      ;(destroyPopover as any) = prevDestroy
+      prevDestroy()
+    }
+  } else {
+    // Non-interactive: allow plain reading and keep focus on trigger
+    pop.setAttribute('aria-modal', 'false')
+  }
   positionNear(anchor, pop, 'below');
   activePopover = pop;
   activePopoverAnchor = anchor;

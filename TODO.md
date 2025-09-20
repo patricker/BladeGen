@@ -54,9 +54,9 @@ Reference specs: see `VISION.md` (goals), `uxplan.md` (in‑app help), and `KNOB
 Context: implement contextual help as described in uxplan.md. Ship in phases with minimal UI disruption and clear a11y.
 
 ### Decisions (pick before Phase 1)
-- [x] Tooltip/Popover: custom lightweight micro-tooltips and popovers (no external lib) to minimize deps and maximize control; revisit Native Popover/Floating UI if complexity grows.
+- [x] Tooltip/Popover: custom lightweight micro-tooltips and popovers; native Popover used when available.
 - [x] Search: custom build-time index (`scripts/build-help-index.mjs`) + runtime filter with simple synonyms; defer MiniSearch/Lunr to future if needed.
-- [ ] Guided tours: TBD; lean toward Shepherd.js (MIT, vanilla support) when implementing Phase 4.
+- [x] Guided tours: use Driver.js (MIT). Load on demand from CDN; keep fallback lightweight tour for offline/dev.
 
 ### Phase 1 — Tooltips & Popovers
 - [x] Introduce HelpRegistry (in‑memory map `helpId → doc`) in `src/ui/help/` with `getDoc(id)`, `getSummary(id)`, `preload()`.
@@ -79,11 +79,13 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
 ### Phase 3 — Explain Mode (3D‑first)
 - [x] Add Explain toggle (UI + hotkey `E`).
 - [x] Add labels overlay anchored to parts (“Blade”, “Guard”, “Handle”, “Pommel”, “Fuller”); clicking opens Help Panel.
-- [ ] Tag scene graph with sub‑parts (e.g., `blade.fuller`, `blade.edge`, `guard.quillon`) for precise highlights.
+- [x] Tag scene graph with sub‑parts (anchors under `group.__subparts`) for precise labels/highlights.
 
-### Phase 4 — Guided Tours / Task Walkthroughs
-- [ ] Implement short, skippable first‑run tour (4–6 steps: viewport, tabs, slider, export, Help); add “Replay Intro” in Help.
-- [ ] Add 2–4 task guides (e.g., Add a fuller; Make a leaf blade; Export to STL) launched from Help.
+- ### Phase 4 — Guided Tours / Task Walkthroughs
+- [ ] Implement short, skippable first‑run tour (4–6 steps: viewport, tabs, slider, export, Help). (Prompt added; full auto‑start TBD.)
+- [x] Add “Replay Intro” in Help (Start Intro Tour button on Help index). Uses Driver.js with fallback.
+- [x] Add task guide: Add a fuller (Driver.js) launched from Help.
+- [ ] Add remaining task guides (Make a leaf blade; Export to STL).
 
 ### Authoring & Governance
 - [x] Doc lint script: validate required fields; enforce length limits (summary ≤120 chars; popover ≤6 bullets).
@@ -91,8 +93,8 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
 
 ### Accessibility & Interaction
 - [x] Tooltips: delay on hover; show on focus; dismiss on `Esc`/pointer out; don’t block arrow keys reaching inputs (WAI‑ARIA APG).
-- [x] Popovers: non‑modal for info; always restore focus to trigger on close. (Defer focus trap until needed.)
-- [ ] Feature‑detect Native Popover API; minimal polyfill if required.
+- [x] Popovers: non‑modal for info; restore focus to trigger; focus trap only when interactive.
+- [x] Feature‑detect Native Popover API; use when available; otherwise custom popover.
 - [x] Explain labels: keyboard reachable; don’t interfere with OrbitControls when not hovered.
 
 ### Analytics & Quality Loop
@@ -103,7 +105,7 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
 - [x] Pre‑bundle MD → JSON at build time.
 - [x] Lazy‑load HelpPanel CSS/JS on first open.
 - [ ] Tree‑shake/lazy‑load optional libs (Floating UI/Tippy.js, mark.js, Shepherd/Driver, MiniSearch/Lunr).
-- [ ] Limit CSS2D labels; render only in Explain Mode; detach on exit.
+- [x] Limit CSS2D labels; render only in Explain Mode; detach overlay on exit.
 
 ### Wiring & Integration
 - [x] Controls pass `helpId` (read `row.dataset.field`); register micro‑tooltips/popover triggers during `registerControl()`.
@@ -209,3 +211,9 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
   - After tweaks, “Reset Render” returns to defaults (FXAA, fog density, etc.).
 - E2E: Quality preset propagation
   - Quality dropdown updates AA mode and DPR cap accordingly.
+
+- Unit: Export tools (GLB/OBJ/STL/SVG)
+  - GLB: validate non-empty buffer and presence of expected nodes; include `KHR_materials_variants` mapping when used.
+  - OBJ/STL: verify mesh vertex/face counts are consistent across runs for fixed params.
+  - SVG blueprint: ensure valid SVG root and expected path count for the blade outline.
+  - Error paths: exporting without meshes or with invalid params yields typed errors (no crashes).

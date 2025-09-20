@@ -839,7 +839,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       currentVariantId = null;
       baseSnapshot = null;
       lookSel.value = BASE_LOOK_VALUE;
-      syncMaterialInputs(matPart);
+      syncAllMaterialInputs();
       renderVariantList();
       syncLookDropdown();
       rerender();
@@ -875,7 +875,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
 
     currentVariantId = variant.id;
     lookSel.value = variant.id;
-    syncMaterialInputs(matPart);
+    syncAllMaterialInputs();
     renderVariantList();
     syncLookDropdown();
     rerender();
@@ -1269,36 +1269,38 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   // Keep handles to Render subsections needed later
   let rMatSec: HTMLElement | null = null;
   let rGradSec: HTMLElement | null = null;
-  function syncMaterialInputs(currentPart?: Part) {
-    const partKey: Part = currentPart || matPart;
-    const m = matState[partKey];
-    registry.setValue('render-materials', 'Material Part', partKey);
-    registry.setValue('render-materials', 'Base Color', m.color);
-    registry.setValue('render-materials', 'Metalness', m.metalness);
-    registry.setValue('render-materials', 'Roughness', m.roughness);
-    registry.setValue('render-materials', 'Clearcoat', m.clearcoat);
-    registry.setValue('render-materials', 'Clearcoat Rough', m.clearcoatRoughness);
-    registry.setValue('render-materials', 'Mat Preset', m.preset || 'None');
-    registry.setValue('render-materials', 'Bump Enabled', m.bumpEnabled);
-    registry.setValue('render-materials', 'Bump Scale', m.bumpScale);
-    registry.setValue('render-materials', 'Noise Scale', m.bumpNoiseScale);
-    registry.setValue('render-materials', 'Noise Seed', m.bumpSeed);
-    registry.setValue('render-materials', 'Emissive Color', m.emissiveColor ?? '#000000');
-    registry.setValue('render-materials', 'Emissive Intensity', m.emissiveIntensity ?? 0);
-    registry.setValue('render-materials', 'Transmission', m.transmission ?? 0);
-    registry.setValue('render-materials', 'IOR', m.ior ?? 1.5);
-    registry.setValue('render-materials', 'Thickness', m.thickness ?? 0);
-    registry.setValue('render-materials', 'Atten Color', m.attenuationColor ?? '#ffffff');
-    registry.setValue('render-materials', 'Atten Dist', m.attenuationDistance ?? 1);
-    registry.setValue('render-materials', 'Sheen', m.sheen ?? 0);
-    registry.setValue('render-materials', 'Sheen Color', m.sheenColor ?? '#ffffff');
-    registry.setValue('render-materials', 'Iridescence', m.iridescence ?? 0);
-    registry.setValue('render-materials', 'Iridescence IOR', m.iridescenceIOR ?? 1.3);
-    registry.setValue('render-materials', 'Iridescence Min', m.iridescenceThicknessMin ?? 100);
-    registry.setValue('render-materials', 'Iridescence Max', m.iridescenceThicknessMax ?? 400);
-    registry.setValue('render-materials', 'EnvMap Intensity', m.envMapIntensity ?? 1);
-    registry.setValue('render-materials', 'Anisotropy', m.anisotropy ?? 0);
-    registry.setValue('render-materials', 'Aniso Rotation', m.anisotropyRotation ?? 0);
+  function syncAllMaterialInputs() {
+    const slug = (p: Part) => `materials-${p}`;
+    for (const p of PARTS) {
+      const m = matState[p];
+      registry.setValue(slug(p), 'Base Color', m.color);
+      registry.setValue(slug(p), 'Metalness', m.metalness);
+      registry.setValue(slug(p), 'Roughness', m.roughness);
+      registry.setValue(slug(p), 'Clearcoat', m.clearcoat);
+      registry.setValue(slug(p), 'Clearcoat Rough', m.clearcoatRoughness);
+      registry.setValue(slug(p), 'Mat Preset', m.preset || 'None');
+      registry.setValue(slug(p), 'Bump Enabled', m.bumpEnabled);
+      registry.setValue(slug(p), 'Bump Scale', m.bumpScale);
+      registry.setValue(slug(p), 'Noise Scale', m.bumpNoiseScale);
+      registry.setValue(slug(p), 'Noise Seed', m.bumpSeed);
+      registry.setValue(slug(p), 'Emissive', (m.emissiveIntensity ?? 0) > 0);
+      registry.setValue(slug(p), 'Emissive Color', m.emissiveColor ?? '#000000');
+      registry.setValue(slug(p), 'Emissive Intensity', m.emissiveIntensity ?? 0);
+      registry.setValue(slug(p), 'Transmission', m.transmission ?? 0);
+      registry.setValue(slug(p), 'IOR', m.ior ?? 1.5);
+      registry.setValue(slug(p), 'Thickness', m.thickness ?? 0);
+      registry.setValue(slug(p), 'Atten Color', m.attenuationColor ?? '#ffffff');
+      registry.setValue(slug(p), 'Atten Dist', m.attenuationDistance ?? 1);
+      registry.setValue(slug(p), 'Sheen', m.sheen ?? 0);
+      registry.setValue(slug(p), 'Sheen Color', m.sheenColor ?? '#ffffff');
+      registry.setValue(slug(p), 'Iridescence', m.iridescence ?? 0);
+      registry.setValue(slug(p), 'Iridescence IOR', m.iridescenceIOR ?? 1.3);
+      registry.setValue(slug(p), 'Iridescence Min', m.iridescenceThicknessMin ?? 100);
+      registry.setValue(slug(p), 'Iridescence Max', m.iridescenceThicknessMax ?? 400);
+      registry.setValue(slug(p), 'EnvMap Intensity', m.envMapIntensity ?? 1);
+      registry.setValue(slug(p), 'Anisotropy', m.anisotropy ?? 0);
+      registry.setValue(slug(p), 'Aniso Rotation', m.anisotropyRotation ?? 0);
+    }
   }
 
   const syncRenderControls = () => {
@@ -1394,7 +1396,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
         }
       }
       syncRenderControls();
-      syncMaterialInputs(matPart);
+      syncAllMaterialInputs();
       renderVariantList();
     }
     try { syncVisibility(); } catch {}
@@ -1690,103 +1692,101 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       applyFxOverrides(entry.fx);
     };
 
-    // Material Base (Render tab)
-    const matPartOpts = ['blade','guard','handle','pommel','scabbard','tassel'] as const;
-    matPart = 'blade';
-    const rm = rMatSec || sections.Render;
-    select(rm, 'Material Part', [...matPartOpts] as unknown as string[], 'blade', (v) => { matPart = v as Part; syncMaterialInputs(matPart); }, () => {});
-    colorPicker(rm, 'Base Color', matState[matPart].color, (hex) => { matState[matPart].color = hex; const n = hexToInt(hex); render.setPartColor(matPart, n); }, () => {}, 'Albedo color.');
-    slider(rm, 'Metalness', 0, 1, 0.01, matState[matPart].metalness, (v) => { matState[matPart].metalness = v; render.setPartMetalness(matPart, v); }, () => {}, 'PBR metalness.');
-    slider(rm, 'Roughness', 0, 1, 0.01, matState[matPart].roughness, (v) => { matState[matPart].roughness = v; render.setPartRoughness(matPart, v); }, () => {}, 'PBR roughness.');
-    slider(rm, 'Clearcoat', 0, 1, 0.01, matState[matPart].clearcoat, (v) => { matState[matPart].clearcoat = v; render.setPartClearcoat(matPart, v); }, () => {}, 'Clearcoat layer (if supported).');
-    slider(rm, 'Clearcoat Rough', 0, 1, 0.01, matState[matPart].clearcoatRoughness, (v) => { matState[matPart].clearcoatRoughness = v; render.setPartClearcoatRoughness(matPart, v); }, () => {}, 'Clearcoat roughness (if supported).');
-    // Material presets
-    select(rm, 'Mat Preset', ['None','Steel','Iron','Bronze','Brass','Leather','Wood','Matte','Glass','Gem'], matState[matPart].preset, (v) => {
-      const apply = (c:number,m:number,r:number,cc:number,ccr:number, extra?: Partial<MatExt>) => {
-        const target = matState[matPart];
-        target.color = '#' + c.toString(16).padStart(6,'0');
-        target.metalness = m;
-        target.roughness = r;
-        target.clearcoat = cc;
-        target.clearcoatRoughness = ccr;
-        target.preset = v;
-        render.setPartColor(matPart, c);
-        render.setPartMetalness(matPart, m);
-        render.setPartRoughness(matPart, r);
-        render.setPartClearcoat(matPart, cc);
-        render.setPartClearcoatRoughness(matPart, ccr);
-        const extras = extra ?? {};
-        Object.assign(target, extras);
-        const patch: Record<string, unknown> = {};
-        const materialKeys: Array<keyof MatExt> = [
-          'emissiveColor','emissiveIntensity','transmission','ior','thickness','attenuationColor','attenuationDistance','sheen','sheenColor','iridescence','iridescenceIOR','iridescenceThicknessMin','iridescenceThicknessMax','envMapIntensity'
-        ];
-        for (const key of materialKeys) {
-          const val = extras[key];
-          if (val !== undefined) patch[key] = val;
-        }
-        const ani = extras.anisotropy ?? 0;
-        const aniRot = extras.anisotropyRotation ?? 0;
-        target.anisotropy = ani;
-        target.anisotropyRotation = aniRot;
-        patch.anisotropy = ani;
-        patch.anisotropyRotation = aniRot;
-        if (patch.envMapIntensity === undefined && target.envMapIntensity !== undefined) {
-          patch.envMapIntensity = target.envMapIntensity;
-        }
-        if (Object.keys(patch).length) {
-          (render as any).setPartMaterial?.(matPart, patch);
-        }
-        syncMaterialInputs(matPart);
-      };
-      if (v==='Steel') apply(0xb9c6ff,0.9,0.25,0.2,0.4, { anisotropy: 0.35, anisotropyRotation: 0 });
-      else if (v==='Iron') apply(0x9aa4b2,0.8,0.45,0.05,0.6, { anisotropy: 0.18, anisotropyRotation: 0 });
-      else if (v==='Bronze') apply(0xcd7f32,0.6,0.5,0.05,0.6, { anisotropy: 0.22, anisotropyRotation: 0 });
-      else if (v==='Brass') apply(0xb5a642,0.6,0.5,0.05,0.6, { anisotropy: 0.28, anisotropyRotation: 0 });
-      else if (v==='Leather') apply(0x6b4f3a,0.05,0.85,0.0,0.8);
-      else if (v==='Wood') apply(0x8b6f47,0.02,0.8,0.0,0.8);
-      else if (v==='Matte') apply(0xbfbfbf,0.0,0.9,0.0,1.0);
-      else if (v==='Glass') apply(0xffffff,0.0,0.05,0.0,1.0, { transmission: 0.95, ior: 1.5, thickness: 0.2, attenuationColor: '#ffffff', attenuationDistance: 1.0, envMapIntensity: 1.5, anisotropy: 0, anisotropyRotation: 0 });
-      else if (v==='Gem') apply(0xc0e0ff,0.0,0.02,0.1,0.2, { transmission: 0.98, ior: 2.3, thickness: 0.4, attenuationColor: '#a0c8ff', attenuationDistance: 0.2, iridescence: 0.2, anisotropy: 0, anisotropyRotation: 0 });
-      else { matState[matPart].preset = 'None'; syncMaterialInputs(matPart); }
-    }, () => {}, 'Quick material presets');
-    // Reset material for selected part
-    const resetBtn = document.createElement('button'); resetBtn.textContent = 'Reset Material'; resetBtn.title = 'Reset selected part material to defaults'; resetBtn.style.margin='4px 0';
-    resetBtn.addEventListener('click', () => {
-      const def = JSON.parse(JSON.stringify(matDefaults[matPart])) as MatExt;
-      matState[matPart] = def;
-      const c = hexToInt(def.color);
-      render.setPartColor(matPart, c);
-      render.setPartMetalness(matPart, def.metalness);
-      render.setPartRoughness(matPart, def.roughness);
-      render.setPartClearcoat(matPart, def.clearcoat);
-      render.setPartClearcoatRoughness(matPart, def.clearcoatRoughness);
-      (render as any).setPartMaterial?.(matPart, { emissiveColor: def.emissiveColor, emissiveIntensity: def.emissiveIntensity, transmission: def.transmission, ior: def.ior, thickness: def.thickness, attenuationColor: def.attenuationColor, attenuationDistance: def.attenuationDistance, sheen: def.sheen, sheenColor: def.sheenColor, iridescence: def.iridescence, iridescenceIOR: def.iridescenceIOR, iridescenceThicknessMin: def.iridescenceThicknessMin, iridescenceThicknessMax: def.iridescenceThicknessMax, envMapIntensity: def.envMapIntensity, anisotropy: def.anisotropy, anisotropyRotation: def.anisotropyRotation });
-      syncMaterialInputs(matPart);
-    });
-    rm.appendChild(resetBtn);
-    // Procedural bump/noise for selected part
-    checkbox(rm, 'Bump Enabled', matState[matPart].bumpEnabled, (v) => { matState[matPart].bumpEnabled = v; render.setPartBump(matPart, v, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Procedural noise bump.');
-    slider(rm, 'Bump Scale', 0, 0.08, 0.001, matState[matPart].bumpScale, (v) => { matState[matPart].bumpScale = v; render.setPartBump(matPart, matState[matPart].bumpEnabled, v, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Bump map scale.');
-    slider(rm, 'Noise Scale', 1, 32, 1, matState[matPart].bumpNoiseScale, (v) => { matState[matPart].bumpNoiseScale = Math.round(v); render.setPartBump(matPart, matState[matPart].bumpEnabled, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Noise frequency.');
-    slider(rm, 'Noise Seed', 0, 9999, 1, matState[matPart].bumpSeed, (v) => { matState[matPart].bumpSeed = Math.round(v); render.setPartBump(matPart, matState[matPart].bumpEnabled, matState[matPart].bumpScale, matState[matPart].bumpNoiseScale, matState[matPart].bumpSeed); }, () => {}, 'Noise seed.');
-    // Advanced materials
-    colorPicker(rm, 'Emissive Color', matState[matPart].emissiveColor ?? '#000000', (hex) => { matState[matPart].emissiveColor = hex; (render as any).setPartMaterial?.(matPart, { emissiveColor: hex }); }, () => {}, 'Glow color.');
-    slider(rm, 'Emissive Intensity', 0, 10, 0.01, matState[matPart].emissiveIntensity ?? 0, (v) => { matState[matPart].emissiveIntensity = v; (render as any).setPartMaterial?.(matPart, { emissiveIntensity: v }); }, () => {}, 'Glow intensity.');
-    slider(rm, 'Transmission', 0, 1, 0.01, matState[matPart].transmission ?? 0, (v) => { matState[matPart].transmission = v; (render as any).setPartMaterial?.(matPart, { transmission: v }); }, () => {}, 'Glass-like transmission.');
-    slider(rm, 'IOR', 1, 2.5, 0.01, matState[matPart].ior ?? 1.5, (v) => { matState[matPart].ior = v; (render as any).setPartMaterial?.(matPart, { ior: v }); }, () => {}, 'Index of refraction.');
-    slider(rm, 'Thickness', 0, 5, 0.01, matState[matPart].thickness ?? 0.2, (v) => { matState[matPart].thickness = v; (render as any).setPartMaterial?.(matPart, { thickness: v }); }, () => {}, 'Volume thickness.');
-    colorPicker(rm, 'Atten Color', matState[matPart].attenuationColor ?? '#ffffff', (hex) => { matState[matPart].attenuationColor = hex; (render as any).setPartMaterial?.(matPart, { attenuationColor: hex }); }, () => {}, 'Transmission attenuation color.');
-    slider(rm, 'Atten Dist', 0, 10, 0.01, matState[matPart].attenuationDistance ?? 0, (v) => { matState[matPart].attenuationDistance = v; (render as any).setPartMaterial?.(matPart, { attenuationDistance: v }); }, () => {}, 'Attenuation distance.');
-    slider(rm, 'Sheen', 0, 1, 0.01, matState[matPart].sheen ?? 0, (v) => { matState[matPart].sheen = v; (render as any).setPartMaterial?.(matPart, { sheen: v }); }, () => {}, 'Cloth sheen.');
-    colorPicker(rm, 'Sheen Color', matState[matPart].sheenColor ?? '#ffffff', (hex) => { matState[matPart].sheenColor = hex; (render as any).setPartMaterial?.(matPart, { sheenColor: hex }); }, () => {}, 'Sheen color.');
-    slider(rm, 'Iridescence', 0, 1, 0.01, matState[matPart].iridescence ?? 0, (v) => { matState[matPart].iridescence = v; (render as any).setPartMaterial?.(matPart, { iridescence: v }); }, () => {}, 'Iridescent layer strength.');
-    slider(rm, 'Iridescence IOR', 1, 2.5, 0.01, matState[matPart].iridescenceIOR ?? 1.3, (v) => { matState[matPart].iridescenceIOR = v; (render as any).setPartMaterial?.(matPart, { iridescenceIOR: v }); }, () => {}, 'Iridescence index of refraction.');
-    slider(rm, 'Iridescence Min', 0, 1200, 1, matState[matPart].iridescenceThicknessMin ?? 100, (v) => { matState[matPart].iridescenceThicknessMin = Math.round(v); (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMin: Math.round(v) }); }, () => {}, 'Thin-film min thickness (nm).');
-    slider(rm, 'Iridescence Max', 0, 1200, 1, matState[matPart].iridescenceThicknessMax ?? 400, (v) => { matState[matPart].iridescenceThicknessMax = Math.round(v); (render as any).setPartMaterial?.(matPart, { iridescenceThicknessMax: Math.round(v) }); }, () => {}, 'Thin-film max thickness (nm).');
-    slider(rm, 'EnvMap Intensity', 0, 3, 0.01, matState[matPart].envMapIntensity ?? 1, (v) => { matState[matPart].envMapIntensity = v; (render as any).setPartMaterial?.(matPart, { envMapIntensity: v }); }, () => {}, 'Boost environment reflections.');
-    slider(rm, 'Anisotropy', 0, 1, 0.01, matState[matPart].anisotropy ?? 0, (v) => { matState[matPart].anisotropy = v; (render as any).setPartMaterial?.(matPart, { anisotropy: v }); }, () => {}, 'Brushed highlight strength (0 = isotropic, 1 = strong anisotropy).');
-    slider(rm, 'Aniso Rotation', -Math.PI, Math.PI, 0.01, matState[matPart].anisotropyRotation ?? 0, (v) => { matState[matPart].anisotropyRotation = typeof v === 'number' ? v : 0; (render as any).setPartMaterial?.(matPart, { anisotropyRotation: matState[matPart].anisotropyRotation }); }, () => {}, 'Anisotropy direction in radians (0 aligns with +X).');
+    // Material panels per part
+    const partLabel = (p: Part) => p.charAt(0).toUpperCase() + p.slice(1);
+    const buildMaterialPanel = (parent: HTMLElement, part: Part) => {
+      const sect = addSection(parent, `Materials: ${partLabel(part)}`);
+      const sslug = sect.dataset.fieldNamespace || `materials-${part}`;
+      const m = matState[part];
+      const gBase = addGroup(sect, 'Base PBR');
+      colorPicker(gBase, 'Base Color', m.color, (hex) => { m.color = hex; render.setPartColor(part, hexToInt(hex)); }, () => {}, 'Albedo color.');
+      slider(gBase, 'Metalness', 0, 1, 0.01, m.metalness, (v) => { m.metalness = v; render.setPartMetalness(part, v); }, () => {}, 'PBR metalness.');
+      slider(gBase, 'Roughness', 0, 1, 0.01, m.roughness, (v) => { m.roughness = v; render.setPartRoughness(part, v); }, () => {}, 'PBR roughness.');
+      slider(gBase, 'Clearcoat', 0, 1, 0.01, m.clearcoat, (v) => { m.clearcoat = v; render.setPartClearcoat(part, v); }, () => {}, 'Clearcoat layer (if supported).');
+      slider(gBase, 'Clearcoat Rough', 0, 1, 0.01, m.clearcoatRoughness, (v) => { m.clearcoatRoughness = v; render.setPartClearcoatRoughness(part, v); }, () => {}, 'Clearcoat roughness (if supported).');
+
+      // Material presets
+      select(gBase, 'Mat Preset', ['None','Steel','Iron','Bronze','Brass','Leather','Wood','Matte','Glass','Gem'], m.preset || 'None', (v) => {
+        const apply = (c:number,mn:number,r:number,cc:number,ccr:number, extra?: Partial<MatExt>) => {
+          const target = matState[part];
+          target.color = '#' + c.toString(16).padStart(6,'0');
+          target.metalness = mn; target.roughness = r; target.clearcoat = cc; target.clearcoatRoughness = ccr; target.preset = v;
+          render.setPartColor(part, c); render.setPartMetalness(part, mn); render.setPartRoughness(part, r); render.setPartClearcoat(part, cc); render.setPartClearcoatRoughness(part, ccr);
+          const extras = extra ?? {};
+          Object.assign(target, extras);
+          const patch: Record<string, unknown> = {};
+          const keys: Array<keyof MatExt> = ['emissiveColor','emissiveIntensity','transmission','ior','thickness','attenuationColor','attenuationDistance','sheen','sheenColor','iridescence','iridescenceIOR','iridescenceThicknessMin','iridescenceThicknessMax','envMapIntensity','anisotropy','anisotropyRotation'];
+          for (const k of keys) { const val = (extras as any)[k]; if (val !== undefined) (patch as any)[k] = val; }
+          if (Object.keys(patch).length) (render as any).setPartMaterial?.(part, patch);
+          try { syncVisibility(); } catch {}
+        };
+        if (v==='Steel') apply(0xb9c6ff,0.9,0.25,0.2,0.4, { anisotropy: 0.35, anisotropyRotation: 0 });
+        else if (v==='Iron') apply(0x9aa4b2,0.8,0.45,0.05,0.6, { anisotropy: 0.18, anisotropyRotation: 0 });
+        else if (v==='Bronze') apply(0xcd7f32,0.6,0.5,0.05,0.6, { anisotropy: 0.22, anisotropyRotation: 0 });
+        else if (v==='Brass') apply(0xb5a642,0.6,0.5,0.05,0.6, { anisotropy: 0.28, anisotropyRotation: 0 });
+        else if (v==='Leather') apply(0x6b4f3a,0.05,0.85,0.0,0.8);
+        else if (v==='Wood') apply(0x8b6f47,0.02,0.8,0.0,0.8);
+        else if (v==='Matte') apply(0xbfbfbf,0.0,0.9,0.0,1.0);
+        else if (v==='Glass') apply(0xffffff,0.0,0.05,0.0,1.0, { transmission: 0.95, ior: 1.5, thickness: 0.2, attenuationColor: '#ffffff', attenuationDistance: 1.0, envMapIntensity: 1.5, anisotropy: 0, anisotropyRotation: 0 });
+        else if (v==='Gem') apply(0xc0e0ff,0.0,0.02,0.1,0.2, { transmission: 0.98, ior: 2.3, thickness: 0.4, attenuationColor: '#a0c8ff', attenuationDistance: 0.2, iridescence: 0.2, anisotropy: 0, anisotropyRotation: 0 });
+        else { matState[part].preset = 'None'; try { syncVisibility(); } catch {} }
+      }, () => {}, 'Quick material presets');
+
+      const resetBtn = document.createElement('button'); resetBtn.textContent = 'Reset Material'; resetBtn.title = `Reset ${partLabel(part)} material to defaults`; resetBtn.style.margin='4px 0';
+      resetBtn.addEventListener('click', () => {
+        const def = JSON.parse(JSON.stringify(matDefaults[part])) as MatExt;
+        matState[part] = def;
+        const c = hexToInt(def.color);
+        render.setPartColor(part, c);
+        render.setPartMetalness(part, def.metalness);
+        render.setPartRoughness(part, def.roughness);
+        render.setPartClearcoat(part, def.clearcoat);
+        render.setPartClearcoatRoughness(part, def.clearcoatRoughness);
+        (render as any).setPartMaterial?.(part, { emissiveColor: def.emissiveColor, emissiveIntensity: def.emissiveIntensity, transmission: def.transmission, ior: def.ior, thickness: def.thickness, attenuationColor: def.attenuationColor, attenuationDistance: def.attenuationDistance, sheen: def.sheen, sheenColor: def.sheenColor, iridescence: def.iridescence, iridescenceIOR: def.iridescenceIOR, iridescenceThicknessMin: def.iridescenceThicknessMin, iridescenceThicknessMax: def.iridescenceThicknessMax, envMapIntensity: def.envMapIntensity, anisotropy: def.anisotropy, anisotropyRotation: def.anisotropyRotation });
+        try { syncVisibility(); } catch {}
+      });
+      sect.appendChild(resetBtn);
+      // Bump
+      const gBump = addGroup(sect, 'Bump');
+      checkbox(gBump, 'Bump Enabled', m.bumpEnabled, (v) => { m.bumpEnabled = v; render.setPartBump(part, v, m.bumpScale, m.bumpNoiseScale, m.bumpSeed); try { syncVisibility(); } catch {} }, () => {}, 'Procedural noise bump.');
+      slider(gBump, 'Bump Scale', 0, 0.08, 0.001, m.bumpScale, (v) => { m.bumpScale = v; render.setPartBump(part, m.bumpEnabled, v, m.bumpNoiseScale, m.bumpSeed); }, () => {}, 'Bump map scale.');
+      slider(gBump, 'Noise Scale', 1, 32, 1, m.bumpNoiseScale, (v) => { m.bumpNoiseScale = Math.round(v); render.setPartBump(part, m.bumpEnabled, m.bumpScale, m.bumpNoiseScale, m.bumpSeed); }, () => {}, 'Noise frequency.');
+      slider(gBump, 'Noise Seed', 0, 9999, 1, m.bumpSeed, (v) => { m.bumpSeed = Math.round(v); render.setPartBump(part, m.bumpEnabled, m.bumpScale, m.bumpNoiseScale, m.bumpSeed); }, () => {}, 'Noise seed.');
+
+      // Emissive
+      const gEmis = addGroup(sect, 'Emissive');
+      const emissiveOn = (m.emissiveIntensity ?? 0) > 0;
+      checkbox(gEmis, 'Emissive', emissiveOn, (v) => { if (!v) { m.emissiveIntensity = 0; (render as any).setPartMaterial?.(part, { emissiveIntensity: 0 }); } else { m.emissiveIntensity = m.emissiveIntensity && m.emissiveIntensity > 0 ? m.emissiveIntensity : 1.0; (render as any).setPartMaterial?.(part, { emissiveIntensity: m.emissiveIntensity }); } try { syncVisibility(); } catch {} }, () => {}, 'Enable emissive glow.');
+      colorPicker(gEmis, 'Emissive Color', m.emissiveColor ?? '#000000', (hex) => { m.emissiveColor = hex; (render as any).setPartMaterial?.(part, { emissiveColor: hex }); }, () => {}, 'Glow color.');
+      slider(gEmis, 'Emissive Intensity', 0, 10, 0.01, m.emissiveIntensity ?? 0, (v) => { m.emissiveIntensity = v; (render as any).setPartMaterial?.(part, { emissiveIntensity: v }); try { syncVisibility(); } catch {} }, () => {}, 'Glow intensity.');
+
+      // Transmission / volume
+      const gTrans = addGroup(sect, 'Transmission / Volume');
+      slider(gTrans, 'Transmission', 0, 1, 0.01, m.transmission ?? 0, (v) => { m.transmission = v; (render as any).setPartMaterial?.(part, { transmission: v }); try { syncVisibility(); } catch {} }, () => {}, 'Glass-like transmission.');
+      slider(gTrans, 'IOR', 1, 2.5, 0.01, m.ior ?? 1.5, (v) => { m.ior = v; (render as any).setPartMaterial?.(part, { ior: v }); }, () => {}, 'Index of refraction.');
+      slider(gTrans, 'Thickness', 0, 5, 0.01, m.thickness ?? 0.2, (v) => { m.thickness = v; (render as any).setPartMaterial?.(part, { thickness: v }); }, () => {}, 'Volume thickness.');
+      colorPicker(gTrans, 'Atten Color', m.attenuationColor ?? '#ffffff', (hex) => { m.attenuationColor = hex; (render as any).setPartMaterial?.(part, { attenuationColor: hex }); }, () => {}, 'Transmission attenuation color.');
+      slider(gTrans, 'Atten Dist', 0, 10, 0.01, m.attenuationDistance ?? 0, (v) => { m.attenuationDistance = v; (render as any).setPartMaterial?.(part, { attenuationDistance: v }); }, () => {}, 'Attenuation distance.');
+
+      // Sheen
+      const gSheen = addGroup(sect, 'Sheen');
+      slider(gSheen, 'Sheen', 0, 1, 0.01, m.sheen ?? 0, (v) => { m.sheen = v; (render as any).setPartMaterial?.(part, { sheen: v }); try { syncVisibility(); } catch {} }, () => {}, 'Cloth sheen.');
+      colorPicker(gSheen, 'Sheen Color', m.sheenColor ?? '#ffffff', (hex) => { m.sheenColor = hex; (render as any).setPartMaterial?.(part, { sheenColor: hex }); }, () => {}, 'Sheen color.');
+
+      // Iridescence
+      const gIri = addGroup(sect, 'Iridescence');
+      slider(gIri, 'Iridescence', 0, 1, 0.01, m.iridescence ?? 0, (v) => { m.iridescence = v; (render as any).setPartMaterial?.(part, { iridescence: v }); try { syncVisibility(); } catch {} }, () => {}, 'Iridescent layer strength.');
+      slider(gIri, 'Iridescence IOR', 1, 2.5, 0.01, m.iridescenceIOR ?? 1.3, (v) => { m.iridescenceIOR = v; (render as any).setPartMaterial?.(part, { iridescenceIOR: v }); }, () => {}, 'Iridescence index of refraction.');
+      slider(gIri, 'Iridescence Min', 0, 1200, 1, m.iridescenceThicknessMin ?? 100, (v) => { m.iridescenceThicknessMin = Math.round(v); (render as any).setPartMaterial?.(part, { iridescenceThicknessMin: Math.round(v) }); }, () => {}, 'Thin-film min thickness (nm).');
+      slider(gIri, 'Iridescence Max', 0, 1200, 1, m.iridescenceThicknessMax ?? 400, (v) => { m.iridescenceThicknessMax = Math.round(v); (render as any).setPartMaterial?.(part, { iridescenceThicknessMax: Math.round(v) }); }, () => {}, 'Thin-film max thickness (nm).');
+
+      // Environment / anisotropy
+      const gEnvAni = addGroup(sect, 'Environment & Anisotropy');
+      slider(gEnvAni, 'EnvMap Intensity', 0, 3, 0.01, m.envMapIntensity ?? 1, (v) => { m.envMapIntensity = v; (render as any).setPartMaterial?.(part, { envMapIntensity: v }); }, () => {}, 'Boost environment reflections.');
+      slider(gEnvAni, 'Anisotropy', 0, 1, 0.01, m.anisotropy ?? 0, (v) => { m.anisotropy = v; (render as any).setPartMaterial?.(part, { anisotropy: v }); try { syncVisibility(); } catch {} }, () => {}, 'Brushed highlight strength (0 = isotropic, 1 = strong anisotropy).');
+      slider(gEnvAni, 'Aniso Rotation', -Math.PI, Math.PI, 0.01, m.anisotropyRotation ?? 0, (v) => { m.anisotropyRotation = typeof v === 'number' ? v : 0; (render as any).setPartMaterial?.(part, { anisotropyRotation: m.anisotropyRotation }); }, () => {}, 'Anisotropy direction in radians (0 aligns with +X).');
+    };
+    for (const p of PARTS) buildMaterialPanel(rMatSec || sections.Render, p);
 
     const variantControls = document.createElement('div');
     variantControls.className = 'variant-controls';
@@ -2245,40 +2245,42 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     state.blade.krisWaveCount = waves;
     if (waves !== v) registry.setValueByField(krisWaveField, waves);
   }, rerender, 'Odd wave count for kris centerline modulation (1..21).');
-  slider(sections.Blade, 'Length', 0.5, 6, 0.01, state.blade.length, (v) => (state.blade.length = v), rerender);
+  slider(sections.Blade, 'Blade Length', 0.5, 6, 0.01, state.blade.length, (v) => (state.blade.length = v), rerender);
   slider(sections.Blade, 'Base Width', 0.05, 1.0, 0.005, state.blade.baseWidth, (v) => (state.blade.baseWidth = v), rerender);
   slider(sections.Blade, 'Tip Width', 0, 0.5, 0.005, state.blade.tipWidth, (v) => (state.blade.tipWidth = v), rerender);
   select(sections.Blade, 'Tip Shape', ['pointed', 'rounded', 'leaf', 'clip', 'tanto', 'spear', 'sheepsfoot'], (state.blade.tipShape ?? 'pointed') as string, (v) => (state.blade.tipShape = v as any), rerender, 'Tip family: Pointed, Rounded, Leaf, Clip, Tanto, Spear, Sheepsfoot.');
   slider(sections.Blade, 'Leaf Bulge', 0, 1, 0.01, state.blade.tipBulge ?? 0.2, (v) => (state.blade.tipBulge = v), rerender, 'Mid-blade bulge for Leaf tip shape.');
-  select(sections.Blade, 'Cross Section', ['flat', 'diamond', 'lenticular', 'hexagonal', 'triangular', 'tSpine', 'compound'], (state.blade.crossSection ?? 'flat') as string, (v) => (state.blade.crossSection = v as any), rerender, 'Transverse profile: add facets, ridges, or compound grinds.');
-  slider(sections.Blade, 'Edge Bevel', 0, 1, 0.01, state.blade.bevel ?? 0.5, (v) => (state.blade.bevel = v), rerender, '0 sharp (thin spine), 1 thickened spine/facets.');
-  checkbox(sections.Blade, 'Hollow Grind', !!state.blade.hollowGrind?.enabled, (v) => {
+  const bXsec = addGroup(sections.Blade, 'Cross-section & Thickness');
+  select(bXsec, 'Cross Section', ['flat', 'diamond', 'lenticular', 'hexagonal', 'triangular', 'tSpine', 'compound'], (state.blade.crossSection ?? 'flat') as string, (v) => (state.blade.crossSection = v as any), rerender, 'Transverse profile: add facets, ridges, or compound grinds.');
+  slider(bXsec, 'Edge Bevel', 0, 1, 0.01, state.blade.bevel ?? 0.5, (v) => (state.blade.bevel = v), rerender, '0 sharp (thin spine), 1 thickened spine/facets.');
+  const bHollow = addGroup(sections.Blade, 'Hollow Grind')
+  checkbox(bHollow, 'Hollow Grind', !!state.blade.hollowGrind?.enabled, (v) => {
     const h = ensureHollow();
     h.enabled = v;
   }, rerender, 'Enable concave face carving. Mix/depth sliders auto-enable when adjusted.');
-  slider(sections.Blade, 'Hollow Mix', 0, 1, 0.01, state.blade.hollowGrind?.mix ?? 0.65, (v) => {
+  slider(bHollow, 'Hollow Mix', 0, 1, 0.01, state.blade.hollowGrind?.mix ?? 0.65, (v) => {
     const h = ensureHollow();
     h.mix = v;
     if (!h.enabled && v > 0) h.enabled = true;
   }, rerender, 'Blend between flat (0) and hollowed (1) faces.');
-  slider(sections.Blade, 'Hollow Depth', 0, 1, 0.01, state.blade.hollowGrind?.depth ?? 0.45, (v) => {
+  slider(bHollow, 'Hollow Depth', 0, 1, 0.01, state.blade.hollowGrind?.depth ?? 0.45, (v) => {
     const h = ensureHollow();
     h.depth = v;
     if (!h.enabled && v > 0) h.enabled = true;
   }, rerender, 'Relative carve depth inside the face.');
-  slider(sections.Blade, 'Hollow Radius', 0.1, 6, 0.01, state.blade.hollowGrind?.radius ?? 0.6, (v) => {
+  slider(bHollow, 'Hollow Radius', 0.1, 6, 0.01, state.blade.hollowGrind?.radius ?? 0.6, (v) => {
     const h = ensureHollow();
     h.radius = v;
     if (!h.enabled) h.enabled = true;
   }, rerender, 'Lower radius = tighter concave wall; higher = shallow.');
-  slider(sections.Blade, 'Hollow Bias', -1, 1, 0.01, state.blade.hollowGrind?.bias ?? 0, (v) => {
+  slider(bHollow, 'Hollow Bias', -1, 1, 0.01, state.blade.hollowGrind?.bias ?? 0, (v) => {
     const h = ensureHollow();
     h.bias = v;
     if (!h.enabled) h.enabled = true;
   }, rerender, 'Shift hollow toward the edge (+) or spine (-).');
-  slider(sections.Blade, 'Blade Thickness', 0.02, 0.2, 0.001, state.blade.thickness, (v) => (state.blade.thickness = v), rerender);
-  slider(sections.Blade, 'Left Thickness', 0.003, 0.2, 0.001, state.blade.thicknessLeft ?? state.blade.thickness, (v) => (state.blade.thicknessLeft = v), rerender, 'Z thickness at left edge (−X).');
-  slider(sections.Blade, 'Right Thickness', 0.003, 0.2, 0.001, state.blade.thicknessRight ?? state.blade.thickness, (v) => (state.blade.thicknessRight = v), rerender, 'Z thickness at right edge (+X).');
+  slider(bXsec, 'Blade Thickness', 0.02, 0.2, 0.001, state.blade.thickness, (v) => (state.blade.thickness = v), rerender);
+  slider(bXsec, 'Left Thickness', 0.003, 0.2, 0.001, state.blade.thicknessLeft ?? state.blade.thickness, (v) => (state.blade.thicknessLeft = v), rerender, 'Z thickness at left edge (−X).');
+  slider(bXsec, 'Right Thickness', 0.003, 0.2, 0.001, state.blade.thicknessRight ?? state.blade.thickness, (v) => (state.blade.thicknessRight = v), rerender, 'Z thickness at right edge (+X).');
 
   // Distal taper profile (Base/Mid/Tip %)
   const getTaper = (): [number, number, number] => {
@@ -2293,22 +2295,25 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     (state.blade as any).thicknessProfile = { points: [[0, b/100], [0.6, m/100], [1, t/100]] } as any;
   };
   let [tb, tm, tt] = getTaper();
-  slider(sections.Blade, 'Taper Base %', 50, 120, 1, tb, (v) => { tb = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at base (100% = no change).');
-  slider(sections.Blade, 'Taper Mid %', 30, 110, 1, tm, (v) => { tm = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at mid-blade (t≈0.6).');
-  slider(sections.Blade, 'Taper Tip %', 10, 100, 1, tt, (v) => { tt = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at tip (lower = thinner tip).');
+  const bTaper = addGroup(sections.Blade, 'Thickness Taper');
+  slider(bTaper, 'Taper Base %', 50, 120, 1, tb, (v) => { tb = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at base (100% = no change).');
+  slider(bTaper, 'Taper Mid %', 30, 110, 1, tm, (v) => { tm = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at mid-blade (t≈0.6).');
+  slider(bTaper, 'Taper Tip %', 10, 100, 1, tt, (v) => { tt = Math.round(v as number); setTaper(tb, tm, tt); }, rerender, 'Thickness scale at tip (lower = thinner tip).');
   // Ricasso and False Edge (edge/tip taxonomy)
-  slider(sections.Blade, 'Ricasso %', 0, 30, 1, Math.round(((state.blade as any).ricassoLength ?? 0) * 100), (v) => { (state.blade as any).ricassoLength = (v as number)/100; }, rerender, 'Unsharpened base length (0–30%).');
-  slider(sections.Blade, 'False Edge %', 0, 100, 1, Math.round(((state.blade as any).falseEdgeLength ?? 0) * 100), (v) => { (state.blade as any).falseEdgeLength = (v as number)/100; }, rerender, 'False edge length from tip (0–100%).');
-  slider(sections.Blade, 'False Edge Depth', 0, 0.2, 0.001, ((state.blade as any).falseEdgeDepth ?? 0), (v) => { (state.blade as any).falseEdgeDepth = v as number; }, rerender, 'Spine bevel reduction amount.');
-  slider(sections.Blade, 'Curvature', -1, 1, 0.01, state.blade.curvature, (v) => (state.blade.curvature = v), rerender, 'Bends the blade along its length (negative curves opposite).');
-  slider(sections.Blade, 'Base Angle', -10, 10, 0.1, (state.blade.baseAngle ?? 0) * 180/Math.PI, (v) => (state.blade.baseAngle = v * Math.PI/180), rerender, 'Angle (deg) that the blade departs from the handle.');
+  const bEdge = addGroup(sections.Blade, 'Ricasso & False Edge')
+  slider(bEdge, 'Ricasso %', 0, 30, 1, Math.round(((state.blade as any).ricassoLength ?? 0) * 100), (v) => { (state.blade as any).ricassoLength = (v as number)/100; }, rerender, 'Unsharpened base length (0–30%).');
+  slider(bEdge, 'False Edge %', 0, 100, 1, Math.round(((state.blade as any).falseEdgeLength ?? 0) * 100), (v) => { (state.blade as any).falseEdgeLength = (v as number)/100; }, rerender, 'False edge length from tip (0–100%).');
+  slider(bEdge, 'False Edge Depth', 0, 0.2, 0.001, ((state.blade as any).falseEdgeDepth ?? 0), (v) => { (state.blade as any).falseEdgeDepth = v as number; }, rerender, 'Spine bevel reduction amount.');
+  const bCurv = addGroup(sections.Blade, 'Curvature & Tip');
+  slider(bCurv, 'Curvature', -1, 1, 0.01, state.blade.curvature, (v) => (state.blade.curvature = v), rerender, 'Bends the blade along its length (negative curves opposite).');
+  slider(bCurv, 'Base Angle', -10, 10, 0.1, (state.blade.baseAngle ?? 0) * 180/Math.PI, (v) => (state.blade.baseAngle = v * Math.PI/180), rerender, 'Angle (deg) that the blade departs from the handle.');
   // Extended to ±2160° (±12π) to allow extreme stylized twists
-  slider(sections.Blade, 'Twist Angle', -2160, 2160, 1, (state.blade.twistAngle ?? 0) * 180/Math.PI, (v) => (state.blade.twistAngle = v * Math.PI/180), rerender, 'Total twist along blade (deg).');
-  select(sections.Blade, 'Sori Profile', ['torii', 'koshi', 'saki'], state.blade.soriProfile ?? 'torii', (v) => (state.blade.soriProfile = v as any), rerender, 'Curvature distribution: centered (torii), base (koshi), tip (saki).');
-  slider(sections.Blade, 'Sori Bias', 0.3, 3.0, 0.01, state.blade.soriBias ?? 0.8, (v) => (state.blade.soriBias = v), rerender, 'Bias exponent for sori profile.');
-  slider(sections.Blade, 'Kissaki Length', 0, 0.35, 0.005, state.blade.kissakiLength ?? 0, (v) => (state.blade.kissakiLength = v), rerender, 'Tip segment fraction (yokote position).');
-  slider(sections.Blade, 'Kissaki Round', 0, 1, 0.01, state.blade.kissakiRoundness ?? 0.5, (v) => (state.blade.kissakiRoundness = v), rerender, 'Tip rounding (0 sharp, 1 round).');
-  slider(sections.Blade, 'Tip Ramp %', 0, 95, 1, Math.round((state.blade.tipRampStart ?? 0) * 100), (v) => {
+  slider(bCurv, 'Twist Angle', -2160, 2160, 1, (state.blade.twistAngle ?? 0) * 180/Math.PI, (v) => (state.blade.twistAngle = v * Math.PI/180), rerender, 'Total twist along blade (deg).');
+  select(bCurv, 'Sori Profile', ['torii', 'koshi', 'saki'], state.blade.soriProfile ?? 'torii', (v) => (state.blade.soriProfile = v as any), rerender, 'Curvature distribution: centered (torii), base (koshi), tip (saki).');
+  slider(bCurv, 'Sori Bias', 0.3, 3.0, 0.01, state.blade.soriBias ?? 0.8, (v) => (state.blade.soriBias = v), rerender, 'Bias exponent for sori profile.');
+  slider(bCurv, 'Kissaki Length', 0, 0.35, 0.005, state.blade.kissakiLength ?? 0, (v) => (state.blade.kissakiLength = v), rerender, 'Tip segment fraction (yokote position).');
+  slider(bCurv, 'Kissaki Round', 0, 1, 0.01, state.blade.kissakiRoundness ?? 0.5, (v) => (state.blade.kissakiRoundness = v), rerender, 'Tip rounding (0 sharp, 1 round).');
+  slider(bCurv, 'Tip Ramp %', 0, 95, 1, Math.round((state.blade.tipRampStart ?? 0) * 100), (v) => {
     state.blade.tipRampStart = clamp((v as number) / 100, 0, 0.98);
   }, rerender, 'Percent of blade length kept at base width before the tip taper begins.');
   select(sections.Blade, 'Edge Type', ['double', 'single'], (state.blade.edgeType ?? 'double') as string, (v) => (state.blade.edgeType = v as any), rerender, 'Single uses thin cutting edge and thick spine.');
@@ -2446,7 +2451,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   const guardExtras = () => (((state.guard as any).extras) || []) as any[];
   const findGuardExtra = (kind: string) => guardExtras().find((e: any) => e.kind === kind);
   const hasGuardExtra = (kind: string) => guardExtras().some((e: any) => e.kind === kind);
-  slider(sections.Guard, 'Width', 0.2, 3.0, 0.01, state.guard.width, (v) => (state.guard.width = v), rerender);
+  slider(sections.Guard, 'Guard Width', 0.2, 3.0, 0.01, state.guard.width, (v) => (state.guard.width = v), rerender);
   slider(sections.Guard, 'Guard Thickness', 0.05, 0.6, 0.005, state.guard.thickness, (v) => (state.guard.thickness = v), rerender);
   slider(sections.Guard, 'Curve', -1, 1, 0.01, state.guard.curve, (v) => (state.guard.curve = v), rerender, 'Bends ornate guards upward/downward.');
   slider(sections.Guard, 'Tilt', -1.57, 1.57, 0.01, state.guard.tilt, (v) => (state.guard.tilt = v), rerender, 'Rotates the guard around the blade axis.');
@@ -2507,18 +2512,21 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Guard, 'Habaki Height', 0.02, 0.2, 0.001, state.guard.habakiHeight ?? 0.06, (v) => (state.guard.habakiHeight = v), rerender, 'Height of the habaki collar.');
   slider(sections.Guard, 'Habaki Margin', 0.002, 0.08, 0.001, state.guard.habakiMargin ?? 0.01, (v) => (state.guard.habakiMargin = v), rerender, 'Clearance added to blade width/thickness.');
   slider(sections.Guard, 'Guard Height', -0.15, 0.15, 0.001, state.guard.heightOffset ?? 0, (v) => (state.guard.heightOffset = v), rerender, 'Vertical offset: top of guard vs blade base.');
-  slider(sections.Guard, 'Quillon Count', 0, 4, 2, state.guard.quillonCount ?? 0, (v) => (state.guard.quillonCount = Math.round(v)), rerender, 'Number of quillons (0, 2, 4).');
-  slider(sections.Guard, 'Quillon Length', 0.05, 1.5, 0.01, state.guard.quillonLength ?? 0.25, (v) => (state.guard.quillonLength = v), rerender, 'Length of each quillon.');
-  slider(sections.Guard, 'Ornamentation', 0, 1, 0.01, state.guard.ornamentation ?? 0, (v) => (state.guard.ornamentation = v), rerender, 'Richer ends and facets.');
-  slider(sections.Guard, 'Tip Sharpness', 0, 1, 0.01, state.guard.tipSharpness ?? 0.5, (v) => (state.guard.tipSharpness = v), rerender, 'Continuous tip shape for wing/claw.');
-  slider(sections.Guard, 'Cutouts', 0, 12, 1, state.guard.cutoutCount ?? 0, (v) => (state.guard.cutoutCount = Math.round(v)), rerender, 'Tsuba (disk) radial cutouts.');
-  slider(sections.Guard, 'Cutout Radius', 0.1, 0.8, 0.01, state.guard.cutoutRadius ?? 0.5, (v) => (state.guard.cutoutRadius = v), rerender, 'Cutout hole radius fraction.');
+  const gQuillon = addGroup(sections.Guard, 'Quillons');
+  slider(gQuillon, 'Quillon Count', 0, 4, 2, state.guard.quillonCount ?? 0, (v) => (state.guard.quillonCount = Math.round(v)), rerender, 'Number of quillons (0, 2, 4).');
+  slider(gQuillon, 'Quillon Length', 0.05, 1.5, 0.01, state.guard.quillonLength ?? 0.25, (v) => (state.guard.quillonLength = v), rerender, 'Length of each quillon.');
+  slider(gQuillon, 'Ornamentation', 0, 1, 0.01, state.guard.ornamentation ?? 0, (v) => (state.guard.ornamentation = v), rerender, 'Richer ends and facets.');
+  slider(gQuillon, 'Tip Sharpness', 0, 1, 0.01, state.guard.tipSharpness ?? 0.5, (v) => (state.guard.tipSharpness = v), rerender, 'Continuous tip shape for wing/claw.');
+  const gDisk = addGroup(sections.Guard, 'Disk Cutouts');
+  slider(gDisk, 'Cutouts', 0, 12, 1, state.guard.cutoutCount ?? 0, (v) => (state.guard.cutoutCount = Math.round(v)), rerender, 'Tsuba (disk) radial cutouts.');
+  slider(gDisk, 'Cutout Radius', 0.1, 0.8, 0.01, state.guard.cutoutRadius ?? 0.5, (v) => (state.guard.cutoutRadius = v), rerender, 'Cutout hole radius fraction.');
   // Basket-specific knobs
-  slider(sections.Guard, 'Basket Rods', 4, 24, 1, (state.guard as any).basketRodCount ?? 12, (v) => ((state.guard as any).basketRodCount = Math.round(v)), rerender, 'Number of radial rods in basket.');
-  slider(sections.Guard, 'Basket Rod Thick', 0.004, 0.08, 0.001, (state.guard as any).basketRodRadius ?? 0.02, (v) => ((state.guard as any).basketRodRadius = v), rerender, 'Rod radius for basket bars.');
-  slider(sections.Guard, 'Basket Rings', 0, 2, 1, (state.guard as any).basketRingCount ?? 1, (v) => ((state.guard as any).basketRingCount = Math.round(v)), rerender, 'Number of rim rings (0..2).');
-  slider(sections.Guard, 'Ring Thickness', 0.002, 0.06, 0.001, (state.guard as any).basketRingThickness ?? 0.012, (v) => ((state.guard as any).basketRingThickness = v), rerender, 'Minor radius of rim rings.');
-  slider(sections.Guard, 'Ring Radius +', 0, 0.2, 0.001, (state.guard as any).basketRingRadiusAdd ?? 0.0, (v) => ((state.guard as any).basketRingRadiusAdd = v), rerender, 'Additional radius added to basket rim rings.');
+  const gBasket = addGroup(sections.Guard, 'Basket Guard');
+  slider(gBasket, 'Basket Rods', 4, 24, 1, (state.guard as any).basketRodCount ?? 12, (v) => ((state.guard as any).basketRodCount = Math.round(v)), rerender, 'Number of radial rods in basket.');
+  slider(gBasket, 'Basket Rod Thick', 0.004, 0.08, 0.001, (state.guard as any).basketRodRadius ?? 0.02, (v) => ((state.guard as any).basketRodRadius = v), rerender, 'Rod radius for basket bars.');
+  slider(gBasket, 'Basket Rings', 0, 2, 1, (state.guard as any).basketRingCount ?? 1, (v) => ((state.guard as any).basketRingCount = Math.round(v)), rerender, 'Number of rim rings (0..2).');
+  slider(gBasket, 'Ring Thickness', 0.002, 0.06, 0.001, (state.guard as any).basketRingThickness ?? 0.012, (v) => ((state.guard as any).basketRingThickness = v), rerender, 'Minor radius of rim rings.');
+  slider(gBasket, 'Ring Radius +', 0, 0.2, 0.001, (state.guard as any).basketRingRadiusAdd ?? 0.0, (v) => ((state.guard as any).basketRingRadiusAdd = v), rerender, 'Additional radius added to basket rim rings.');
 
   // Handle controls
   const handleLayers = () => (((state.handle as any).handleLayers) || []) as any[];
@@ -2528,19 +2536,20 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   const ringLayer = () => ringLayers()[0];
   const menukiLayers = () => (((state.handle as any).menuki) || []) as any[];
   const rivetLayers = () => (((state.handle as any).rivets) || []) as any[];
-  slider(sections.Handle, 'Length', 0.2, 2.0, 0.01, state.handle.length, (v) => (state.handle.length = v), rerender);
+  slider(sections.Handle, 'Handle Length', 0.2, 2.0, 0.01, state.handle.length, (v) => (state.handle.length = v), rerender);
   slider(sections.Handle, 'Radius Top', 0.05, 0.3, 0.001, state.handle.radiusTop, (v) => (state.handle.radiusTop = v), rerender);
   slider(sections.Handle, 'Radius Bottom', 0.05, 0.3, 0.001, state.handle.radiusBottom, (v) => (state.handle.radiusBottom = v), rerender);
   checkbox(sections.Handle, 'Ridges', state.handle.segmentation, (v) => (state.handle.segmentation = v), rerender, 'Adds axial ridges along the grip.');
   slider(sections.Handle, 'Ridge Count', 0, 64, 1, state.handle.segmentationCount ?? 8, (v) => (state.handle.segmentationCount = Math.round(v)), rerender, 'Number of ridge cycles when Ridges enabled.');
-  checkbox(sections.Handle, 'Wrap Enabled', state.handle.wrapEnabled ?? false, (v) => (state.handle.wrapEnabled = v), rerender, 'Enable helical wrap deformation for the grip.');
-  slider(sections.Handle, 'Wrap Turns', 0, 20, 1, state.handle.wrapTurns ?? 6, (v) => (state.handle.wrapTurns = v), rerender, 'Number of helical cycles along the grip.');
-  slider(sections.Handle, 'Wrap Depth', 0, 0.05, 0.001, state.handle.wrapDepth ?? 0.015, (v) => (state.handle.wrapDepth = v), rerender, 'Radial amplitude of the wrap pattern.');
+  const hWrap = addGroup(sections.Handle, 'Handle Wrap');
+  checkbox(hWrap, 'Wrap Enabled', state.handle.wrapEnabled ?? false, (v) => (state.handle.wrapEnabled = v), rerender, 'Enable helical wrap deformation for the grip.');
+  slider(hWrap, 'Wrap Turns', 0, 20, 1, state.handle.wrapTurns ?? 6, (v) => (state.handle.wrapTurns = v), rerender, 'Number of helical cycles along the grip.');
+  slider(hWrap, 'Wrap Depth', 0, 0.05, 0.001, state.handle.wrapDepth ?? 0.015, (v) => (state.handle.wrapDepth = v), rerender, 'Radial amplitude of the wrap pattern.');
   slider(sections.Handle, 'Handle Sides', 8, 128, 1, state.handle.phiSegments ?? 64, (v) => (state.handle.phiSegments = Math.round(v)), rerender, 'Radial tessellation (higher is smoother).');
-  checkbox(sections.Handle, 'Wrap Texture', state.handle.wrapTexture ?? false, (v) => (state.handle.wrapTexture = v), rerender, 'Procedural diagonal stripe texture on grip.');
-  slider(sections.Handle, 'Wrap Tex Scale', 1, 32, 1, state.handle.wrapTexScale ?? 10, (v) => (state.handle.wrapTexScale = Math.round(v)), rerender, 'Texture repeat scale.');
-  slider(sections.Handle, 'Wrap Tex Angle', -90, 90, 1, (state.handle.wrapTexAngle ?? (Math.PI/4)) * 180/Math.PI, (v) => (state.handle.wrapTexAngle = (v*Math.PI/180)), rerender, 'Stripe angle (degrees).');
-  select(sections.Handle, 'Wrap Style', ['none','crisscross','hineri','katate','wire'], state.handle.wrapStyle ?? 'none', (v) => {
+  checkbox(hWrap, 'Wrap Texture', state.handle.wrapTexture ?? false, (v) => (state.handle.wrapTexture = v), rerender, 'Procedural diagonal stripe texture on grip.');
+  slider(hWrap, 'Wrap Tex Scale', 1, 32, 1, state.handle.wrapTexScale ?? 10, (v) => (state.handle.wrapTexScale = Math.round(v)), rerender, 'Texture repeat scale.');
+  slider(hWrap, 'Wrap Tex Angle', -90, 90, 1, (state.handle.wrapTexAngle ?? (Math.PI/4)) * 180/Math.PI, (v) => (state.handle.wrapTexAngle = (v*Math.PI/180)), rerender, 'Stripe angle (degrees).');
+  select(hWrap, 'Wrap Style', ['none','crisscross','hineri','katate','wire'], state.handle.wrapStyle ?? 'none', (v) => {
     state.handle.wrapStyle = v as typeof state.handle.wrapStyle;
   }, () => { rerender(); }, 'Adds stylized wrap geometry (hineri/katate/wire).');
 
@@ -2598,9 +2607,10 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(sections.Handle, 'Oval Ratio', 1, 1.8, 0.01, state.handle.ovalRatio ?? 1, (v) => (state.handle.ovalRatio = v), rerender, 'Wider X vs Z for an oval tsuka.');
   slider(sections.Handle, 'Flare', 0, 0.2, 0.001, state.handle.flare ?? 0, (v) => (state.handle.flare = v), rerender, 'Extra radius near the pommel.');
   slider(sections.Handle, 'Handle Curvature', -0.2, 0.2, 0.001, state.handle.curvature ?? 0, (v) => (state.handle.curvature = v), rerender, 'Slight bend in handle along length.');
-  checkbox(sections.Handle, 'Tang Visible', state.handle.tangVisible ?? false, (v) => (state.handle.tangVisible = v), rerender, 'Show a rectangular tang through the handle.');
-  slider(sections.Handle, 'Tang Width', 0.005, 0.2, 0.001, state.handle.tangWidth ?? 0.05, (v) => (state.handle.tangWidth = v), rerender, 'Visible tang width.');
-  slider(sections.Handle, 'Tang Thickness', 0.003, 0.1, 0.001, state.handle.tangThickness ?? 0.02, (v) => (state.handle.tangThickness = v), rerender, 'Visible tang thickness.');
+  const hTang = addGroup(sections.Handle, 'Tang')
+  checkbox(hTang, 'Tang Visible', state.handle.tangVisible ?? false, (v) => (state.handle.tangVisible = v), rerender, 'Show a rectangular tang through the handle.');
+  slider(hTang, 'Tang Width', 0.005, 0.2, 0.001, state.handle.tangWidth ?? 0.05, (v) => (state.handle.tangWidth = v), rerender, 'Visible tang width.');
+  slider(hTang, 'Tang Thickness', 0.003, 0.1, 0.001, state.handle.tangThickness ?? 0.02, (v) => (state.handle.tangThickness = v), rerender, 'Visible tang thickness.');
   // Handle layers (simple)
   checkbox(sections.Handle, 'Crisscross Wrap Layer', !!crisscrossLayer(), (v) => {
     const arr = handleLayers();
@@ -2624,21 +2634,22 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const arr = handleLayers();
     (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='wrap' && e.wrapPattern==='crisscross' ? { ...e, lengthFrac: Math.max(0.01, (val/100)) } : e);
   }, rerender, 'Length of the wrap section (percent of handle).');
-  checkbox(sections.Handle, 'Handle Ring', ringLayers().length > 0, (v) => {
+  const hRings = addGroup(sections.Handle, 'Handle Rings')
+  checkbox(hRings, 'Handle Ring', ringLayers().length > 0, (v) => {
     const arr = handleLayers();
     const rest = arr.filter((e:any) => e.kind!=='ring');
     if (v) rest.push({ kind:'ring', y0Frac:0.5, radiusAdd:0.0 });
     (state.handle as any).handleLayers = rest;
   }, rerender, 'Add a decorative ring around the grip.');
-  slider(sections.Handle, 'Ring Y %', 0, 100, 1, Math.round((ringLayer()?.y0Frac ?? 0.5) * 100), (val) => {
+  slider(hRings, 'Ring Y %', 0, 100, 1, Math.round((ringLayer()?.y0Frac ?? 0.5) * 100), (val) => {
     const arr = handleLayers();
     (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='ring' ? { ...e, y0Frac: (val/100) } : e);
   }, rerender, 'Vertical position of ring.');
-  slider(sections.Handle, 'Ring Radius +', 0, 0.2, 0.001, ringLayer()?.radiusAdd ?? 0.0, (val) => {
+  slider(hRings, 'Ring Radius +', 0, 0.2, 0.001, ringLayer()?.radiusAdd ?? 0.0, (val) => {
     const arr = handleLayers();
     (state.handle as any).handleLayers = arr.map((e:any) => e.kind==='ring' ? { ...e, radiusAdd: val } : e);
   }, rerender, 'Additional radius for ring.');
-  slider(sections.Handle, 'Rings Count', 0, 3, 1, ringLayers().length, (val) => {
+  slider(hRings, 'Rings Count', 0, 3, 1, ringLayers().length, (val) => {
     const n = Math.max(0, Math.round(val));
     const arr = handleLayers();
     const others = arr.filter((e:any) => e.kind!=='ring');
@@ -2651,29 +2662,30 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     }
     (state.handle as any).handleLayers = [...others, ...rings];
   }, rerender, 'Create multiple ring layers, evenly spaced.');
-  checkbox(sections.Handle, 'Menuki', menukiLayers().length > 0, (v) => {
+  const hOrn = addGroup(sections.Handle, 'Ornaments')
+  checkbox(hOrn, 'Menuki', menukiLayers().length > 0, (v) => {
     (state.handle as any).menuki = v ? [{ positionFrac: 0.55, side:'left', size:0.02 }] : [];
   }, rerender, 'Add a menuki ornament on the grip.');
   // Rivets
-  checkbox(sections.Handle, 'Rivets', rivetLayers().length > 0, (v) => {
+  checkbox(hOrn, 'Rivets', rivetLayers().length > 0, (v) => {
     (state.handle as any).rivets = v ? [{ count: 8, ringFrac: 0.3, radius: 0.01 }] : [];
   }, rerender, 'Add a ring of rivets.');
-  slider(sections.Handle, 'Rivets Count', 1, 32, 1, Math.round((rivetLayers()[0]?.count ?? 8)), (val) => {
+  slider(hOrn, 'Rivets Count', 1, 32, 1, Math.round((rivetLayers()[0]?.count ?? 8)), (val) => {
     const arr = rivetLayers();
     (state.handle as any).rivets = arr.map((r:any) => ({ ...r, count: Math.round(val) }));
   }, rerender, 'Number of rivets around the ring.');
-  slider(sections.Handle, 'Rivets Y %', 0, 100, 1, Math.round(((rivetLayers()[0]?.ringFrac) ?? 0.3) * 100), (val) => {
+  slider(hOrn, 'Rivets Y %', 0, 100, 1, Math.round(((rivetLayers()[0]?.ringFrac) ?? 0.3) * 100), (val) => {
     const arr = rivetLayers();
     (state.handle as any).rivets = arr.map((r:any) => ({ ...r, ringFrac: (val/100) }));
   }, rerender, 'Vertical position of rivets ring.');
-  slider(sections.Handle, 'Rivet Size', 0.002, 0.05, 0.001, rivetLayers()[0]?.radius ?? 0.01, (val) => {
+  slider(hOrn, 'Rivet Size', 0.002, 0.05, 0.001, rivetLayers()[0]?.radius ?? 0.01, (val) => {
     const arr = rivetLayers();
     (state.handle as any).rivets = arr.map((r:any) => ({ ...r, radius: val }));
   }, rerender, 'Rivet sphere radius.');
 
   // Pommel controls
   select(sections.Pommel, 'Style', ['orb', 'disk', 'spike', 'wheel', 'scentStopper', 'ring', 'crown'], state.pommel.style, (v) => (state.pommel.style = v as any), rerender);
-  slider(sections.Pommel, 'Size', 0.05, 0.5, 0.001, state.pommel.size, (v) => (state.pommel.size = v), rerender);
+  slider(sections.Pommel, 'Pommel Size', 0.05, 0.5, 0.001, state.pommel.size, (v) => (state.pommel.size = v), rerender);
   slider(sections.Pommel, 'Elongation', 0.5, 2.0, 0.01, state.pommel.elongation, (v) => (state.pommel.elongation = v), rerender);
   slider(sections.Pommel, 'Morph', 0, 1, 0.01, state.pommel.shapeMorph, (v) => (state.pommel.shapeMorph = v), rerender);
   slider(sections.Pommel, 'Offset X', -0.3, 0.3, 0.001, state.pommel.offsetX ?? 0, (v) => (state.pommel.offsetX = v), rerender, 'Offset pommel sideways.');
@@ -3084,11 +3096,11 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     // General proportion hints
     if (guard.width > blade.length) {
       w.push('Guard very wide vs. blade length');
-      registry.setWarning('guard', 'Width', true, 'Guard width is large vs. blade length');
+      registry.setWarning('guard', 'Guard Width', true, 'Guard width is large vs. blade length');
     }
     if (handle.length > blade.length * 0.8) {
       w.push('Handle unusually long for blade');
-      registry.setWarning('handle', 'Length', true, 'Handle length is large relative to blade');
+      registry.setWarning('handle', 'Handle Length', true, 'Handle length is large relative to blade');
     }
     if (blade.tipWidth > blade.baseWidth * 0.8) {
       w.push('Tip width close to base width');
@@ -3332,6 +3344,33 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     toggleRow('render-fx', 'Ember Size', !!fx.embers.enabled, 'dep:embers');
     toggleRow('render-fx', 'Ember Color', !!fx.embers.enabled, 'dep:embers');
 
+    // Materials per part: gate rows within each part section
+    const parts: Part[] = ['blade','guard','handle','pommel','scabbard','tassel'];
+    for (const p of parts) {
+      const sec = `materials-${p}`;
+      const m = matState[p];
+      const bumpOn = !!m.bumpEnabled;
+      toggleRow(sec, 'Bump Scale', bumpOn, 'dep:bump');
+      toggleRow(sec, 'Noise Scale', bumpOn, 'dep:bump');
+      toggleRow(sec, 'Noise Seed', bumpOn, 'dep:bump');
+      const emOn = (m.emissiveIntensity ?? 0) > 0;
+      toggleRow(sec, 'Emissive Color', emOn, 'dep:emissive');
+      toggleRow(sec, 'Emissive Intensity', emOn, 'dep:emissive');
+      const tOn = (m.transmission ?? 0) > 0;
+      toggleRow(sec, 'IOR', tOn, 'dep:transmission');
+      toggleRow(sec, 'Thickness', tOn, 'dep:transmission');
+      toggleRow(sec, 'Atten Color', tOn, 'dep:transmission');
+      toggleRow(sec, 'Atten Dist', tOn, 'dep:transmission');
+      const sheenOn = (m.sheen ?? 0) > 0;
+      toggleRow(sec, 'Sheen Color', sheenOn, 'dep:sheen');
+      const irOn = (m.iridescence ?? 0) > 0;
+      toggleRow(sec, 'Iridescence IOR', irOn, 'dep:iridescence');
+      toggleRow(sec, 'Iridescence Min', irOn, 'dep:iridescence');
+      toggleRow(sec, 'Iridescence Max', irOn, 'dep:iridescence');
+      const anisoOn = (m.anisotropy ?? 0) > 0;
+      toggleRow(sec, 'Aniso Rotation', anisoOn, 'dep:aniso');
+    }
+
     // Engravings: hide property rows when no engravings exist
     const engr = (((state.blade as any).engravings) || []) as any[];
     const engrEmpty = engr.length === 0;
@@ -3408,17 +3447,9 @@ function addSubheading(parent: HTMLElement, title: string) {
 function addGroup(parent: HTMLElement, title: string) {
   const box = document.createElement('div')
   box.className = 'group'
-  // Lightweight inline styling to avoid stylesheet dependency
-  box.style.border = '1px solid #475569'
-  box.style.borderRadius = '6px'
-  box.style.padding = '6px 8px'
-  box.style.margin = '8px 0'
-  box.style.background = 'rgba(148,163,184,0.06)'
   const label = document.createElement('div')
+  label.className = 'group-label'
   label.textContent = title
-  label.style.fontSize = '12px'
-  label.style.color = '#9ca3af'
-  label.style.marginBottom = '6px'
   box.appendChild(label)
   parent.appendChild(box)
   return box
@@ -3782,7 +3813,7 @@ function refreshInputs(registry: ControlRegistry, params: SwordParams) {
 
   const sections: Record<string, Record<string, number | string | boolean>> = {
     blade: {
-      'Length': blade.length,
+      'Blade Length': blade.length,
       'Base Width': blade.baseWidth,
       'Tip Width': blade.tipWidth,
       'Blade Family': blade.family ?? 'straight',
@@ -3839,7 +3870,7 @@ function refreshInputs(registry: ControlRegistry, params: SwordParams) {
       'Twist Angle': toDeg(blade.twistAngle ?? 0),
     },
     guard: {
-      'Width': guard.width,
+      'Guard Width': guard.width,
       'Guard Thickness': guard.thickness,
       'Curve': guard.curve,
       'Tilt': guard.tilt,
@@ -3875,7 +3906,7 @@ function refreshInputs(registry: ControlRegistry, params: SwordParams) {
       'Ring Radius +': guard.basketRingRadiusAdd ?? 0,
     },
     handle: {
-      'Length': handle.length,
+      'Handle Length': handle.length,
       'Radius Top': handle.radiusTop,
       'Radius Bottom': handle.radiusBottom,
       'Ridges': handle.segmentation ?? false,
@@ -3910,7 +3941,7 @@ function refreshInputs(registry: ControlRegistry, params: SwordParams) {
     },
     pommel: {
       'Style': pommel.style,
-      'Size': pommel.size,
+      'Pommel Size': pommel.size,
       'Elongation': pommel.elongation,
       'Morph': pommel.shapeMorph,
       'Offset X': pommel.offsetX ?? 0,

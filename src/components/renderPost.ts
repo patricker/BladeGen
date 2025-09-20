@@ -92,16 +92,10 @@ export function attachRenderPostPanel(opts: {
     const doc: Document | null = (typeof document !== 'undefined') ? document : (parent as any).ownerDocument || null
     if (!doc || !(parent as any)?.appendChild) return parent
     const box = doc.createElement('div') as HTMLElement
-    box.style.border = '1px solid #475569'
-    box.style.borderRadius = '6px'
-    box.style.padding = '6px 8px'
-    box.style.margin = '8px 0'
-    box.style.background = 'rgba(148,163,184,0.06)'
+    box.className = 'group'
     const label = doc.createElement('div') as HTMLElement
+    label.className = 'group-label'
     label.textContent = title
-    label.style.fontSize = '12px'
-    label.style.color = '#9ca3af'
-    label.style.marginBottom = '6px'
     box.appendChild(label)
     parent.appendChild(box)
     return box

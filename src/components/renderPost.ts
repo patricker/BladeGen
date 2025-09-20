@@ -86,72 +86,96 @@ export function attachRenderPostPanel(opts: {
 }) {
   const { section: rPost, render, rstate, postState, refreshWarnings, checkbox, slider, colorPicker } = opts
 
+  // Small visual grouping helper
+  const addGroup = (parent: HTMLElement, title: string) => {
+    // If not running in a DOM (tests), degrade gracefully by returning parent
+    const doc: Document | null = (typeof document !== 'undefined') ? document : (parent as any).ownerDocument || null
+    if (!doc || !(parent as any)?.appendChild) return parent
+    const box = doc.createElement('div') as HTMLElement
+    box.style.border = '1px solid #475569'
+    box.style.borderRadius = '6px'
+    box.style.padding = '6px 8px'
+    box.style.margin = '8px 0'
+    box.style.background = 'rgba(148,163,184,0.06)'
+    const label = doc.createElement('div') as HTMLElement
+    label.textContent = title
+    label.style.fontSize = '12px'
+    label.style.color = '#9ca3af'
+    label.style.marginBottom = '6px'
+    box.appendChild(label)
+    parent.appendChild(box)
+    return box
+  }
+
   // Bloom
-  checkbox(rPost, 'Bloom Enabled', rstate.bloomEnabled, (v) => {
+  const gBloom = addGroup(rPost, 'Bloom')
+  checkbox(gBloom, 'Bloom Enabled', rstate.bloomEnabled, (v) => {
     rstate.bloomEnabled = v
     render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius)
     refreshWarnings()
   }, () => {}, 'Enable bloom post-process.')
-  slider(rPost, 'Bloom Strength', 0, 3.0, 0.01, rstate.bloomStrength, (v) => {
+  slider(gBloom, 'Bloom Strength', 0, 3.0, 0.01, rstate.bloomStrength, (v) => {
     rstate.bloomStrength = v
     render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius)
   }, () => {}, 'Bloom intensity.')
-  slider(rPost, 'Bloom Threshold', 0, 1.5, 0.01, rstate.bloomThreshold, (v) => {
+  slider(gBloom, 'Bloom Threshold', 0, 1.5, 0.01, rstate.bloomThreshold, (v) => {
     rstate.bloomThreshold = v
     render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius)
   }, () => {}, 'Bloom threshold.')
-  slider(rPost, 'Bloom Radius', 0, 1.0, 0.01, rstate.bloomRadius, (v) => {
+  slider(gBloom, 'Bloom Radius', 0, 1.0, 0.01, rstate.bloomRadius, (v) => {
     rstate.bloomRadius = v
     render.setBloom(rstate.bloomEnabled, rstate.bloomStrength, rstate.bloomThreshold, rstate.bloomRadius)
   }, () => {}, 'Bloom radius.')
 
   // Outline
-  checkbox(rPost, 'Outline Enabled', postState.outlineEnabled, (v) => {
+  const gOutline = addGroup(rPost, 'Outline')
+  checkbox(gOutline, 'Outline Enabled', postState.outlineEnabled, (v) => {
     postState.outlineEnabled = v
     render.setOutline(v, postState.outlineStrength, postState.outlineThickness, hexToInt(postState.outlineColor))
     refreshWarnings()
   }, () => {}, 'Enable Outline pass.')
-  slider(rPost, 'Outline Strength', 0.0, 10.0, 0.1, postState.outlineStrength, (v) => {
+  slider(gOutline, 'Outline Strength', 0.0, 10.0, 0.1, postState.outlineStrength, (v) => {
     postState.outlineStrength = v
     if (postState.outlineEnabled) render.setOutline(true, v, postState.outlineThickness, hexToInt(postState.outlineColor))
   }, () => {}, 'OutlinePass edgeStrength.')
-  slider(rPost, 'Outline Thickness', 0.0, 4.0, 0.05, postState.outlineThickness, (v) => {
+  slider(gOutline, 'Outline Thickness', 0.0, 4.0, 0.05, postState.outlineThickness, (v) => {
     postState.outlineThickness = v
     if (postState.outlineEnabled) render.setOutline(true, postState.outlineStrength, v, hexToInt(postState.outlineColor))
   }, () => {}, 'OutlinePass edgeThickness.')
-  colorPicker(rPost, 'Outline Color', postState.outlineColor, (hex) => {
+  colorPicker(gOutline, 'Outline Color', postState.outlineColor, (hex) => {
     postState.outlineColor = hex
     if (postState.outlineEnabled) render.setOutline(true, postState.outlineStrength, postState.outlineThickness, hexToInt(hex))
   }, () => {}, 'Outline visible edge color.')
 
   // Ink outline (mesh based)
-  checkbox(rPost, 'Ink Outline', postState.inkEnabled, (v) => {
+  const gInk = addGroup(rPost, 'Ink Outline')
+  checkbox(gInk, 'Ink Outline', postState.inkEnabled, (v) => {
     postState.inkEnabled = v
     render.setInkOutline(v, postState.inkThickness, hexToInt(postState.inkColor))
     refreshWarnings()
   }, () => {}, 'Back-face mesh outline.')
-  slider(rPost, 'Ink Thickness', 0, 0.2, 0.005, postState.inkThickness, (v) => {
+  slider(gInk, 'Ink Thickness', 0, 0.2, 0.005, postState.inkThickness, (v) => {
     postState.inkThickness = v
     if (postState.inkEnabled) render.setInkOutline(true, v, hexToInt(postState.inkColor))
   }, () => {}, 'Scale factor for ink outline.')
-  colorPicker(rPost, 'Ink Color', postState.inkColor, (hex) => {
+  colorPicker(gInk, 'Ink Color', postState.inkColor, (hex) => {
     postState.inkColor = hex
     if (postState.inkEnabled) render.setInkOutline(true, postState.inkThickness, hexToInt(hex))
   }, () => {}, 'Ink outline color.')
 
   // Vignette
-  checkbox(rPost, 'Vignette', postState.vignetteEnabled, (v) => {
+  const gVignette = addGroup(rPost, 'Vignette')
+  checkbox(gVignette, 'Vignette', postState.vignetteEnabled, (v) => {
     postState.vignetteEnabled = v
     render.setVignette(v, postState.vignetteStrength, postState.vignetteSoftness)
     refreshWarnings()
   }, () => {}, 'Enable vignette shading.')
-  slider(rPost, 'Vignette Strength', 0, 1.0, 0.01, postState.vignetteStrength, (v) => {
+  slider(gVignette, 'Vignette Strength', 0, 1.0, 0.01, postState.vignetteStrength, (v) => {
     postState.vignetteStrength = v
     if (postState.vignetteEnabled) render.setVignette(true, v, postState.vignetteSoftness)
   }, () => {}, 'Strength of vignette.')
-  slider(rPost, 'Vignette Softness', 0, 1.0, 0.01, postState.vignetteSoftness, (v) => {
+  slider(gVignette, 'Vignette Softness', 0, 1.0, 0.01, postState.vignetteSoftness, (v) => {
     postState.vignetteSoftness = v
     if (postState.vignetteEnabled) render.setVignette(true, postState.vignetteStrength, v)
   }, () => {}, 'Softness of vignette edge.')
 }
-

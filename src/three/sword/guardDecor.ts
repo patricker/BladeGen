@@ -169,6 +169,7 @@ export function decorateGuard(
   // Quillons
   const qc = Math.max(0, Math.min(4, Math.round(g.quillonCount ?? 0)))
   if (qc > 0) {
+    const cont = ensureContainer()
     const qLen = Math.max(0.05, g.quillonLength ?? 0.25)
     const qRad = Math.max(0.01, 0.025 + (g.ornamentation ?? 0) * 0.02)
     const qMat = ctx.makeMaterial('guard')
@@ -179,11 +180,14 @@ export function decorateGuard(
       const q = new THREE.Mesh(cyl, qMat)
       q.rotation.z = Math.PI / 2
       q.position.set((g.width * 0.5 + qLen * 0.5) * xSign, targetTopY + yOffset, 0)
-      ctx.swordGroup.add(q)
+      // Tag for potential future cleanups and ensure quillons are owned by guard group
+      q.userData.guardDecor = true
+      cont.add(q)
       const t = new THREE.Mesh(cone, qMat)
       t.rotation.z = Math.PI / 2
       t.position.set((g.width * 0.5 + qLen) * xSign, targetTopY + yOffset, 0)
-      ctx.swordGroup.add(t)
+      t.userData.guardDecor = true
+      cont.add(t)
     }
     addQuillon(+1, 0); addQuillon(-1, 0)
     if (qc >= 4) { addQuillon(+1, 0.08); addQuillon(-1, -0.08) }

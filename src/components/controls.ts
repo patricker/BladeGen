@@ -2191,11 +2191,22 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(bSerr, 'Serration Seed', 0, 999999, 1, (state.blade as any).serrationSeed ?? 1337, (v) => { (state.blade as any).serrationSeed = Math.round(v); }, rerender, 'Seed value for random serration pattern.');
   // Fuller carve options
   const bFuller = addGroup(sections.Blade, 'Fullers');
-  select(bFuller, 'Fuller Mode', ['overlay','carve'], (state.blade as any).fullerMode ?? 'overlay', (v) => { (state.blade as any).fullerMode = v as any; }, rerender, 'overlay: visual ribbons; carve: actual groove reduces thickness.');
+  select(bFuller, 'Fuller Mode', ['none','overlay','carve'], (state.blade as any).fullerMode ?? 'overlay', (v) => {
+    (state.blade as any).fullerMode = v as any;
+    if (v === 'none') {
+      state.blade.fullerEnabled = false;
+      // Clear per-face and advanced slots so validation doesn't re-enable
+      if ((state.blade as any).fullerFaces) delete (state.blade as any).fullerFaces;
+      if ((state.blade as any).fullers) delete (state.blade as any).fullers;
+    } else {
+      state.blade.fullerEnabled = true;
+    }
+  }, rerender, 'none: disable; overlay: visual ribbons; carve: geometry reduces thickness.');
   select(bFuller, 'Fuller Profile', ['u','v','flat'], (state.blade as any).fullerProfile ?? 'u', (v) => { (state.blade as any).fullerProfile = v as any; }, rerender, 'Cross-section profile for carved fuller.');
   slider(bFuller, 'Fuller Width', 0, 0.6, 0.001, (state.blade as any).fullerWidth ?? 0, (v) => { (state.blade as any).fullerWidth = v; }, rerender, 'Groove width across the blade face (scene units). 0 = auto.');
   slider(bFuller, 'Fuller Inset', 0, 0.2, 0.001, (state.blade as any).fullerInset ?? (state.blade.fullerDepth ?? 0), (v) => { (state.blade as any).fullerInset = v; }, rerender, 'Groove depth inside thickness when carving. Defaults to Fuller Depth.');
-  const fullerLayout = addSubheading(sections.Blade, 'Fuller Layout (Per Side)');
+  // Place per-face fuller layout controls inside the Fullers group box
+  const fullerLayout = addSubheading(bFuller, 'Fuller Layout (Per Side)');
   const buildFullerControls = (side: 'left' | 'right', index: number) => {
     const labelPrefix = side === 'left' ? 'Left' : 'Right';
     const slot = state.blade.fullerFaces?.[side]?.[index] ?? null;
@@ -2316,7 +2327,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   slider(bCurv, 'Tip Ramp %', 0, 95, 1, Math.round((state.blade.tipRampStart ?? 0) * 100), (v) => {
     state.blade.tipRampStart = clamp((v as number) / 100, 0, 0.98);
   }, rerender, 'Percent of blade length kept at base width before the tip taper begins.');
-  select(sections.Blade, 'Edge Type', ['double', 'single'], (state.blade.edgeType ?? 'double') as string, (v) => (state.blade.edgeType = v as any), rerender, 'Single uses thin cutting edge and thick spine.');
+  select(bCurv, 'Edge Type', ['double', 'single'], (state.blade.edgeType ?? 'double') as string, (v) => (state.blade.edgeType = v as any), rerender, 'Single uses thin cutting edge and thick spine.');
   // Hamon (visual)
   const bHamon = addGroup(sections.Blade, 'Hamon');
   checkbox(bHamon, 'Hamon Enabled', state.blade.hamonEnabled ?? false, (v) => (state.blade.hamonEnabled = v), rerender, 'Toggle hamon visual band along the edge.');
@@ -2326,7 +2337,15 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   select(bHamon, 'Hamon Side', ['auto', 'left', 'right', 'both'], (state.blade.hamonSide ?? 'auto') as string, (v) => (state.blade.hamonSide = v as any), rerender, 'Auto picks cutting edge for single-edge blades.');
   slider(sections.Blade, 'Asymmetry', -1, 1, 0.01, state.blade.asymmetry ?? 0, (v) => (state.blade.asymmetry = v), rerender, 'Positive widens right edge, negative widens left.');
   slider(sections.Blade, 'Chaos', 0, 1, 0.01, state.blade.chaos ?? 0, (v) => (state.blade.chaos = v), rerender, 'Adds small edge roughness for fantasy blades.');
-  checkbox(sections.Blade, 'Enable Fullers', state.blade.fullerEnabled ?? false, (v) => (state.blade.fullerEnabled = v), rerender, 'Toggle decorative grooves along the blade faces.');
+  // Keep the enable toggle within the Fullers group for consistency
+  checkbox(bFuller, 'Enable Fullers', state.blade.fullerEnabled ?? false, (v) => {
+    state.blade.fullerEnabled = v;
+    if (!v) {
+      if ((state.blade as any).fullerFaces) delete (state.blade as any).fullerFaces;
+      if ((state.blade as any).fullers) delete (state.blade as any).fullers;
+      (state.blade as any).fullerMode = 'none';
+    }
+  }, rerender, 'Toggle decorative grooves along the blade faces.');
   slider(bFuller, 'Fuller Count', 0, 3, 1, state.blade.fullerCount ?? 1, (v) => (state.blade.fullerCount = Math.round(v)), rerender, 'Number of grooves (0–3).');
   slider(bFuller, 'Fuller Depth', 0, 0.1, 0.001, state.blade.fullerDepth ?? 0, (v) => (state.blade.fullerDepth = v), rerender, 'Visual depth/shading of the groove; not actual subtraction.');
   slider(bFuller, 'Fuller Length', 0, 1, 0.01, state.blade.fullerLength ?? 0, (v) => (state.blade.fullerLength = v), rerender, 'Portion of blade occupied by the groove (0..1).');
@@ -3220,6 +3239,26 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     toggleRow('blade', 'Fuller Depth', fEnabled && fMode === 'overlay', 'dep:fuller:overlay');
     toggleRow('blade', 'Fuller Profile', fEnabled && fMode === 'carve', 'dep:fuller:carve');
     toggleRow('blade', 'Fuller Inset', fEnabled && fMode === 'carve', 'dep:fuller:carve');
+    // Per-face fuller row gating
+    const faces = blade.fullerFaces || {} as any;
+    const faceEnabled = (side: 'left'|'right', idx: number) => !!(faces[side] && faces[side][idx]);
+    for (let i=0;i<3;i++) {
+      const onL = faceEnabled('left', i);
+      toggleRow('blade', `Left F${i+1} Width`, onL, 'dep:fuller:left');
+      toggleRow('blade', `Left F${i+1} Offset`, onL, 'dep:fuller:left');
+      toggleRow('blade', `Left F${i+1} Taper`, onL, 'dep:fuller:left');
+      const onR = faceEnabled('right', i);
+      toggleRow('blade', `Right F${i+1} Width`, onR, 'dep:fuller:right');
+      toggleRow('blade', `Right F${i+1} Offset`, onR, 'dep:fuller:right');
+      toggleRow('blade', `Right F${i+1} Taper`, onR, 'dep:fuller:right');
+    }
+    // Hollow Grind
+    const hg = (blade as any).hollowGrind;
+    const hgOn = !!(hg && hg.enabled);
+    toggleRow('blade', 'Hollow Mix', hgOn, 'dep:hollow');
+    toggleRow('blade', 'Hollow Depth', hgOn, 'dep:hollow');
+    toggleRow('blade', 'Hollow Radius', hgOn, 'dep:hollow');
+    toggleRow('blade', 'Hollow Bias', hgOn, 'dep:hollow');
 
     // Guard dependencies
     const guard = state.guard as any;

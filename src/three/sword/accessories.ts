@@ -47,6 +47,8 @@ export function buildScabbard(blade: BladeParams, scabbard: ScabbardParams): Sca
   path.curveType = 'centripetal'
   path.tension = 0.5
   const frames = path.computeFrenetFrames(segmentCount, false)
+  // Use the mouth/top of scabbard as a pivot/origin for local space
+  const basePoint = pathPoints[0].clone()
 
   const throatEnd = Math.min(1, (scabbard.throatLength * bladeLength) / Math.max(1e-6, totalLength))
   const locketStart = Math.min(1, (scabbard.locketOffset * bladeLength) / Math.max(1e-6, totalLength))
@@ -125,7 +127,7 @@ export function buildScabbard(blade: BladeParams, scabbard: ScabbardParams): Sca
       offset.copy(normal).multiplyScalar(ex * width * 0.5)
       tmpBinormal.copy(binormal).multiplyScalar(ez * thickness * 0.5)
       offset.add(tmpBinormal)
-      vertex.copy(center).add(offset)
+      vertex.copy(center).sub(basePoint).add(offset)
       const idx = i * ringStride + j
       const posIdx = idx * 3
       positions[posIdx + 0] = vertex.x
@@ -177,14 +179,18 @@ export function buildScabbard(blade: BladeParams, scabbard: ScabbardParams): Sca
   chapeMesh.name = 'ScabbardChape'
   const tipDir = tipTangent.lengthSq() > 1e-6 ? tipTangent : new THREE.Vector3(0, 1, 0)
   chapeMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tipDir)
-  chapeMesh.position.copy(tipPoint).add(tipDir.clone().multiplyScalar(chapeHeight * 0.4))
+  chapeMesh.position.copy(tipPoint).sub(basePoint).add(tipDir.clone().multiplyScalar(chapeHeight * 0.4))
   group.add(chapeMesh)
+
+  // Position the entire scabbard group at the mouth position so rotations (hang) pivot correctly
+  group.position.copy(basePoint)
 
   if (Math.abs(scabbard.hangAngle) > 1e-6) {
     group.rotation.z = scabbard.hangAngle
   }
 
-  const samplePoint = (u: number) => path.getPointAt(clamp01(u)).clone()
+  // Return local-space values for sampling; callers can transform via group
+  const samplePoint = (u: number) => path.getPointAt(clamp01(u)).clone().sub(basePoint)
   const sampleTangent = (u: number) => path.getTangentAt(clamp01(u)).clone().normalize()
   const widthAt = (u: number) => {
     const clamped = clamp01(u) * segmentCount

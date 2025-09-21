@@ -160,7 +160,10 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   const biasRight = THREE.MathUtils.clamp((b as any).serrationLeanRight ?? 0, -1, 1)
   const serr = (t:number, freq:number, amp:number, bias:number, seedOffset = 0) => serrationWave(t, freq, amp, serPat, serSeed + seedOffset, sharp, bias)
 
-  const resolvedFullers = resolveFullers(b)
+  // If no fullers explicitly provided and not enabled, skip carve/overlay paths
+  const hasExplicitFullers = Array.isArray((b as any).fullers) && (b as any).fullers.length > 0
+  const fullersActive = (b.fullerEnabled ?? false) || hasExplicitFullers
+  const resolvedFullers = fullersActive ? resolveFullers(b) : []
   const carveFullers = resolvedFullers.filter((f) => f.mode === 'carve' && f.inset > 0 && f.end > f.start)
   const ricassoFrac = THREE.MathUtils.clamp((b as any).ricassoLength ?? 0, 0, 0.3)
   const feLen = THREE.MathUtils.clamp((b as any).falseEdgeLength ?? 0, 0, 1)
@@ -358,6 +361,8 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
  */
 export function buildFullerOverlays(b: BladeParams): THREE.Group {
   const group = new THREE.Group()
+  const hasExplicitFullers = Array.isArray((b as any).fullers) && (b as any).fullers.length > 0
+  if (!((b.fullerEnabled ?? false) || hasExplicitFullers)) return group
   const totalLen = b.length
   const resolved = resolveFullers(b)
   if (!resolved.length) return group

@@ -1,14 +1,27 @@
 {
   "version": 1,
-  "count": 42,
+  "count": 45,
   "index": {
     "0": [
       "blade.edge-bevel",
-      "blade.hollow-mix"
+      "blade.hollow-mix",
+      "render-mode.posterize-levels"
     ],
     "1": [
       "blade.edge-bevel",
-      "blade.hollow-mix"
+      "blade.hollow-mix",
+      "render-mode.render-mode"
+    ],
+    "3": [
+      "render-mode.posterize-levels"
+    ],
+    "8": [
+      "render-mode.pixel-size",
+      "render-mode.posterize-levels"
+    ],
+    "16": [
+      "render-mode.pixel-size",
+      "render-mode.posterize-levels"
     ],
     "100": [
       "blade.taper-base"
@@ -102,6 +115,8 @@
       "handle.wrap-depth",
       "handle.wrap-turns",
       "pommel.size",
+      "render-mode.pixel-size",
+      "render-mode.render-mode",
       "render-post.vignette",
       "task.add-fuller"
     ],
@@ -116,7 +131,8 @@
     ],
     "pair": [
       "blade.base-width",
-      "blade.blade-thickness"
+      "blade.blade-thickness",
+      "render-mode.pixel-size"
     ],
     "with": [
       "blade.base-width",
@@ -129,6 +145,8 @@
       "handle.wrap-depth",
       "handle.wrap-style",
       "pommel.size",
+      "render-mode.pixel-size",
+      "render-mode.posterize-levels",
       "task.add-fuller"
     ],
     "tip": [
@@ -160,6 +178,7 @@
       "handle.wrap-depth",
       "handle.wrap-style",
       "pommel.style",
+      "render-mode.render-mode",
       "render-post.outline-enabled",
       "render-post.vignette",
       "task.add-fuller"
@@ -275,6 +294,9 @@
       "guard.width",
       "handle.wrap-style",
       "pommel.size",
+      "render-mode.pixel-size",
+      "render-mode.posterize-levels",
+      "render-mode.render-mode",
       "render-post.bloom-enabled",
       "render-post.outline-enabled",
       "task.add-fuller"
@@ -331,7 +353,8 @@
     "flat": [
       "blade.cross-section",
       "blade.fuller-profile",
-      "blade.hollow-mix"
+      "blade.hollow-mix",
+      "render-mode.posterize-levels"
     ],
     "diamond": [
       "blade.cross-section"
@@ -432,7 +455,8 @@
       "blade.curvature",
       "blade.edge-bevel",
       "blade.hollow-depth",
-      "handle.wrap-depth"
+      "handle.wrap-depth",
+      "render-mode.pixel-size"
     ],
     "more": [
       "blade.curvature",
@@ -440,6 +464,7 @@
       "guard.fillet-style",
       "handle.wrap-depth",
       "handle.wrap-turns",
+      "render-mode.pixel-size",
       "render-post.bloom-enabled"
     ],
     "curved": [
@@ -580,6 +605,8 @@
       "handle.wrap-style",
       "handle.wrap-turns",
       "pommel.size",
+      "render-mode.posterize-levels",
+      "render-mode.render-mode",
       "render-post.vignette",
       "task.add-fuller"
     ],
@@ -627,6 +654,8 @@
     ],
     "mode": [
       "blade.fuller-mode",
+      "render-mode.pixel-size",
+      "render-mode.render-mode",
       "task.add-fuller"
     ],
     "overlay": [
@@ -648,6 +677,7 @@
       "blade.sori-profile",
       "concept.fuller",
       "guard.fillet-style",
+      "render-mode.pixel-size",
       "task.add-fuller"
     ],
     "carve": [
@@ -668,7 +698,8 @@
       "blade.fuller-mode"
     ],
     "reduces": [
-      "blade.fuller-mode"
+      "blade.fuller-mode",
+      "render-mode.posterize-levels"
     ],
     "interact": [
       "blade.fuller-mode"
@@ -677,7 +708,8 @@
       "blade.fuller-profile",
       "blade.tip-shape",
       "guard.blend-fillet",
-      "guard.fillet-style"
+      "guard.fillet-style",
+      "render-mode.posterize-levels"
     ],
     "u": [
       "blade.fuller-profile"
@@ -689,7 +721,8 @@
       "blade.fuller-profile"
     ],
     "highlights": [
-      "blade.fuller-profile"
+      "blade.fuller-profile",
+      "render-mode.posterize-levels"
     ],
     "feel": [
       "blade.fuller-profile",
@@ -702,6 +735,8 @@
       "blade.leaf-bulge",
       "concept.fuller",
       "guard.blend-fillet",
+      "render-mode.pixel-size",
+      "render-mode.render-mode",
       "render-post.outline-enabled",
       "task.add-fuller"
     ],
@@ -716,7 +751,8 @@
       "task.add-fuller"
     ],
     "per": [
-      "blade.fuller-width"
+      "blade.fuller-width",
+      "render-mode.posterize-levels"
     ],
     "auto": [
       "blade.fuller-width",
@@ -734,6 +770,7 @@
       "blade.kris-waves",
       "guard.blend-fillet",
       "pommel.size",
+      "render-mode.render-mode",
       "render-post.vignette",
       "task.add-fuller"
     ],
@@ -778,7 +815,8 @@
       "blade.hollow-radius"
     ],
     "works": [
-      "blade.hollow-depth"
+      "blade.hollow-depth",
+      "render-mode.pixel-size"
     ],
     "radius": [
       "blade.hollow-depth",
@@ -795,7 +833,8 @@
     ],
     "tune": [
       "blade.hollow-grind",
-      "concept.fuller"
+      "concept.fuller",
+      "render-mode.render-mode"
     ],
     "smaller": [
       "blade.hollow-grind",
@@ -820,7 +859,8 @@
     ],
     "between": [
       "blade.hollow-mix",
-      "guard.blend-fillet"
+      "guard.blend-fillet",
+      "render-mode.render-mode"
     ],
     "hollowed": [
       "blade.hollow-mix"
@@ -854,7 +894,8 @@
       "blade.tip-shape",
       "guard.fillet-style",
       "handle.wrap-depth",
-      "handle.wrap-turns"
+      "handle.wrap-turns",
+      "render-mode.pixel-size"
     ],
     "undulations": [
       "blade.kris-waves"
@@ -864,6 +905,8 @@
     ],
     "look": [
       "blade.kris-waves",
+      "render-mode.pixel-size",
+      "render-mode.render-mode",
       "render-post.outline-enabled",
       "task.add-fuller"
     ],
@@ -915,7 +958,8 @@
       "blade.left-thickness",
       "blade.tip-width",
       "handle.wrap-turns",
-      "pommel.size"
+      "pommel.size",
+      "render-mode.pixel-size"
     ],
     "within": [
       "blade.left-thickness"
@@ -953,6 +997,7 @@
     ],
     "sets": [
       "blade.length",
+      "render-mode.pixel-size",
       "render-post.outline-enabled"
     ],
     "span": [
@@ -1063,10 +1108,12 @@
     ],
     "lower": [
       "blade.taper-tip",
-      "blade.tip-width"
+      "blade.tip-width",
+      "render-mode.pixel-size"
     ],
     "values": [
-      "blade.taper-tip"
+      "blade.taper-tip",
+      "render-mode.pixel-size"
     ],
     "choose": [
       "blade.tip-shape",
@@ -1103,6 +1150,7 @@
     ],
     "outline": [
       "blade.tip-shape",
+      "render-mode.posterize-levels",
       "render-post.outline-enabled"
     ],
     "unlocks": [
@@ -1355,6 +1403,7 @@
     ],
     "stylized": [
       "handle.wrap-style",
+      "render-mode.posterize-levels",
       "render-post.outline-enabled"
     ],
     "grip": [
@@ -1383,7 +1432,8 @@
       "handle.wrap-style"
     ],
     "combine": [
-      "handle.wrap-style"
+      "handle.wrap-style",
+      "render-mode.posterize-levels"
     ],
     "turns": [
       "handle.wrap-style",
@@ -1411,7 +1461,9 @@
       "pommel.style"
     ],
     "size": [
-      "pommel.size"
+      "pommel.size",
+      "render-mode.pixel-size",
+      "render-mode.render-mode"
     ],
     "larger": [
       "pommel.size"
@@ -1440,8 +1492,176 @@
     "crown": [
       "pommel.style"
     ],
-    "bloom": [
+    "pixel": [
+      "render-mode.pixel-size",
+      "render-mode.posterize-levels",
+      "render-mode.render-mode"
+    ],
+    "one": [
+      "render-mode.pixel-size"
+    ],
+    "block": [
+      "render-mode.pixel-size"
+    ],
+    "in": [
+      "render-mode.pixel-size",
       "render-post.bloom-enabled"
+    ],
+    "screen": [
+      "render-mode.pixel-size"
+    ],
+    "pixels": [
+      "render-mode.pixel-size"
+    ],
+    "produce": [
+      "render-mode.pixel-size"
+    ],
+    "chunkier": [
+      "render-mode.pixel-size"
+    ],
+    "detail": [
+      "render-mode.pixel-size"
+    ],
+    "only": [
+      "render-mode.pixel-size"
+    ],
+    "art": [
+      "render-mode.pixel-size",
+      "render-mode.posterize-levels",
+      "render-mode.render-mode"
+    ],
+    "posterize": [
+      "render-mode.pixel-size",
+      "render-mode.posterize-levels",
+      "render-mode.render-mode"
+    ],
+    "levels": [
+      "render-mode.pixel-size",
+      "render-mode.posterize-levels",
+      "render-mode.render-mode"
+    ],
+    "bit": [
+      "render-mode.pixel-size",
+      "render-mode.posterize-levels"
+    ],
+    "colors": [
+      "render-mode.posterize-levels"
+    ],
+    "channel": [
+      "render-mode.posterize-levels"
+    ],
+    "create": [
+      "render-mode.posterize-levels"
+    ],
+    "shading": [
+      "render-mode.posterize-levels"
+    ],
+    "disables": [
+      "render-mode.posterize-levels",
+      "render-mode.render-mode"
+    ],
+    "posterization": [
+      "render-mode.posterize-levels"
+    ],
+    "steps": [
+      "render-mode.posterize-levels"
+    ],
+    "mimic": [
+      "render-mode.posterize-levels"
+    ],
+    "palettes": [
+      "render-mode.posterize-levels"
+    ],
+    "applied": [
+      "render-mode.posterize-levels"
+    ],
+    "after": [
+      "render-mode.posterize-levels"
+    ],
+    "tone": [
+      "render-mode.posterize-levels"
+    ],
+    "mapping": [
+      "render-mode.posterize-levels"
+    ],
+    "so": [
+      "render-mode.posterize-levels"
+    ],
+    "retain": [
+      "render-mode.posterize-levels"
+    ],
+    "ink": [
+      "render-mode.posterize-levels"
+    ],
+    "comic": [
+      "render-mode.posterize-levels"
+    ],
+    "hybrids": [
+      "render-mode.posterize-levels"
+    ],
+    "render": [
+      "render-mode.render-mode"
+    ],
+    "switch": [
+      "render-mode.render-mode"
+    ],
+    "standard": [
+      "render-mode.render-mode"
+    ],
+    "output": [
+      "render-mode.render-mode"
+    ],
+    "modes": [
+      "render-mode.render-mode"
+    ],
+    "snaps": [
+      "render-mode.render-mode"
+    ],
+    "final": [
+      "render-mode.render-mode"
+    ],
+    "image": [
+      "render-mode.render-mode"
+    ],
+    "coarse": [
+      "render-mode.render-mode"
+    ],
+    "grid": [
+      "render-mode.render-mode"
+    ],
+    "retro": [
+      "render-mode.render-mode"
+    ],
+    "anti": [
+      "render-mode.render-mode"
+    ],
+    "aliasing": [
+      "render-mode.render-mode"
+    ],
+    "bloom": [
+      "render-mode.render-mode",
+      "render-post.bloom-enabled"
+    ],
+    "heat": [
+      "render-mode.render-mode"
+    ],
+    "haze": [
+      "render-mode.render-mode"
+    ],
+    "caps": [
+      "render-mode.render-mode"
+    ],
+    "dpr": [
+      "render-mode.render-mode"
+    ],
+    "crisp": [
+      "render-mode.render-mode"
+    ],
+    "blocks": [
+      "render-mode.render-mode"
+    ],
+    "effect": [
+      "render-mode.render-mode"
     ],
     "enabled": [
       "render-post.bloom-enabled",
@@ -1475,9 +1695,6 @@
       "render-post.bloom-enabled"
     ],
     "kicks": [
-      "render-post.bloom-enabled"
-    ],
-    "in": [
       "render-post.bloom-enabled"
     ],
     "pass": [

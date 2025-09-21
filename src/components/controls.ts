@@ -5,6 +5,7 @@ import { attachRenderQualityPanel } from './renderPanel';
 import { attachRenderBackgroundPanel } from './renderBackground';
 import { attachRenderLightsPanel } from './renderLights';
 import { attachRenderPostPanel } from './renderPost';
+import { attachRenderPixelArtPanel } from './renderPixelArt';
 import { attachRenderAtmosPanel } from './renderAtmos';
 import { hexToInt } from '../utils/color';
 import { SwordGenerator, SwordParams, defaultSwordParams, buildBladeOutlinePoints, bladeOutlineToSVG } from '../three/SwordGenerator';
@@ -59,6 +60,9 @@ type RenderHooks = {
   getAAMode?: () => 'none'|'fxaa'|'smaa'|'msaa';
   setAutoSpinEnabled?: (enabled: boolean) => void;
   getAutoSpinEnabled?: () => boolean;
+  setRenderMode?: (mode: 'standard'|'pixelArt') => void;
+  getRenderMode?: () => 'standard'|'pixelArt';
+  setPixelArtOptions?: (opts: { pixelSize?: number; posterizeLevels?: number }) => void;
 };
 
 type ControlType = 'slider' | 'select' | 'checkbox' | 'color' | 'text';
@@ -246,6 +250,11 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     qualityPreset: 'Medium' as 'Low'|'Medium'|'High',
     toneMapping: 'ACES' as 'ACES'|'Reinhard'|'Cineon'|'Linear'|'None',
     postFxEnabled: true
+  };
+  const pixelState = {
+    mode: 'Standard' as 'Standard'|'Pixel Art',
+    pixelSize: 4,
+    posterize: 0,
   };
   const postState = {
     outlineEnabled: false,
@@ -1423,6 +1432,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
 
     // Subsections for Render tab
     const rQual = addSection(sections.Render, 'Render: Quality & Exposure');
+    const rMode = addSection(sections.Render, 'Render: Mode');
     const rBg = addSection(sections.Render, 'Render: Background');
     const rLights = addSection(sections.Render, 'Render: Lights');
     const rPost = addSection(sections.Render, 'Render: Post');
@@ -1640,6 +1650,8 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     resetRenderAndFx = () => {
       resetStateOnly();
       applyQualityPreset(rstate.qualityPreset, false);
+      // Ensure Standard render mode by default and reset pixel-art options
+      try { (render as any).setRenderMode?.('standard'); (render as any).setPixelArtOptions?.({ pixelSize: pixelState.pixelSize, posterizeLevels: pixelState.posterize }); } catch {}
       render.setExposure(rstate.exposure);
       render.setAmbient(rstate.ambient);
       render.setKeyIntensity(rstate.keyIntensity);
@@ -1940,6 +1952,15 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       applyQualityPreset,
       refreshWarnings,
       checkbox,
+      select,
+      slider,
+      rerender
+    });
+
+    attachRenderPixelArtPanel({
+      section: rMode,
+      render: render as any,
+      state: pixelState,
       select,
       slider,
       rerender

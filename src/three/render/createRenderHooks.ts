@@ -7,6 +7,7 @@ import type { EffectComposer } from 'three/examples/jsm/postprocessing/EffectCom
 import type { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import type { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js'
 import type { SwordGenerator } from '../SwordGenerator'
+import { buildPixelatePass } from './passes/pixelate'
 import { FxManager } from '../fx/manager'
 import { buildBladeGradientWearOverlay } from '../fx/overlays'
 import { makeValueNoiseTexture } from '../fx/noise'
@@ -85,6 +86,9 @@ export type RenderHooks = {
   setPartClearcoatRoughness: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', v: number) => void
   setDPRCap: (cap: number) => void
   getDPRCap?: () => number
+  setRenderMode?: (mode: 'standard'|'pixelArt') => void
+  getRenderMode?: () => 'standard'|'pixelArt'
+  setPixelArtOptions?: (opts: { pixelSize?: number; posterizeLevels?: number }) => void
   setBladeGradientWear: (enabled: boolean, baseHex?: number, edgeHex?: number, edgeFade?: number, wear?: number) => void
   setPartBump: (part: 'blade'|'guard'|'handle'|'pommel'|'scabbard'|'tassel', enabled: boolean, bumpScale?: number, noiseScale?: number, seed?: number) => void
   setFresnel: (enabled: boolean, colorHex?: number, intensity?: number, power?: number) => void
@@ -482,8 +486,18 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
         inkOutlineGroup.current = null
       }
       if (enabled) {
-        const s = Math.max(0.0, Math.min(0.2, thickness ?? 0.02))
+        const sIn = Math.max(0.0, Math.min(0.2, thickness ?? 0.02))
         const color = colorHex ?? 0x000000
+        // Snap thickness to a step derived from pixel size when in Pixel Art mode
+        const quantize = (v: number) => {
+          if ((renderHooks as any).getRenderMode?.() !== 'pixelArt') return v
+          const px = Math.max(1, (renderHooks as any).getRenderMode ? (pixelOpts.pixelSize || 4) : 4)
+          const step = Math.max(0.0025, Math.min(0.025, px * 0.0025))
+          return Math.max(0.0, Math.min(0.2, Math.round(v / step) * step))
+        }
+        const s = quantize(sIn)
+        // Persist state for reapplication when pixel size changes
+        ;(renderHooks as any)._inkOutlineState = { enabled: true, thickness: sIn, color }
         const group = buildInkOutline(s, color)
         if (group) {
           inkOutlineGroup.current = group
@@ -513,6 +527,7 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
       updateFXAA()
     },
     getDPRCap: () => dprCap,
+    // Render mode will be attached below once closures are available
     setBladeGradientWear: (() => {
       let gwGroup: THREE.Group | null = null
       let gwLast: { enabled: boolean; base: number; edge: number; edgeFade: number; wear: number } | null = null
@@ -594,6 +609,89 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     : ['none', 'fxaa']
   renderHooks.supportedAAModes = supportedModes
   renderHooks.getAAMode = () => currentAaMode
+
+  // Render Mode scaffolding (Standard vs Pixel Art)
+  let renderMode: 'standard'|'pixelArt' = 'standard'
+  let savedStandard: { aa: 'none'|'fxaa'|'smaa'|'msaa'; bloom: boolean; selectiveBloom: boolean; heat: boolean; dprCap: number } | null = null
+  let pixelatePass: ShaderPass | null = null
+  let pixelOpts = { pixelSize: 4, posterizeLevels: 0 }
+  const applyRenderMode = (mode: 'standard'|'pixelArt') => {
+    if (mode === renderMode) return
+    if (mode === 'pixelArt') {
+      // Save current policies on first switch
+      savedStandard = {
+        aa: currentAaMode,
+        bloom: !!bloom.enabled,
+        selectiveBloom: !!flags.selectiveBloom,
+        heat: !!flags.heatHaze,
+        dprCap
+      }
+      // Apply pixel art policies
+      setAAModeInternal('none')
+      bloom.enabled = false
+      if (flags.selectiveBloom) {
+        flags.selectiveBloom = false
+        fx.setSelectiveBloom(false)
+      }
+      if (flags.heatHaze) {
+        flags.heatHaze = false
+        fx.setHeatHaze(false)
+      }
+      // Ensure pixelate pass exists and is enabled (after vignette, before any AA)
+      if (!pixelatePass) {
+        pixelatePass = buildPixelatePass(pixelOpts.pixelSize, pixelOpts.posterizeLevels)
+        composer.addPass(pixelatePass)
+        // Initialize resolution from current size
+        const size = new THREE.Vector2()
+        renderer.getSize(size)
+        ;(pixelatePass as any).setSize?.(size.x, size.y)
+      }
+      pixelatePass.enabled = true
+      dprCap = 1
+      ;(renderer as any)._dprCap = 1
+      updateFXAA()
+      renderMode = 'pixelArt'
+      return
+    }
+    // Restore standard policies if we have them
+    if (savedStandard) {
+      const prev = savedStandard
+      setAAModeInternal(prev.aa)
+      bloom.enabled = prev.bloom
+      if (flags.selectiveBloom !== prev.selectiveBloom) {
+        flags.selectiveBloom = prev.selectiveBloom
+        fx.setSelectiveBloom(prev.selectiveBloom)
+      }
+      if (flags.heatHaze !== prev.heat) {
+        flags.heatHaze = prev.heat
+        fx.setHeatHaze(prev.heat)
+      }
+      dprCap = prev.dprCap
+      ;(renderer as any)._dprCap = dprCap
+      updateFXAA()
+      if (pixelatePass) pixelatePass.enabled = false
+      savedStandard = null
+    }
+    renderMode = 'standard'
+  }
+  ;(renderHooks as any).setRenderMode = (mode: 'standard'|'pixelArt') => applyRenderMode(mode)
+  ;(renderHooks as any).getRenderMode = () => renderMode
+
+  // Optional tuning for pixel art mode
+  ;(renderHooks as any).setPixelArtOptions = (opts: { pixelSize?: number; posterizeLevels?: number }) => {
+    pixelOpts.pixelSize = Math.max(1, opts.pixelSize ?? pixelOpts.pixelSize)
+    pixelOpts.posterizeLevels = Math.max(0, opts.posterizeLevels ?? pixelOpts.posterizeLevels)
+    if (pixelatePass) {
+      ;(pixelatePass.uniforms as any).pixelSize.value = pixelOpts.pixelSize
+      ;(pixelatePass.uniforms as any).posterizeLevels.value = pixelOpts.posterizeLevels
+    }
+    // If Ink Outline is active, rebuild it to respect new snapping in Pixel Art mode
+    const inkState = (renderHooks as any)._inkOutlineState as { enabled: boolean; thickness: number; color: number } | undefined
+    if ((renderHooks as any).getRenderMode?.() === 'pixelArt' && inkState?.enabled) {
+      // Re-apply with the original UI thickness (snapping happens inside setInkOutline)
+      ;(renderHooks as any).setInkOutline?.(true, inkState.thickness, inkState.color)
+    }
+  }
 
   return renderHooks
 }

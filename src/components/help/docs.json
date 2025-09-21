@@ -553,6 +553,40 @@
     ]
   },
   {
+    "id": "render-mode.pixel-size",
+    "label": "Pixel Size",
+    "summary": "Sets the size of one pixel block in screen pixels.",
+    "details": [
+      "Higher values produce chunkier pixels; lower values keep more detail.",
+      "Works only in Pixel Art mode.",
+      "Pair with Posterize Levels for a 16‑bit or 8‑bit look."
+    ]
+  },
+  {
+    "id": "render-mode.posterize-levels",
+    "label": "Posterize Levels",
+    "summary": "Reduces colors per channel to create flat, stylized shading.",
+    "details": [
+      "0 disables posterization; 3–8 steps mimic 16‑bit/8‑bit palettes.",
+      "Applied after tone mapping so highlights retain shape.",
+      "Combine with Ink Outline for comic/pixel art hybrids."
+    ]
+  },
+  {
+    "id": "render-mode.render-mode",
+    "label": "Render Mode",
+    "summary": "Switch between Standard and Pixel Art output modes.",
+    "details": [
+      "Pixel Art snaps the final image to a coarse pixel grid for a retro look.",
+      "Disables anti-aliasing, bloom, and heat haze; caps DPR to 1 for crisp blocks.",
+      "Use Pixel Size and Posterize Levels to tune the effect."
+    ],
+    "related": [
+      "render-mode.pixel-size",
+      "render-mode.posterize-levels"
+    ]
+  },
+  {
     "id": "render-post.bloom-enabled",
     "label": "Bloom Enabled",
     "summary": "Enable bright glow around high-intensity areas.",

@@ -65,6 +65,17 @@ describe('Per-setting geometry effects (representative)', () => {
     expect(overlay2!.children.length).toBeGreaterThan(0)
   })
 
+  it('Fuller Mode "none" with fullers disabled yields no overlays', () => {
+    const base = defaultSwordParams()
+    base.blade.fullerEnabled = false
+    ;(base.blade as any).fullerMode = 'none'
+    delete (base.blade as any).fullers
+    delete (base.blade as any).fullerFaces
+    const s = new SwordGenerator(base)
+    const overlay = ((s as any).fullerGroup as THREE.Group | null) ?? null
+    expect(overlay).toBeNull()
+  })
+
   it('Tip width increases local width near tip', () => {
     const base = defaultSwordParams()
     base.blade.tipWidth = 0.04

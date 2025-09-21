@@ -209,7 +209,7 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
   - Toolbar Auto Spin persists via localStorage.
 - E2E: Reset Render baseline
   - After tweaks, “Reset Render” returns to defaults (FXAA, fog density, etc.).
-- E2E: Quality preset propagation
+  - E2E: Quality preset propagation
   - Quality dropdown updates AA mode and DPR cap accordingly.
 
 - Unit: Export tools (GLB/OBJ/STL/SVG)
@@ -217,3 +217,30 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
   - OBJ/STL: verify mesh vertex/face counts are consistent across runs for fixed params.
   - SVG blueprint: ensure valid SVG root and expected path count for the blade outline.
   - Error paths: exporting without meshes or with invalid params yields typed errors (no crashes).
+
+---
+
+## Render Mode — Pixel Art
+
+Goal: Add an optional “Pixel Art” render mode that preserves crisp pixel edges at low internal resolution with optional color posterization, without affecting the default rendering.
+
+Steps
+- Define a render mode toggle in RenderHooks
+  - Add `setRenderMode('standard'|'pixelArt')` and `getRenderMode()`; default to `standard`.
+  - When `pixelArt` is enabled, apply policy switches (AA off, bloom/heat off, cap DPR to 1); restore previous values when returning to `standard`.
+- Add Pixelate/Posterize pass
+  - Implement a ShaderPass that samples from a snapped pixel grid and optional per‑channel posterize.
+  - Insert after tone mapping and before optional outlines in the composer.
+- UI controls in Render tab
+  - Add “Render Mode: Standard | Pixel Art”. Show Pixel Art sub‑controls only when active: `Pixel Size` (1–12), `Posterize Levels` (Off/3–8).
+  - Help micro‑copy for mode and each control.
+- Mode policy and interactions
+  - Disable FXAA/SMAA/MSAA, set DPR cap to 1, force nearest‑neighbor upscale.
+  - Disable selective bloom and heat haze; keep ink outline available.
+  - Snap ink outline thickness to pixel size to avoid shimmer.
+- Docs
+  - Add help topics: `render.pixel-art-mode`, `render.pixel-size`, `render.posterize`.
+  - README notes on Pixel Art mode and when to use it.
+- Tests
+  - E2E: toggling Pixel Art flips AA/FX flags and updates composer pass enablement.
+  - E2E: pixel size slider changes a uniform; posterize levels affect rendered colors (coarse assertion).

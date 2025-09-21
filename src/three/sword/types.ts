@@ -123,8 +123,8 @@ export type BladeParams = {
   fullerEnabled?: boolean;
   /** Number of grooves per face. */
   fullerCount?: number;
-  /** How fullers are realized: overlay ribbons or carved reduction. */
-  fullerMode?: 'overlay' | 'carve';
+  /** How fullers are realized: overlay ribbons or carved reduction; or 'none' to disable explicitly. */
+  fullerMode?: 'overlay' | 'carve' | 'none';
   /** Fuller cross profile. */
   fullerProfile?: 'u' | 'v' | 'flat';
   /** Groove width across the blade face (scene units). */

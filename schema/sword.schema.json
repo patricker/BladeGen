@@ -328,10 +328,11 @@
         "fullerMode": {
           "type": "string",
           "enum": [
+            "none",
             "overlay",
             "carve"
           ],
-          "description": "overlay (default) draws visual ribbons; carve reduces blade thickness within a band across the face for a real groove."
+          "description": "none disables grooves; overlay draws visual ribbons; carve reduces blade thickness within a band across the face for a real groove."
         },
         "fullerProfile": {
           "type": "string",

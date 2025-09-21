@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="/swordmaker.png" />
+    <!-- Favicons: using 256px square PNG; browsers downscale as needed -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/swordmaker_logo_256.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/swordmaker_logo_256.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/swordmaker_logo_256.png" />
     <title>SwordMaker — Parametric Sword Generator</title>
     <style>
       html, body, #app { height: 100%; margin: 0; }
@@ -16,6 +19,9 @@
       /* Header GitHub icon button */
       header .links a.icon { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; color:#cbd5e1; background:#1f2430; border:1px solid #303743; border-radius:4px; text-decoration:none; }
       header .links a.icon:hover { background:#334155; border-color:#475569; color:#e2e8f0; }
+      /* Header Help button */
+      header .help-btn { background:#334155; color:#e2e8f0; border:1px solid #475569; padding:4px 8px; border-radius:4px; cursor:pointer; font:12px system-ui, sans-serif; }
+      header .help-btn:hover { background:#3b4a63; }
       .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
       canvas { display: block; width: 100%; height: 100%; }
       #sidebar {
@@ -73,7 +79,7 @@
     <div id="app">
       <header>
         <div class="brand">
-          <img class="logo" src="/swordmaker.png" alt="SwordMaker logo" />
+          <img class="logo" src="/swordmaker_logo_256.png" alt="SwordMaker logo" />
           <strong>SwordMaker</strong>
           <span class="tag">· Parametric sword generator and renderer for the web</span>
         </div>
@@ -91,6 +97,7 @@
             </select>
             <div id="fps" aria-live="polite">FPS: --</div>
           </div>
+          <button id="btnHeaderHelp" class="help-btn" title="Open Help (Cmd/Ctrl+/ or F1)">Help</button>
           <div class="links">
             <a class="icon" href="https://github.com/patricker/SwordMaker" target="_blank" rel="noopener" aria-label="GitHub repository">
               <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">

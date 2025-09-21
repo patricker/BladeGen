@@ -4479,6 +4479,27 @@ function presetSabre(): SwordParams {
       const meta = (e.ctrlKey || e.metaKey);
       if (meta && (e.key === '/' || e.code === 'Slash')) { e.preventDefault(); const mod = await loadHelpPanel(); mod.openHelpPanel(); }
       if (meta && (e.key?.toLowerCase?.() === 'k')) { e.preventDefault(); const mod = await loadHelpPanel(); mod.openHelpSearch(); }
+      // F1: open help for the focused control row, else open Help panel
+      if (e.key === 'F1') {
+        e.preventDefault();
+        const t = e.target as HTMLElement | null;
+        const row = (t && t.closest('.row')) as HTMLElement | null;
+        if (row) {
+          // Prefer opening the popover via the help icon when present
+          const icon = row.querySelector('.help-icon') as HTMLElement | null;
+          if (icon) { icon.click(); return; }
+          // Fallback: open Help panel at this control's topic if possible
+          const helpId = row.dataset.field;
+          try {
+            const mod = await loadHelpPanel();
+            if (helpId) mod.openHelpPanel(helpId); else mod.openHelpPanel();
+          } catch {}
+          return;
+        }
+        // No focused row: act like clicking the Help button
+        try { const mod = await loadHelpPanel(); mod.openHelpPanel(); } catch {}
+        return;
+      }
       // Explain Mode hotkey (E), ignore when typing in inputs
       if (!meta && !e.altKey && !e.shiftKey && (e.key?.toLowerCase?.() === 'e')) {
         const t = e.target as HTMLElement | null;

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { SwordGenerator, defaultSwordParams, type SwordParams } from '../../SwordGenerator'
 
-export type PartName = 'blade' | 'guard' | 'handle' | 'pommel' | 'scabbard'
+export type PartName = 'blade' | 'guard' | 'handle' | 'pommel' | 'scabbard' | 'tassel'
 
 export type Bounds = { min: THREE.Vector3; max: THREE.Vector3; size: THREE.Vector3 }
 
@@ -26,6 +26,7 @@ export function partBounds(s: SwordGenerator, part: PartName): Bounds | null {
     handle: s.handleMesh ?? (s as any).handleGroup ?? null,
     pommel: s.pommelMesh,
     scabbard: s.scabbardGroup,
+    tassel: s.tasselGroup,
   }
   return boundsOf(map[part])
 }
@@ -174,4 +175,11 @@ export function totalVertices(obj: THREE.Object3D | null | undefined): number {
     }
   })
   return total
+}
+
+export function findChildByName(obj: THREE.Object3D | null | undefined, name: string): THREE.Object3D | null {
+  if (!obj) return null
+  let found: THREE.Object3D | null = null
+  obj.traverse((o) => { if (!found && o.name === name) found = o })
+  return found
 }

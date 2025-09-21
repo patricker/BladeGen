@@ -58,6 +58,20 @@ if (sidebar && sword) {
   createSidebar(sidebar, sword, defaultSwordParams(), renderHooks);
 }
 
+// Header Help button (opens Help Panel)
+try {
+  const headerHelp = document.getElementById('btnHeaderHelp') as HTMLButtonElement | null;
+  if (headerHelp) {
+    headerHelp.addEventListener('click', async () => {
+      try {
+        const mod = await import('./components/help/HelpPanel');
+        mod.initHelpPanel({ highlighter: (parts?: string[] | null) => { const part = (parts && (parts[0] as any)) as any; try { sword.setHighlight(part ?? null); } catch {} } });
+        mod.openHelpPanel();
+      } catch {}
+    });
+  }
+} catch {}
+
 // Hot module cleanup
 if (import.meta && (import.meta as any).hot) {
   (import.meta as any).hot.dispose(() => {

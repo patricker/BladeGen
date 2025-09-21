@@ -55,15 +55,18 @@ export function attachRenderPixelArtPanel(opts: {
   const label = doc ? doc.createElement('div') : ({} as HTMLElement)
   if (doc) { label.className = 'group-label'; label.textContent = 'Pixel Art Options' }
   if ((group as any).appendChild && label) (group as any).appendChild(label)
-  if ((section as any).appendChild) (section as any).appendChild(group)
 
   const setGroupVisible = (on: boolean) => { try { (group as any).style.display = on ? '' : 'none' } catch {} }
 
+  // First render the mode selector at the top of the section
   select(section, 'Render Mode', ['Standard','Pixel Art'], state.mode, (v) => {
     state.mode = (v === 'Pixel Art') ? 'Pixel Art' : 'Standard'
     if (state.mode === 'Pixel Art') render.setRenderMode?.('pixelArt'); else render.setRenderMode?.('standard')
     setGroupVisible(state.mode === 'Pixel Art')
   }, () => {}, 'Choose Standard or Pixel Art output (low-res pixel grid).')
+
+  // Then append the Pixel Art options group underneath the selector
+  if ((section as any).appendChild) (section as any).appendChild(group)
 
   // Sliders live in the group container
   slider(group, 'Pixel Size', 1, 12, 1, state.pixelSize, (v) => {
@@ -79,4 +82,3 @@ export function attachRenderPixelArtPanel(opts: {
   // Initial visibility
   setGroupVisible(state.mode === 'Pixel Art')
 }
-

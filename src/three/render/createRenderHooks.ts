@@ -466,9 +466,26 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
       }
     },
     setOutline: (enabled, strength, thickness, colorHex) => {
+      // Persist original inputs for reapplication when pixel size changes
+      const currentColor = (outline as any).visibleEdgeColor?.getHex?.() ?? 0xffffff
+      ;(renderHooks as any)._outlineState = {
+        enabled,
+        strength: (strength !== undefined) ? strength : outline.edgeStrength,
+        thickness: (thickness !== undefined) ? thickness : outline.edgeThickness,
+        color: (colorHex !== undefined) ? colorHex : currentColor
+      }
       outline.enabled = enabled
       if (strength !== undefined) outline.edgeStrength = strength
-      if (thickness !== undefined) outline.edgeThickness = thickness
+      if (thickness !== undefined) {
+        let tIn = thickness
+        // Quantize edge thickness when in Pixel Art mode to align with pixel grid
+        if ((renderHooks as any).getRenderMode?.() === 'pixelArt') {
+          const px = Math.max(1, (pixelOpts.pixelSize || 4))
+          const step = Math.max(0.01, Math.min(0.12, px * 0.01))
+          tIn = Math.max(0.0, Math.min(4.0, Math.round(tIn / step) * step))
+        }
+        outline.edgeThickness = tIn
+      }
       if (colorHex !== undefined) outline.visibleEdgeColor.setHex(colorHex)
       outline.selectedObjects = []
       if (sword?.group) outline.selectedObjects.push(sword.group)
@@ -690,6 +707,11 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     if ((renderHooks as any).getRenderMode?.() === 'pixelArt' && inkState?.enabled) {
       // Re-apply with the original UI thickness (snapping happens inside setInkOutline)
       ;(renderHooks as any).setInkOutline?.(true, inkState.thickness, inkState.color)
+    }
+    // If OutlinePass is active, re-apply with original thickness so quantization updates
+    const ol = (renderHooks as any)._outlineState as { enabled: boolean; strength: number; thickness: number; color: number } | undefined
+    if ((renderHooks as any).getRenderMode?.() === 'pixelArt' && ol?.enabled) {
+      ;(renderHooks as any).setOutline?.(true, ol.strength, ol.thickness, ol.color)
     }
   }
 

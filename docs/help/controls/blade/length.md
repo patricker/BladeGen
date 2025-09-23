@@ -13,4 +13,3 @@
 ```
 
 Shortens or lengthens the blade. Use with tip width and tapers for realistic dynamics.
-

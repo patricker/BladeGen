@@ -7,12 +7,24 @@ if (!canvas) {
   throw new Error('Canvas element #scene not found');
 }
 
-const { renderer, camera, controls, scene, composer, dispose, updateFXAA, renderHooks, pipeline, sword } = setupScene(canvas);
+const {
+  renderer,
+  camera,
+  controls,
+  scene,
+  composer,
+  dispose,
+  updateFXAA,
+  renderHooks,
+  pipeline,
+  sword,
+} = setupScene(canvas);
 
 // Simple FPS overlay
 const fpsEl = document.getElementById('fps');
 const themeSel = document.getElementById('theme') as HTMLSelectElement | null;
-let _fpsFrames = 0; let _fpsLast = performance.now();
+let _fpsFrames = 0;
+let _fpsLast = performance.now();
 
 let disposed = false;
 function onResize() {
@@ -46,7 +58,8 @@ function animate(t: number) {
   if (elapsed >= 500) {
     const fps = Math.round((_fpsFrames * 1000) / elapsed);
     if (fpsEl) fpsEl.textContent = `FPS: ${fps}`;
-    _fpsFrames = 0; _fpsLast = now;
+    _fpsFrames = 0;
+    _fpsLast = now;
   }
   requestAnimationFrame(animate);
 }
@@ -65,7 +78,14 @@ try {
     headerHelp.addEventListener('click', async () => {
       try {
         const mod = await import('./components/help/HelpPanel');
-        mod.initHelpPanel({ highlighter: (parts?: string[] | null) => { const part = (parts && (parts[0] as any)) as any; try { sword.setHighlight(part ?? null); } catch {} } });
+        mod.initHelpPanel({
+          highlighter: (parts?: string[] | null) => {
+            const part = (parts && (parts[0] as any)) as any;
+            try {
+              sword.setHighlight(part ?? null);
+            } catch {}
+          },
+        });
         mod.openHelpPanel();
       } catch {}
     });
@@ -85,13 +105,13 @@ if (import.meta && (import.meta as any).hot) {
 type Theme = { base: number; target: number; brightness: number };
 const themes: Record<string, Theme> = {
   midnight: { base: 0x0f1115, target: 0x3a3f4a, brightness: 0.0 },
-  slate:    { base: 0x12151b, target: 0x3a3f4a, brightness: 0.45 },
-  steel:    { base: 0x111214, target: 0x8b949e, brightness: 0.35 },
-  warm:     { base: 0x1b1210, target: 0x7a3f2c, brightness: 0.45 },
-  ocean:    { base: 0x0a0f1a, target: 0x254566, brightness: 0.55 },
-  forest:   { base: 0x0d120e, target: 0x355a3a, brightness: 0.5 },
-  sepia:    { base: 0x14110d, target: 0x6b5438, brightness: 0.5 },
-  graphite: { base: 0x0f0f11, target: 0x2e2f36, brightness: 0.3 }
+  slate: { base: 0x12151b, target: 0x3a3f4a, brightness: 0.45 },
+  steel: { base: 0x111214, target: 0x8b949e, brightness: 0.35 },
+  warm: { base: 0x1b1210, target: 0x7a3f2c, brightness: 0.45 },
+  ocean: { base: 0x0a0f1a, target: 0x254566, brightness: 0.55 },
+  forest: { base: 0x0d120e, target: 0x355a3a, brightness: 0.5 },
+  sepia: { base: 0x14110d, target: 0x6b5438, brightness: 0.5 },
+  graphite: { base: 0x0f0f11, target: 0x2e2f36, brightness: 0.3 },
 };
 
 function applyTheme(key: string) {

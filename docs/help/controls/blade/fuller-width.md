@@ -9,9 +9,8 @@
   ],
   "parts": ["blade"],
   "related": ["blade.fuller-inset"],
-  "tryThis": [{"label":"Sweep width"}]
+  "tryThis": [{ "label": "Sweep width" }]
 }
 ```
 
 Broader grooves reduce apparent mass; avoid clipping edges.
-

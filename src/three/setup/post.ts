@@ -27,7 +27,11 @@ export interface PostProcessingContext {
   getMsaaSamples: () => number;
 }
 
-export function createPostProcessing(scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer): PostProcessingContext {
+export function createPostProcessing(
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  renderer: THREE.WebGLRenderer
+): PostProcessingContext {
   // NOTE: WebGLMultisampleRenderTarget cannot be sampled by post-processing passes without a manual resolve
   // step. Until a resolve path is wired in, fall back to the standard single-sample targets so presets
   // don’t collapse to black on multi-pass renders when MSAA is requested.
@@ -40,7 +44,10 @@ export function createPostProcessing(scene: THREE.Scene, camera: THREE.Camera, r
   const aaPasses: AAPasses = { fxaa: null, smaa: null };
   const updateAaPass = (width: number, height: number, pixelRatio: number) => {
     if (aaPasses.fxaa) {
-      (aaPasses.fxaa.uniforms as any).resolution.value.set(1 / (width * pixelRatio), 1 / (height * pixelRatio));
+      (aaPasses.fxaa.uniforms as any).resolution.value.set(
+        1 / (width * pixelRatio),
+        1 / (height * pixelRatio)
+      );
     }
     if (aaPasses.smaa) {
       aaPasses.smaa.setSize(width, height);
@@ -81,6 +88,6 @@ export function createPostProcessing(scene: THREE.Scene, camera: THREE.Camera, r
     supportsMsaa: msaaSupported && maxSamples > 0,
     maxMsaaSamples: maxSamples,
     setMsaaSamples,
-    getMsaaSamples
+    getMsaaSamples,
   };
 }

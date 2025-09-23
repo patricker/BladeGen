@@ -12,4 +12,3 @@
 ```
 
 Tip: try 4–8 for a bold pixel grid that remains readable at 1080p.
-

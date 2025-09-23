@@ -12,4 +12,3 @@
 ```
 
 Choose a profile to define edge planes and reflections.
-

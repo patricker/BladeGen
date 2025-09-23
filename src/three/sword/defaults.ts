@@ -1,4 +1,4 @@
-import type { SwordParams } from './types'
+import type { SwordParams } from './types';
 
 /**
  * Returns a fresh set of sensible default sword parameters.
@@ -31,7 +31,7 @@ export function defaultSwordParams(): SwordParams {
       thicknessRight: 0.08,
       baseAngle: 0.0,
       tipShape: 'pointed',
-      tipBulge: 0.2
+      tipBulge: 0.2,
     },
     // Hilt (guard/handle/pommel) enabled by default
     hiltEnabled: true,
@@ -47,7 +47,7 @@ export function defaultSwordParams(): SwordParams {
       habakiHeight: 0.06,
       habakiMargin: 0.01,
       asymmetricArms: false,
-      asymmetry: 0
+      asymmetry: 0,
     },
     handle: {
       length: 0.9,
@@ -63,7 +63,7 @@ export function defaultSwordParams(): SwordParams {
       wrapTexAngle: Math.PI / 4,
       wrapStyle: 'none',
       ovalRatio: 1.0,
-      menukiPreset: 'none'
+      menukiPreset: 'none',
     },
     pommel: {
       size: 0.16,
@@ -75,7 +75,7 @@ export function defaultSwordParams(): SwordParams {
       facetCount: 32,
       spikeLength: 1.0,
       balance: 0,
-      peenVisible: false
+      peenVisible: false,
     },
     accessories: {
       scabbard: {
@@ -93,7 +93,7 @@ export function defaultSwordParams(): SwordParams {
         bodyRoundness: 0.5,
         offsetX: 0.16,
         offsetZ: -0.02,
-        hangAngle: -0.18
+        hangAngle: -0.18,
       },
       tassel: {
         enabled: false,
@@ -105,8 +105,8 @@ export function defaultSwordParams(): SwordParams {
         thickness: 0.018,
         tuftSize: 0.05,
         tuftLength: 0.14,
-        strands: 10
-      }
-    }
+        strands: 10,
+      },
+    },
   };
 }

@@ -12,4 +12,3 @@
 ```
 
 Rotate for subtle stylistic cues; ensure clearance for hand and scabbard.
-

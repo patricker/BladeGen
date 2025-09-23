@@ -11,12 +11,19 @@ export interface FxContext {
   updateSize: (width: number, height: number) => void;
 }
 
-export function createFxContext(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, composer: EffectComposer): FxContext {
+export function createFxContext(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  composer: EffectComposer
+): FxContext {
   const fx = new FxManager(renderer, scene, camera);
   fx.attachToComposer(composer);
   const layers = { bloom: fx.BLOOM_LAYER, heat: fx.HEAT_LAYER };
   const flags: RenderHookFlags = { selectiveBloom: false, heatHaze: false };
-  const preFX = () => { fx.preFX(); };
+  const preFX = () => {
+    fx.preFX();
+  };
   const updateSize = (width: number, height: number) => {
     fx.updateSize(width, height);
   };

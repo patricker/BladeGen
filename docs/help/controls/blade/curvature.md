@@ -8,9 +8,8 @@
     "Curvature interacts with fuller placement and tip style."
   ],
   "parts": ["blade"],
-  "tryThis": [{"label":"Animate curvature"}]
+  "tryThis": [{ "label": "Animate curvature" }]
 }
 ```
 
 Use sparingly for subtle character; extreme curvature changes balance and cutting geometry.
-

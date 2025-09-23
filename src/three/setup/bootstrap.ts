@@ -38,7 +38,11 @@ export function createBootstrap(canvas: HTMLCanvasElement): BootstrapContext {
   const bgTarget = new THREE.Color(0x3a3f4a);
   let bgBrightness = 0.0;
 
-  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1d24, metalness: 0.0, roughness: 1.0 });
+  const groundMaterial = new THREE.MeshStandardMaterial({
+    color: 0x1a1d24,
+    metalness: 0.0,
+    roughness: 1.0,
+  });
   const applyBackground = () => {
     const c = bgBase.clone();
     c.lerp(bgTarget, THREE.MathUtils.clamp(bgBrightness, 0, 1));
@@ -75,9 +79,11 @@ export function createBootstrap(canvas: HTMLCanvasElement): BootstrapContext {
     base: bgBase,
     target: bgTarget,
     getBrightness: () => bgBrightness,
-    setBrightness: (v: number) => { bgBrightness = v; },
+    setBrightness: (v: number) => {
+      bgBrightness = v;
+    },
     apply: applyBackground,
-    groundMaterial
+    groundMaterial,
   };
 
   // Ensure tint sync on boot
@@ -92,6 +98,6 @@ export function createBootstrap(canvas: HTMLCanvasElement): BootstrapContext {
     envTexture,
     background,
     ground,
-    groundClearance
+    groundClearance,
   };
 }

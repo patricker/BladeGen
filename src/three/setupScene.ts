@@ -3,7 +3,11 @@ import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js
 import type { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 
 import { SwordGenerator, defaultSwordParams } from './SwordGenerator';
-import { buildInkOutline as buildInkOutlineMesh, buildFresnel as buildFresnelMesh, buildBladeGradientOverlay } from './fx/overlays';
+import {
+  buildInkOutline as buildInkOutlineMesh,
+  buildFresnel as buildFresnelMesh,
+  buildBladeGradientOverlay,
+} from './fx/overlays';
 import { buildFlameAura } from './fx/aura';
 import { createEmbers } from './fx/embers';
 import { buildInnerGlow as buildInnerGlowMesh } from './fx/innerGlow';
@@ -32,7 +36,17 @@ export interface SceneSetupResult {
 
 export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
   const bootstrap = createBootstrap(canvas);
-  const { renderer, scene, camera, controls, pmrem, envTexture, background, ground, groundClearance } = bootstrap;
+  const {
+    renderer,
+    scene,
+    camera,
+    controls,
+    pmrem,
+    envTexture,
+    background,
+    ground,
+    groundClearance,
+  } = bootstrap;
 
   const autoSpinStorageKeyNew = 'bladegen.autoSpinEnabled';
   const readAutoSpinPreference = () => {
@@ -80,10 +94,23 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     }
   };
   const getAutoSpinEnabled = () => autoSpinEnabled;
-  controls.addEventListener('start', () => { isDragging = true; });
-  controls.addEventListener('change', () => { bumpResume(); });
-  controls.addEventListener('end', () => { isDragging = false; bumpResume(); });
-  canvas.addEventListener('wheel', () => { bumpResume(); }, { passive: true });
+  controls.addEventListener('start', () => {
+    isDragging = true;
+  });
+  controls.addEventListener('change', () => {
+    bumpResume();
+  });
+  controls.addEventListener('end', () => {
+    isDragging = false;
+    bumpResume();
+  });
+  canvas.addEventListener(
+    'wheel',
+    () => {
+      bumpResume();
+    },
+    { passive: true }
+  );
 
   const lighting = createLighting(scene);
   const ambientLight = lighting.ambient;
@@ -142,13 +169,30 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     el.setAttribute('tabindex', '0');
     el.setAttribute('role', 'button');
     el.setAttribute('aria-label', `Explain: ${text}`);
-    el.addEventListener('click', () => { try { explainClickHandler?.(id) } catch {} });
+    el.addEventListener('click', () => {
+      try {
+        explainClickHandler?.(id);
+      } catch {}
+    });
     el.addEventListener('keydown', (e) => {
       const ke = e as KeyboardEvent;
-      if (ke.key === 'Enter' || ke.key === ' ') { ke.preventDefault(); try { explainClickHandler?.(id) } catch {} }
+      if (ke.key === 'Enter' || ke.key === ' ') {
+        ke.preventDefault();
+        try {
+          explainClickHandler?.(id);
+        } catch {}
+      }
     });
-    el.addEventListener('mouseenter', () => { try { explainHoverHandler?.([id.split('.')[0]]) } catch {} });
-    el.addEventListener('mouseleave', () => { try { explainHoverHandler?.(null) } catch {} });
+    el.addEventListener('mouseenter', () => {
+      try {
+        explainHoverHandler?.([id.split('.')[0]]);
+      } catch {}
+    });
+    el.addEventListener('mouseleave', () => {
+      try {
+        explainHoverHandler?.(null);
+      } catch {}
+    });
     explainOverlay!.appendChild(el);
     explainLabels[id] = { el, id };
     return el;
@@ -159,9 +203,13 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     if (!explainOverlay) return;
     if (!explainEnabled) {
       // Detach overlay and clear labels to free DOM/memory
-      try { explainOverlay.remove() } catch {}
+      try {
+        explainOverlay.remove();
+      } catch {}
       explainOverlay = null;
-      for (const k of Object.keys(explainLabels)) { delete (explainLabels as any)[k] }
+      for (const k of Object.keys(explainLabels)) {
+        delete (explainLabels as any)[k];
+      }
       return;
     }
     explainOverlay.style.display = 'block';
@@ -180,12 +228,18 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     }
   }
   const getExplainEnabled = () => explainEnabled;
-  function setExplainHandlers(onClick?: (id: string)=>void, onHover?: (parts: string[]|null)=>void) { explainClickHandler = onClick || null; explainHoverHandler = onHover || null }
+  function setExplainHandlers(
+    onClick?: (id: string) => void,
+    onHover?: (parts: string[] | null) => void
+  ) {
+    explainClickHandler = onClick || null;
+    explainHoverHandler = onHover || null;
+  }
   function worldToScreen(pos: THREE.Vector3, out: THREE.Vector2) {
     const v = pos.clone().project(camera);
     const widthHalf = 0.5 * renderer.domElement.clientWidth;
     const heightHalf = 0.5 * renderer.domElement.clientHeight;
-    out.set((v.x * widthHalf) + widthHalf, (-v.y * heightHalf) + heightHalf);
+    out.set(v.x * widthHalf + widthHalf, -v.y * heightHalf + heightHalf);
     return out;
   }
   const tmpV = new THREE.Vector3();
@@ -195,10 +249,20 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     const canvasRect = renderer.domElement.getBoundingClientRect();
     const place = (id: string, obj: THREE.Object3D | null, yBias = 0) => {
       const rec = explainLabels[id];
-      if (!rec || !obj) { if (rec) rec.el.style.display = 'none'; return; }
+      if (!rec || !obj) {
+        if (rec) rec.el.style.display = 'none';
+        return;
+      }
       const box = new THREE.Box3().setFromObject(obj);
-      if (!isFinite(box.min.x)) { rec.el.style.display = 'none'; return; }
-      tmpV.set((box.min.x + box.max.x) * 0.5, (box.min.y + box.max.y) * 0.5 + yBias, (box.min.z + box.max.z) * 0.5);
+      if (!isFinite(box.min.x)) {
+        rec.el.style.display = 'none';
+        return;
+      }
+      tmpV.set(
+        (box.min.x + box.max.x) * 0.5,
+        (box.min.y + box.max.y) * 0.5 + yBias,
+        (box.min.z + box.max.z) * 0.5
+      );
       worldToScreen(tmpV, tmp2);
       rec.el.style.display = 'block';
       rec.el.style.left = `${Math.round(canvasRect.left + tmp2.x)}px`;
@@ -244,8 +308,8 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
       speed: 1.6,
       intensity: 1.0,
       direction: 'up' as 'up' | 'down',
-      blend: 'add' as 'add' | 'normal' | 'multiply'
-    }
+      blend: 'add' as 'add' | 'normal' | 'multiply',
+    },
   };
   const setFlameAura = (enabled: boolean, opts: typeof flameState.opts = flameState.opts) => {
     flameState.enabled = enabled;
@@ -269,7 +333,10 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
   let sparksPos: Float32Array | null = null;
   let sparksVel: Float32Array | null = null;
   let sparksLife: Float32Array | null = null;
-  const setEmbers = (enabled: boolean, opts: { count?: number; size?: number; color?: number } = {}) => {
+  const setEmbers = (
+    enabled: boolean,
+    opts: { count?: number; size?: number; color?: number } = {}
+  ) => {
     if (sparks) {
       (sparks.parent as any)?.remove(sparks);
       sparksGeom?.dispose();
@@ -294,7 +361,14 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
   const fresnelGroup = { current: null as THREE.Group | null };
   const innerGlowGroup = { current: null as THREE.Group | null };
   const innerGlowMaterial = { current: null as THREE.ShaderMaterial | null };
-  const innerGlowState = { enabled: false, time: 0.0, speed: 1.5, color: 0x88ccff, iMin: 0.2, iMax: 0.9 };
+  const innerGlowState = {
+    enabled: false,
+    time: 0.0,
+    speed: 1.5,
+    color: 0x88ccff,
+    iMin: 0.2,
+    iMax: 0.9,
+  };
   const buildInnerGlow = (colorHex: number, iMin: number, iMax: number, speed: number) => {
     const built = buildInnerGlowMesh(sword.group, colorHex, iMin, iMax, speed);
     innerGlowMaterial.current = built.material;
@@ -323,7 +397,7 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     windX: 0.0,
     windZ: 0.0,
     emission: 'base' as 'base' | 'edge' | 'tip' | 'full',
-    occlude: false
+    occlude: false,
   } as any;
   const mistSpawn = { xMin: 0, xMax: 0, yMin: 0, yMax: 0, baseTop: 0, tipBottom: 0, halfT: 0 };
   const rebuildMist = (count: number) => {
@@ -348,22 +422,42 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     const az = THREE.MathUtils.degToRad(azimuthDeg);
     const el = THREE.MathUtils.degToRad(elevationDeg);
     const r = 12;
-    keyLight.position.set(Math.cos(az) * Math.cos(el) * r, Math.sin(el) * r, Math.sin(az) * Math.cos(el) * r);
+    keyLight.position.set(
+      Math.cos(az) * Math.cos(el) * r,
+      Math.sin(el) * r,
+      Math.sin(az) * Math.cos(el) * r
+    );
   };
 
   const setRimLightAngles = (azimuthDeg: number, elevationDeg: number) => {
     const az = THREE.MathUtils.degToRad(azimuthDeg);
     const el = THREE.MathUtils.degToRad(elevationDeg);
     const r = 12;
-    rimLight.position.set(Math.cos(az) * Math.cos(el) * r, Math.sin(el) * r, Math.sin(az) * Math.cos(el) * r);
+    rimLight.position.set(
+      Math.cos(az) * Math.cos(el) * r,
+      Math.sin(el) * r,
+      Math.sin(az) * Math.cos(el) * r
+    );
   };
 
-  const buildInkOutline = (scale: number, colorHex: number) => buildInkOutlineMesh(sword.group, scale, colorHex);
-  const buildFresnel = (colorHex: number, intensity: number, power: number) => buildFresnelMesh(sword.group, colorHex, intensity, power);
-  const buildBladeGradient = (baseHex: number, edgeHex: number, edgeFade: number, wearAmt: number) =>
-    sword.bladeMesh ? buildBladeGradientOverlay(sword.bladeMesh, baseHex, edgeHex, edgeFade, wearAmt) : null;
+  const buildInkOutline = (scale: number, colorHex: number) =>
+    buildInkOutlineMesh(sword.group, scale, colorHex);
+  const buildFresnel = (colorHex: number, intensity: number, power: number) =>
+    buildFresnelMesh(sword.group, colorHex, intensity, power);
+  const buildBladeGradient = (
+    baseHex: number,
+    edgeHex: number,
+    edgeFade: number,
+    wearAmt: number
+  ) =>
+    sword.bladeMesh
+      ? buildBladeGradientOverlay(sword.bladeMesh, baseHex, edgeHex, edgeFade, wearAmt)
+      : null;
 
-  const bladeVisibility = { visible: true, occlude: false } as { visible: boolean; occlude: boolean };
+  const bladeVisibility = { visible: true, occlude: false } as {
+    visible: boolean;
+    occlude: boolean;
+  };
   const applyBladeVisibility = (visible: boolean, occlude: boolean) => {
     const bm = sword.bladeMesh as THREE.Mesh | null;
     if (!bm) return;
@@ -426,11 +520,21 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     }
 
     if (mistPoints && mistGeom && mistLife && mistVel && mistState.enabled) {
-      updateMistPositions(mistGeom, { life: mistLife, vel: mistVel }, mistState, dt, elapsed, mistSpawn as any);
+      updateMistPositions(
+        mistGeom,
+        { life: mistLife, vel: mistVel },
+        mistState,
+        dt,
+        elapsed,
+        mistSpawn as any
+      );
       if (mistMat) {
         (mistMat.uniforms as any).uColor.value.setHex(mistState.color);
         (mistMat.uniforms as any).uSizeMax.value = mistState.size;
-        (mistMat.uniforms as any).uSizeMin.value = Math.max(0.0, mistState.size * mistState.sizeMinRatio);
+        (mistMat.uniforms as any).uSizeMin.value = Math.max(
+          0.0,
+          mistState.size * mistState.sizeMinRatio
+        );
         (mistMat.uniforms as any).uAlphaScale.value = mistState.alphaScale;
       }
     }
@@ -470,7 +574,9 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
       const geomId = (bladeMesh.geometry as any)?.id ?? -1;
       (beforeRender as any)._lastBladeUUID = (beforeRender as any)._lastBladeUUID ?? null;
       (beforeRender as any)._lastGeomId = (beforeRender as any)._lastGeomId ?? null;
-      const changed = bladeMesh.uuid !== (beforeRender as any)._lastBladeUUID || geomId !== (beforeRender as any)._lastGeomId;
+      const changed =
+        bladeMesh.uuid !== (beforeRender as any)._lastBladeUUID ||
+        geomId !== (beforeRender as any)._lastGeomId;
       if (changed) {
         (beforeRender as any)._lastBladeUUID = bladeMesh.uuid;
         (beforeRender as any)._lastGeomId = geomId;
@@ -485,7 +591,13 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
           resynced.push('aura');
         }
         if (innerGlowState.enabled) {
-          renderHooks?.setInnerGlow(true, innerGlowState.color, innerGlowState.iMin, innerGlowState.iMax, innerGlowState.speed);
+          renderHooks?.setInnerGlow(
+            true,
+            innerGlowState.color,
+            innerGlowState.iMin,
+            innerGlowState.iMax,
+            innerGlowState.speed
+          );
           resynced.push('innerGlow');
         }
         const fres = (renderHooks as any)?._fresnelState;
@@ -496,8 +608,14 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
         if (fxFlags.selectiveBloom) bladeMesh.layers.enable(BLOOM_LAYER);
         if (fxFlags.heatHaze) bladeMesh.layers.enable(HEAT_LAYER);
         if (!bladeVisibility.visible) applyBladeVisibility(false, bladeVisibility.occlude);
-        try { (scene as any).__rebuildBladeGradient?.(); } catch {}
-      try { window.dispatchEvent(new CustomEvent('bladegen:fx-synced', { detail: { parts: resynced } } as any)); } catch {}
+        try {
+          (scene as any).__rebuildBladeGradient?.();
+        } catch {}
+        try {
+          window.dispatchEvent(
+            new CustomEvent('bladegen:fx-synced', { detail: { parts: resynced } } as any)
+          );
+        } catch {}
       }
     }
 
@@ -510,7 +628,7 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
   const pipeline = createRenderPipeline(renderer, scene, camera, {
     composer: post.composer,
     preFX: fxContext.preFX,
-    beforeRender
+    beforeRender,
   });
 
   renderHooks = createRenderHooks({
@@ -540,7 +658,7 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
       supported: post.supportsMsaa,
       maxSamples: post.maxMsaaSamples,
       setSamples: post.setMsaaSamples,
-      getSamples: post.getMsaaSamples
+      getSamples: post.getMsaaSamples,
     },
     envTex: envTexture,
     currentEnvTex,
@@ -560,8 +678,8 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     setPostFXEnabled: pipeline.setPostFXEnabled,
     autoSpin: {
       setEnabled: setAutoSpinEnabled,
-      getEnabled: getAutoSpinEnabled
-    }
+      getEnabled: getAutoSpinEnabled,
+    },
   });
   // Augment render hooks with Explain Mode controls (optional for UI)
   (renderHooks as any).setExplainEnabled = setExplainEnabled;
@@ -570,7 +688,7 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
   (scene as any).__renderHooks = renderHooks;
 
   if (typeof window !== 'undefined') {
-    const dbg = ((window as unknown) as Record<string, any>).__swordDebug ?? {};
+    const dbg = (window as unknown as Record<string, any>).__swordDebug ?? {};
     dbg.renderHooks = renderHooks;
     dbg.renderer = renderer;
     dbg.scene = scene;
@@ -578,7 +696,7 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     dbg.composer = post.composer;
     dbg.setAutoSpinEnabled = setAutoSpinEnabled;
     dbg.getAutoSpinEnabled = getAutoSpinEnabled;
-    ((window as unknown) as Record<string, any>).__swordDebug = dbg;
+    (window as unknown as Record<string, any>).__swordDebug = dbg;
   }
 
   const dispose = () => {
@@ -617,6 +735,6 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     pipeline,
     updateFXAA,
     dispose,
-    sword
+    sword,
   };
 }

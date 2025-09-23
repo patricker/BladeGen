@@ -12,4 +12,3 @@
 ```
 
 Use low levels for strong banding; higher levels preserve gradients.
-

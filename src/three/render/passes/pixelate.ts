@@ -1,5 +1,5 @@
-import * as THREE from 'three'
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
+import * as THREE from 'three';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
 // Simple pixelation + optional posterize pass.
 // - pixelSize: size of one pixel block in screen pixels (>=1)
@@ -9,7 +9,7 @@ const PixelateShader = {
     tDiffuse: { value: null as unknown },
     resolution: { value: new THREE.Vector2(1, 1) },
     pixelSize: { value: 4.0 },
-    posterizeLevels: { value: 0.0 }
+    posterizeLevels: { value: 0.0 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -42,19 +42,18 @@ const PixelateShader = {
       col.rgb = posterize(col.rgb, posterizeLevels);
       gl_FragColor = col;
     }
-  `
-} as const
+  `,
+} as const;
 
 export function buildPixelatePass(pixelSize = 4, posterizeLevels = 0) {
-  const pass = new ShaderPass(PixelateShader as any)
-  ;(pass.uniforms as any).pixelSize.value = Math.max(1, pixelSize)
-  ;(pass.uniforms as any).posterizeLevels.value = Math.max(0, posterizeLevels)
+  const pass = new ShaderPass(PixelateShader as any);
+  (pass.uniforms as any).pixelSize.value = Math.max(1, pixelSize);
+  (pass.uniforms as any).posterizeLevels.value = Math.max(0, posterizeLevels);
   // Ensure resolution uniform stays in sync with composer size
-  const originalSetSize = (pass as any).setSize?.bind(pass)
-  ;(pass as any).setSize = (width: number, height: number) => {
-    if (originalSetSize) originalSetSize(width, height)
-    ;(pass.uniforms as any).resolution.value.set(width, height)
-  }
-  return pass
+  const originalSetSize = (pass as any).setSize?.bind(pass);
+  (pass as any).setSize = (width: number, height: number) => {
+    if (originalSetSize) originalSetSize(width, height);
+    (pass.uniforms as any).resolution.value.set(width, height);
+  };
+  return pass;
 }
-

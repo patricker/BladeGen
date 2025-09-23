@@ -1,26 +1,31 @@
-import * as THREE from 'three'
-import { FresnelShader } from './shaders'
+import * as THREE from 'three';
+import { FresnelShader } from './shaders';
 
 /** Build a back-face ink outline clone group of the given source object. */
 export function buildInkOutline(source: THREE.Object3D, scale: number, colorHex: number) {
-  const group = new THREE.Group()
-  const outlineMat = new THREE.MeshBasicMaterial({ color: colorHex, side: THREE.BackSide })
+  const group = new THREE.Group();
+  const outlineMat = new THREE.MeshBasicMaterial({ color: colorHex, side: THREE.BackSide });
   source.traverse((o) => {
-    const m = o as THREE.Mesh
+    const m = o as THREE.Mesh;
     if ((m as any).isMesh && m.geometry) {
-      const om = new THREE.Mesh((m.geometry as any), outlineMat)
-      om.position.copy(m.position)
-      om.quaternion.copy(m.quaternion)
-      om.scale.copy(m.scale).multiplyScalar(1 + scale)
-      group.add(om)
+      const om = new THREE.Mesh(m.geometry as any, outlineMat);
+      om.position.copy(m.position);
+      om.quaternion.copy(m.quaternion);
+      om.scale.copy(m.scale).multiplyScalar(1 + scale);
+      group.add(om);
     }
-  })
-  return group
+  });
+  return group;
 }
 
 /** Build a fresnel additive overlay clone group of the source object. */
-export function buildFresnel(source: THREE.Object3D, col: number, intensity: number, power: number) {
-  const group = new THREE.Group()
+export function buildFresnel(
+  source: THREE.Object3D,
+  col: number,
+  intensity: number,
+  power: number
+) {
+  const group = new THREE.Group();
   const mat = new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.clone((FresnelShader as any).uniforms),
     vertexShader: (FresnelShader as any).vertexShader,
@@ -28,37 +33,43 @@ export function buildFresnel(source: THREE.Object3D, col: number, intensity: num
     blending: THREE.AdditiveBlending,
     transparent: true,
     depthWrite: false,
-    side: THREE.FrontSide
-  })
-  ;(mat.uniforms as any).color.value = new THREE.Color(col)
-  ;(mat.uniforms as any).intensity.value = intensity
-  ;(mat.uniforms as any).power.value = power
-  source.traverse((o)=>{
-    const m = o as THREE.Mesh
+    side: THREE.FrontSide,
+  });
+  (mat.uniforms as any).color.value = new THREE.Color(col);
+  (mat.uniforms as any).intensity.value = intensity;
+  (mat.uniforms as any).power.value = power;
+  source.traverse((o) => {
+    const m = o as THREE.Mesh;
     if ((m as any).isMesh && m.geometry) {
-      const mesh = new THREE.Mesh((m.geometry as any), mat)
-      mesh.position.copy(m.position)
-      mesh.quaternion.copy(m.quaternion)
-      mesh.scale.copy(m.scale)
-      group.add(mesh)
+      const mesh = new THREE.Mesh(m.geometry as any, mat);
+      mesh.position.copy(m.position);
+      mesh.quaternion.copy(m.quaternion);
+      mesh.scale.copy(m.scale);
+      group.add(mesh);
     }
-  })
-  return group
+  });
+  return group;
 }
 
 /** Build a blade gradient/wear overlay based on a source geometry’s width. */
-export function buildBladeGradientOverlay(source: THREE.Mesh, baseHex: number, edgeHex: number, edgeFade: number, wearAmt: number) {
-  const g = (source.geometry as THREE.BufferGeometry).clone()
-  g.computeBoundingBox()
-  const bb = g.boundingBox!
-  const halfW = Math.max(1e-4, (bb.max.x - bb.min.x) * 0.5)
+export function buildBladeGradientOverlay(
+  source: THREE.Mesh,
+  baseHex: number,
+  edgeHex: number,
+  edgeFade: number,
+  wearAmt: number
+) {
+  const g = (source.geometry as THREE.BufferGeometry).clone();
+  g.computeBoundingBox();
+  const bb = g.boundingBox!;
+  const halfW = Math.max(1e-4, (bb.max.x - bb.min.x) * 0.5);
   const mat = new THREE.ShaderMaterial({
     uniforms: {
       baseCol: { value: new THREE.Color(baseHex) },
       edgeCol: { value: new THREE.Color(edgeHex) },
       halfW: { value: halfW },
       edgeFade: { value: Math.max(0.0, Math.min(1.0, edgeFade)) },
-      wear: { value: Math.max(0.0, Math.min(1.0, wearAmt)) }
+      wear: { value: Math.max(0.0, Math.min(1.0, wearAmt)) },
     },
     vertexShader: `
       varying vec3 vPos;
@@ -88,51 +99,65 @@ export function buildBladeGradientOverlay(source: THREE.Mesh, baseHex: number, e
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     transparent: true,
-    side: THREE.FrontSide
-  })
-  const mesh = new THREE.Mesh(g, mat)
-  mesh.position.copy(source.position)
-  mesh.quaternion.copy(source.quaternion)
-  mesh.scale.copy(source.scale)
-  const group = new THREE.Group()
-  group.add(mesh)
-  return group
+    side: THREE.FrontSide,
+  });
+  const mesh = new THREE.Mesh(g, mat);
+  mesh.position.copy(source.position);
+  mesh.quaternion.copy(source.quaternion);
+  mesh.scale.copy(source.scale);
+  const group = new THREE.Group();
+  group.add(mesh);
+  return group;
 }
 
 /**
  * Build a blade gradient/wear overlay that uses per-row centerline and half-width
  * attributes to compute edge fades more robustly across variable widths.
  */
-export function buildBladeGradientWearOverlay(source: THREE.Mesh, baseHex: number, edgeHex: number, edgeFade: number, wear: number) {
-  const geomSrc = source.geometry as THREE.BufferGeometry
-  const geom = geomSrc.clone()
-  geom.computeBoundingBox()
-  const bb = geom.boundingBox!
-  const yMin = bb.min.y, yMax = bb.max.y
-  const totalHalfW = Math.max(1e-6, (bb.max.x - bb.min.x) * 0.5)
-  const pos = geom.getAttribute('position') as THREE.BufferAttribute
-  const N = pos.count; const arr = pos.array as unknown as number[]
-  const buckets = new Map<number, { minX: number; maxX: number }>()
-  const q = 10000
-  for (let i=0;i<N;i++){
-    const x = arr[i*3+0], y = arr[i*3+1]
-    const key = Math.round(y * q)
-    let b = buckets.get(key)
-    if (!b) { b = { minX: Infinity, maxX: -Infinity }; buckets.set(key, b) }
-    if (x < b.minX) b.minX = x; if (x > b.maxX) b.maxX = x
+export function buildBladeGradientWearOverlay(
+  source: THREE.Mesh,
+  baseHex: number,
+  edgeHex: number,
+  edgeFade: number,
+  wear: number
+) {
+  const geomSrc = source.geometry as THREE.BufferGeometry;
+  const geom = geomSrc.clone();
+  geom.computeBoundingBox();
+  const bb = geom.boundingBox!;
+  const yMin = bb.min.y,
+    yMax = bb.max.y;
+  const totalHalfW = Math.max(1e-6, (bb.max.x - bb.min.x) * 0.5);
+  const pos = geom.getAttribute('position') as THREE.BufferAttribute;
+  const N = pos.count;
+  const arr = pos.array as unknown as number[];
+  const buckets = new Map<number, { minX: number; maxX: number }>();
+  const q = 10000;
+  for (let i = 0; i < N; i++) {
+    const x = arr[i * 3 + 0],
+      y = arr[i * 3 + 1];
+    const key = Math.round(y * q);
+    let b = buckets.get(key);
+    if (!b) {
+      b = { minX: Infinity, maxX: -Infinity };
+      buckets.set(key, b);
+    }
+    if (x < b.minX) b.minX = x;
+    if (x > b.maxX) b.maxX = x;
   }
-  const aCenter = new Float32Array(N)
-  const aHalfW = new Float32Array(N)
-  for (let i=0;i<N;i++){
-    const y = arr[i*3+1]
-    const key = Math.round(y * q)
-    const b = buckets.get(key)!
-    const c = (b.minX + b.maxX) * 0.5
-    const h = Math.max(1e-6, (b.maxX - b.minX) * 0.5)
-    aCenter[i] = c; aHalfW[i] = h
+  const aCenter = new Float32Array(N);
+  const aHalfW = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const y = arr[i * 3 + 1];
+    const key = Math.round(y * q);
+    const b = buckets.get(key)!;
+    const c = (b.minX + b.maxX) * 0.5;
+    const h = Math.max(1e-6, (b.maxX - b.minX) * 0.5);
+    aCenter[i] = c;
+    aHalfW[i] = h;
   }
-  geom.setAttribute('aCenter', new THREE.BufferAttribute(aCenter, 1))
-  geom.setAttribute('aHalfW', new THREE.BufferAttribute(aHalfW, 1))
+  geom.setAttribute('aCenter', new THREE.BufferAttribute(aCenter, 1));
+  geom.setAttribute('aHalfW', new THREE.BufferAttribute(aHalfW, 1));
   const mat = new THREE.ShaderMaterial({
     uniforms: {
       uBase: { value: new THREE.Color(baseHex) },
@@ -141,7 +166,7 @@ export function buildBladeGradientWearOverlay(source: THREE.Mesh, baseHex: numbe
       uYMax: { value: yMax },
       uHalfWGlobal: { value: totalHalfW },
       uEdgeFade: { value: edgeFade },
-      uWear: { value: wear }
+      uWear: { value: wear },
     },
     vertexShader: `
       attribute float aCenter; attribute float aHalfW;
@@ -170,13 +195,14 @@ export function buildBladeGradientWearOverlay(source: THREE.Mesh, baseHex: numbe
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2,
     blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide
-  })
-  const copy = new THREE.Mesh(geom, mat)
-  copy.position.set(0,0,0)
-  copy.quaternion.identity()
-  copy.scale.set(1,1,1)
-  const group = new THREE.Group(); group.add(copy)
-  source.add(group)
-  return group
+    side: THREE.DoubleSide,
+  });
+  const copy = new THREE.Mesh(geom, mat);
+  copy.position.set(0, 0, 0);
+  copy.quaternion.identity();
+  copy.scale.set(1, 1, 1);
+  const group = new THREE.Group();
+  group.add(copy);
+  source.add(group);
+  return group;
 }

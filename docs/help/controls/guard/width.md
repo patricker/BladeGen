@@ -12,4 +12,3 @@
 ```
 
 Sets crossguard span. Visual mass and hand protection change with width.
-

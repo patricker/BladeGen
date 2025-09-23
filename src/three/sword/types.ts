@@ -1,4 +1,4 @@
-import * as THREE from 'three'
+import * as THREE from 'three';
 
 /**
  * Sword parameter type definitions used across geometry builders and the generator.
@@ -171,7 +171,14 @@ export type BladeParams = {
   /** Total twist from base to tip, radians. */
   twistAngle?: number;
   /** Cross section profile family. */
-  crossSection?: 'flat' | 'lenticular' | 'diamond' | 'hexagonal' | 'triangular' | 'tSpine' | 'compound';
+  crossSection?:
+    | 'flat'
+    | 'lenticular'
+    | 'diamond'
+    | 'hexagonal'
+    | 'triangular'
+    | 'tSpine'
+    | 'compound';
   /** Cross-section bevel intensity 0..1. */
   bevel?: number;
   /** Tip family. Controls taper behavior near tip. */
@@ -179,7 +186,20 @@ export type BladeParams = {
   /** Extra mid-blade bulge for 'leaf' tips (0..1). */
   tipBulge?: number;
   /** Optional per-face engravings/decals. */
-  engravings?: Array<{ type:'text'|'shape'|'decal', content?: string, fontUrl?: string, width:number, height:number, depth?: number, offsetY:number, offsetX:number, rotation?: number, side?: 'left'|'right'|'both', align?: 'left'|'center'|'right', letterSpacing?: number }>;
+  engravings?: Array<{
+    type: 'text' | 'shape' | 'decal';
+    content?: string;
+    fontUrl?: string;
+    width: number;
+    height: number;
+    depth?: number;
+    offsetY: number;
+    offsetX: number;
+    rotation?: number;
+    side?: 'left' | 'right' | 'both';
+    align?: 'left' | 'center' | 'right';
+    letterSpacing?: number;
+  }>;
   /** Distal taper profile: piecewise linear [t, scale] points (t in 0..1). */
   thicknessProfile?: { points?: Array<[number, number]> };
   /** Optional curve profile for the blade centerline (lateral offsets). */
@@ -202,7 +222,15 @@ export type BladeParams = {
   fullerFaces?: FullerFaceConfig;
 };
 
-export type GuardStyle = 'bar' | 'winged' | 'claw' | 'disk' | 'basket' | 'knucklebow' | 'swept' | 'shell';
+export type GuardStyle =
+  | 'bar'
+  | 'winged'
+  | 'claw'
+  | 'disk'
+  | 'basket'
+  | 'knucklebow'
+  | 'swept'
+  | 'shell';
 
 export type GuardParams = {
   /** Span across X. */
@@ -238,9 +266,16 @@ export type GuardParams = {
   asymmetry?: number;
   /** Small blend/fillet between guard and blade base. */
   guardBlendFillet?: number;
-  guardBlendFilletStyle?: 'box'|'smooth';
+  guardBlendFilletStyle?: 'box' | 'smooth';
   /** Extras like finger guards. */
-  extras?: Array<{ kind: 'loop'|'sideRing'|'fingerGuard'; radius: number; thickness: number; offsetY: number; offsetX?: number; tilt?: number }>;
+  extras?: Array<{
+    kind: 'loop' | 'sideRing' | 'fingerGuard';
+    radius: number;
+    thickness: number;
+    offsetY: number;
+    offsetX?: number;
+    tilt?: number;
+  }>;
   /** Basket-hilt specific knobs. */
   basketRodCount?: number;
   basketRodRadius?: number;
@@ -262,7 +297,13 @@ export type GuardParams = {
   /** Vertical offset for pas d'âne rings relative to guard top. */
   pasDaneOffsetY?: number;
   /** Langets hugging the blade flats. */
-  langets?: { enabled?: boolean; length?: number; width?: number; thickness?: number; chamfer?: number };
+  langets?: {
+    enabled?: boolean;
+    length?: number;
+    width?: number;
+    thickness?: number;
+    chamfer?: number;
+  };
 };
 
 export type HandleParams = {
@@ -310,7 +351,15 @@ export type HandleParams = {
   menukiPreset?: 'none' | 'katana' | 'paired';
 };
 
-export type PommelStyle = 'orb' | 'disk' | 'spike' | 'wheel' | 'scentStopper' | 'ring' | 'crown' | 'fishtail';
+export type PommelStyle =
+  | 'orb'
+  | 'disk'
+  | 'spike'
+  | 'wheel'
+  | 'scentStopper'
+  | 'ring'
+  | 'crown'
+  | 'fishtail';
 
 export type PommelParams = {
   /** Base size controlling radius/extent of the pommel. */

@@ -82,10 +82,7 @@
                 "minProperties": 1
               }
             },
-            "required": [
-              "name",
-              "parts"
-            ]
+            "required": ["name", "parts"]
           }
         },
         "fullerFaces": {
@@ -202,24 +199,14 @@
           }
         }
       },
-      "required": [
-        "blade",
-        "guard",
-        "handle",
-        "pommel"
-      ]
+      "required": ["blade", "guard", "handle", "pommel"]
     },
     "render": {
       "$ref": "#/$defs/RenderState",
       "description": "Renderer state and environment/lighting knobs. Independent from geometry so you can reuse looks across models."
     }
   },
-  "required": [
-    "version",
-    "model",
-    "materials",
-    "render"
-  ],
+  "required": ["version", "model", "materials", "render"],
   "$defs": {
     "ColorHex": {
       "type": "string",
@@ -252,11 +239,7 @@
         },
         "family": {
           "type": "string",
-          "enum": [
-            "straight",
-            "flamberge",
-            "kris"
-          ],
+          "enum": ["straight", "flamberge", "kris"],
           "description": "High-level silhouette preset. Straight is neutral, Flamberge adds edge waviness, Kris applies centerline undulation."
         },
         "krisWaveCount": {
@@ -327,20 +310,12 @@
         },
         "fullerMode": {
           "type": "string",
-          "enum": [
-            "none",
-            "overlay",
-            "carve"
-          ],
+          "enum": ["none", "overlay", "carve"],
           "description": "none disables grooves; overlay draws visual ribbons; carve reduces blade thickness within a band across the face for a real groove."
         },
         "fullerProfile": {
           "type": "string",
-          "enum": [
-            "u",
-            "v",
-            "flat"
-          ],
+          "enum": ["u", "v", "flat"],
           "description": "Carved fuller cross-profile: rounded U, sharp V, or flat-bottom."
         },
         "fullerWidth": {
@@ -391,10 +366,7 @@
         },
         "edgeType": {
           "type": "string",
-          "enum": [
-            "single",
-            "double"
-          ],
+          "enum": ["single", "double"],
           "description": "Blade edge configuration. Influences hamon auto-side selection when hamonSide='auto'."
         },
         "thicknessLeft": {
@@ -417,11 +389,7 @@
         },
         "soriProfile": {
           "type": "string",
-          "enum": [
-            "torii",
-            "koshi",
-            "saki"
-          ],
+          "enum": ["torii", "koshi", "saki"],
           "description": "Curvature distribution profile: 'torii' (balanced), 'koshi' (closer to base), 'saki' (closer to tip)."
         },
         "soriBias": {
@@ -472,22 +440,12 @@
         },
         "hamonSide": {
           "type": "string",
-          "enum": [
-            "auto",
-            "left",
-            "right",
-            "both"
-          ],
+          "enum": ["auto", "left", "right", "both"],
           "description": "Which edge(s) get a hamon overlay. 'auto' picks the thinner side when edgeType='single'; both sides when 'double'."
         },
         "serrationPattern": {
           "type": "string",
-          "enum": [
-            "sine",
-            "saw",
-            "scallop",
-            "random"
-          ],
+          "enum": ["sine", "saw", "scallop", "random"],
           "description": "Pattern for serrations (sine default)."
         },
         "serrationSeed": {
@@ -523,15 +481,7 @@
         },
         "tipShape": {
           "type": "string",
-          "enum": [
-            "pointed",
-            "rounded",
-            "leaf",
-            "clip",
-            "tanto",
-            "spear",
-            "sheepsfoot"
-          ],
+          "enum": ["pointed", "rounded", "leaf", "clip", "tanto", "spear", "sheepsfoot"],
           "description": "High-level tip shaping. 'leaf' can add a mid-blade bulge via tipBulge."
         },
         "tipBulge": {
@@ -548,11 +498,7 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": [
-                  "text",
-                  "shape",
-                  "decal"
-                ]
+                "enum": ["text", "shape", "decal"]
               },
               "content": {
                 "type": "string"
@@ -583,19 +529,11 @@
               },
               "side": {
                 "type": "string",
-                "enum": [
-                  "left",
-                  "right",
-                  "both"
-                ]
+                "enum": ["left", "right", "both"]
               },
               "align": {
                 "type": "string",
-                "enum": [
-                  "left",
-                  "center",
-                  "right"
-                ],
+                "enum": ["left", "center", "right"],
                 "description": "Horizontal alignment for text engravings. Ignored for non-text types."
               },
               "letterSpacing": {
@@ -638,10 +576,7 @@
           "properties": {
             "mode": {
               "type": "string",
-              "enum": [
-                "absolute",
-                "relative"
-              ],
+              "enum": ["absolute", "relative"],
               "default": "absolute",
               "description": "absolute offsets are scene units; relative offsets are multiplied by blade length."
             },
@@ -682,10 +617,7 @@
           "properties": {
             "mode": {
               "type": "string",
-              "enum": [
-                "scale",
-                "absolute"
-              ],
+              "enum": ["scale", "absolute"],
               "default": "scale",
               "description": "scale multiplies the generated width; absolute overrides with scene-unit values."
             },
@@ -767,18 +699,11 @@
             },
             "mode": {
               "type": "string",
-              "enum": [
-                "centerline",
-                "width",
-                "both"
-              ],
+              "enum": ["centerline", "width", "both"],
               "description": "Determines whether the oscillation shifts the centerline, modulates width, or both."
             }
           },
-          "required": [
-            "amplitude",
-            "frequency"
-          ]
+          "required": ["amplitude", "frequency"]
         },
         "hollowGrind": {
           "type": "object",
@@ -824,11 +749,7 @@
             "properties": {
               "side": {
                 "type": "string",
-                "enum": [
-                  "left",
-                  "right",
-                  "both"
-                ],
+                "enum": ["left", "right", "both"],
                 "description": "Which blade face receives the groove; 'both' mirrors across the spine."
               },
               "offsetFromSpine": {
@@ -869,19 +790,12 @@
               },
               "profile": {
                 "type": "string",
-                "enum": [
-                  "u",
-                  "v",
-                  "flat"
-                ],
+                "enum": ["u", "v", "flat"],
                 "description": "Cross profile of the groove."
               },
               "mode": {
                 "type": "string",
-                "enum": [
-                  "overlay",
-                  "carve"
-                ],
+                "enum": ["overlay", "carve"],
                 "description": "Render mode: overlay draws additive geometry, carve removes thickness in the primary mesh."
               },
               "taper": {
@@ -891,19 +805,11 @@
                 "description": "Linear taper amount shrinking width/depth toward the end (0 none, 1 full taper)."
               }
             },
-            "required": [
-              "width"
-            ]
+            "required": ["width"]
           }
         }
       },
-      "required": [
-        "length",
-        "baseWidth",
-        "tipWidth",
-        "thickness",
-        "curvature"
-      ]
+      "required": ["length", "baseWidth", "tipWidth", "thickness", "curvature"]
     },
     "GuardParams": {
       "type": "object",
@@ -937,16 +843,7 @@
         },
         "style": {
           "type": "string",
-          "enum": [
-            "bar",
-            "winged",
-            "claw",
-            "disk",
-            "basket",
-            "knucklebow",
-            "swept",
-            "shell"
-          ],
+          "enum": ["bar", "winged", "claw", "disk", "basket", "knucklebow", "swept", "shell"],
           "description": "Guard style preset: rectangular bar, curved wing, pointy claw, circular disk (tsuba), basket shell, knuckle bow, swept hilt, or cup/shell guard."
         },
         "curveSegments": {
@@ -1037,11 +934,7 @@
             "properties": {
               "kind": {
                 "type": "string",
-                "enum": [
-                  "loop",
-                  "sideRing",
-                  "fingerGuard"
-                ]
+                "enum": ["loop", "sideRing", "fingerGuard"]
               },
               "radius": {
                 "type": "number",
@@ -1168,20 +1061,11 @@
         },
         "guardBlendFilletStyle": {
           "type": "string",
-          "enum": [
-            "box",
-            "smooth"
-          ],
+          "enum": ["box", "smooth"],
           "description": "Fillet style for guard↔blade bridge: 'box' = rectangular block; 'smooth' = rounded collar (elliptical cylinder)."
         }
       },
-      "required": [
-        "width",
-        "thickness",
-        "curve",
-        "tilt",
-        "style"
-      ]
+      "required": ["width", "thickness", "curve", "tilt", "style"]
     },
     "HandleParams": {
       "type": "object",
@@ -1251,13 +1135,7 @@
         },
         "wrapStyle": {
           "type": "string",
-          "enum": [
-            "none",
-            "crisscross",
-            "hineri",
-            "katate",
-            "wire"
-          ],
+          "enum": ["none", "crisscross", "hineri", "katate", "wire"],
           "description": "Preset wrap geometry overlay (independent of wrapEnabled deformation)."
         },
         "rayskin": {
@@ -1327,12 +1205,7 @@
             "properties": {
               "kind": {
                 "type": "string",
-                "enum": [
-                  "core",
-                  "wrap",
-                  "ring",
-                  "inlay"
-                ]
+                "enum": ["core", "wrap", "ring", "inlay"]
               },
               "radiusAdd": {
                 "type": "number"
@@ -1345,10 +1218,7 @@
               },
               "wrapPattern": {
                 "type": "string",
-                "enum": [
-                  "helical",
-                  "crisscross"
-                ]
+                "enum": ["helical", "crisscross"]
               },
               "turns": {
                 "type": "integer"
@@ -1373,10 +1243,7 @@
               },
               "side": {
                 "type": "string",
-                "enum": [
-                  "left",
-                  "right"
-                ]
+                "enum": ["left", "right"]
               },
               "size": {
                 "type": "number"
@@ -1386,11 +1253,7 @@
         },
         "menukiPreset": {
           "type": "string",
-          "enum": [
-            "none",
-            "katana",
-            "paired"
-          ],
+          "enum": ["none", "katana", "paired"],
           "description": "Preset menuki placement. Ignored when explicit menuki array is provided."
         },
         "rivets": {
@@ -1412,12 +1275,7 @@
           }
         }
       },
-      "required": [
-        "length",
-        "radiusTop",
-        "radiusBottom",
-        "segmentation"
-      ]
+      "required": ["length", "radiusTop", "radiusBottom", "segmentation"]
     },
     "PommelParams": {
       "type": "object",
@@ -1439,16 +1297,7 @@
         },
         "style": {
           "type": "string",
-          "enum": [
-            "orb",
-            "disk",
-            "spike",
-            "wheel",
-            "scentStopper",
-            "ring",
-            "crown",
-            "fishtail"
-          ],
+          "enum": ["orb", "disk", "spike", "wheel", "scentStopper", "ring", "crown", "fishtail"],
           "description": "Pommel style: spherical orb, flat disk coin, tapered spike, wheel, scent-stopper, lanyard ring, crown, or fishtail with flared wings."
         },
         "shapeMorph": {
@@ -1523,19 +1372,11 @@
         },
         "peenShape": {
           "type": "string",
-          "enum": [
-            "dome",
-            "block"
-          ],
+          "enum": ["dome", "block"],
           "description": "Peen shape: rounded dome or rectangular block."
         }
       },
-      "required": [
-        "size",
-        "elongation",
-        "style",
-        "shapeMorph"
-      ]
+      "required": ["size", "elongation", "style", "shapeMorph"]
     },
     "SwordParams": {
       "type": "object",
@@ -1597,12 +1438,7 @@
           }
         }
       },
-      "required": [
-        "blade",
-        "guard",
-        "handle",
-        "pommel"
-      ]
+      "required": ["blade", "guard", "handle", "pommel"]
     },
     "AccessoriesParams": {
       "type": "object",
@@ -1622,20 +1458,90 @@
       "additionalProperties": false,
       "properties": {
         "enabled": { "type": "boolean", "description": "Enable scabbard generation." },
-        "bodyMargin": { "type": "number", "minimum": 0.002, "maximum": 0.4, "description": "Extra clearance added around the blade width (scene units)." },
-        "bodyThickness": { "type": "number", "minimum": 0.02, "maximum": 0.8, "description": "Overall thickness of the sheath across ±Z." },
-        "tipExtension": { "type": "number", "minimum": 0, "maximum": 0.5, "description": "Fraction of blade length the scabbard extends beyond the tip." },
-        "throatLength": { "type": "number", "minimum": 0, "maximum": 0.5, "description": "Mouth/throat collar length as a fraction of blade length." },
-        "throatScale": { "type": "number", "minimum": 1, "maximum": 3, "description": "Scale multiplier applied across the throat segment." },
-        "locketOffset": { "type": "number", "minimum": 0, "maximum": 0.9, "description": "Offset from the mouth to position the locket band (fraction of blade length)." },
-        "locketLength": { "type": "number", "minimum": 0, "maximum": 0.6, "description": "Length of the locket band swell (fraction of blade length)." },
-        "locketScale": { "type": "number", "minimum": 1, "maximum": 2.5, "description": "Scale multiplier for the locket swell." },
-        "chapeLength": { "type": "number", "minimum": 0.01, "maximum": 0.7, "description": "Fraction of the scabbard body tapered into the chape tip." },
-        "chapeScale": { "type": "number", "minimum": 0.1, "maximum": 1, "description": "Width/thickness multiplier at the chape tip." },
-        "bodyRoundness": { "type": "number", "minimum": 0, "maximum": 1, "description": "Blend between hard-edged (0) and round (1) scabbard cross-section." },
-        "offsetX": { "type": "number", "minimum": -1, "maximum": 1, "description": "Lateral offset applied to the scabbard centerline." },
-        "offsetZ": { "type": "number", "minimum": -1, "maximum": 1, "description": "Thickness offset (toward/away from camera)." },
-        "hangAngle": { "type": "number", "minimum": -1.5708, "maximum": 1.5708, "description": "Rotation about Z in radians giving the scabbard a hanging cant." }
+        "bodyMargin": {
+          "type": "number",
+          "minimum": 0.002,
+          "maximum": 0.4,
+          "description": "Extra clearance added around the blade width (scene units)."
+        },
+        "bodyThickness": {
+          "type": "number",
+          "minimum": 0.02,
+          "maximum": 0.8,
+          "description": "Overall thickness of the sheath across ±Z."
+        },
+        "tipExtension": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.5,
+          "description": "Fraction of blade length the scabbard extends beyond the tip."
+        },
+        "throatLength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.5,
+          "description": "Mouth/throat collar length as a fraction of blade length."
+        },
+        "throatScale": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3,
+          "description": "Scale multiplier applied across the throat segment."
+        },
+        "locketOffset": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.9,
+          "description": "Offset from the mouth to position the locket band (fraction of blade length)."
+        },
+        "locketLength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.6,
+          "description": "Length of the locket band swell (fraction of blade length)."
+        },
+        "locketScale": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 2.5,
+          "description": "Scale multiplier for the locket swell."
+        },
+        "chapeLength": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 0.7,
+          "description": "Fraction of the scabbard body tapered into the chape tip."
+        },
+        "chapeScale": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1,
+          "description": "Width/thickness multiplier at the chape tip."
+        },
+        "bodyRoundness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Blend between hard-edged (0) and round (1) scabbard cross-section."
+        },
+        "offsetX": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Lateral offset applied to the scabbard centerline."
+        },
+        "offsetZ": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Thickness offset (toward/away from camera)."
+        },
+        "hangAngle": {
+          "type": "number",
+          "minimum": -1.5708,
+          "maximum": 1.5708,
+          "description": "Rotation about Z in radians giving the scabbard a hanging cant."
+        }
       },
       "required": [
         "enabled",
@@ -1662,15 +1568,59 @@
       "additionalProperties": false,
       "properties": {
         "enabled": { "type": "boolean", "description": "Enable tassel generation." },
-        "attachTo": { "type": "string", "enum": ["guard", "scabbard"], "description": "Attachment anchor for the tassel." },
-        "anchorOffset": { "type": "number", "minimum": 0, "maximum": 1, "description": "Normalized offset along the scabbard when attachTo='scabbard'." },
-        "length": { "type": "number", "minimum": 0.05, "maximum": 2.5, "description": "Total rope length expressed as a fraction of blade length." },
-        "droop": { "type": "number", "minimum": 0, "maximum": 1, "description": "Vertical sag factor (0 taut, 1 fully drooped)." },
-        "sway": { "type": "number", "minimum": -1, "maximum": 1, "description": "Sideways sway factor (-1 left, +1 right)." },
-        "thickness": { "type": "number", "minimum": 0.002, "maximum": 0.12, "description": "Rope diameter (scene units)." },
-        "tuftSize": { "type": "number", "minimum": 0.005, "maximum": 0.4, "description": "Radius of the tassel fringe bundle." },
-        "tuftLength": { "type": "number", "minimum": 0.01, "maximum": 0.6, "description": "Length of the tassel fringe." },
-        "strands": { "type": "integer", "minimum": 1, "maximum": 32, "description": "Number of fringe strands." }
+        "attachTo": {
+          "type": "string",
+          "enum": ["guard", "scabbard"],
+          "description": "Attachment anchor for the tassel."
+        },
+        "anchorOffset": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Normalized offset along the scabbard when attachTo='scabbard'."
+        },
+        "length": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 2.5,
+          "description": "Total rope length expressed as a fraction of blade length."
+        },
+        "droop": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Vertical sag factor (0 taut, 1 fully drooped)."
+        },
+        "sway": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Sideways sway factor (-1 left, +1 right)."
+        },
+        "thickness": {
+          "type": "number",
+          "minimum": 0.002,
+          "maximum": 0.12,
+          "description": "Rope diameter (scene units)."
+        },
+        "tuftSize": {
+          "type": "number",
+          "minimum": 0.005,
+          "maximum": 0.4,
+          "description": "Radius of the tassel fringe bundle."
+        },
+        "tuftLength": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 0.6,
+          "description": "Length of the tassel fringe."
+        },
+        "strands": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32,
+          "description": "Number of fringe strands."
+        }
       },
       "required": [
         "enabled",

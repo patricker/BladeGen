@@ -12,4 +12,3 @@
 ```
 
 Select a style to fit the archetype; use size to fine-tune balance.
-

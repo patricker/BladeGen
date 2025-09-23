@@ -8,9 +8,8 @@
     "Disables anti-aliasing, bloom, and heat haze; caps DPR to 1 for crisp blocks.",
     "Use Pixel Size and Posterize Levels to tune the effect."
   ],
-  "related": ["render-mode.pixel-size","render-mode.posterize-levels"]
+  "related": ["render-mode.pixel-size", "render-mode.posterize-levels"]
 }
 ```
 
 Pixel Art mode is off by default. It is a display mode only; geometry and exports are unchanged.
-

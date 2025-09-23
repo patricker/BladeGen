@@ -2,30 +2,12 @@
   "version": 1,
   "count": 45,
   "index": {
-    "0": [
-      "blade.edge-bevel",
-      "blade.hollow-mix",
-      "render-mode.posterize-levels"
-    ],
-    "1": [
-      "blade.edge-bevel",
-      "blade.hollow-mix",
-      "render-mode.render-mode"
-    ],
-    "3": [
-      "render-mode.posterize-levels"
-    ],
-    "8": [
-      "render-mode.pixel-size",
-      "render-mode.posterize-levels"
-    ],
-    "16": [
-      "render-mode.pixel-size",
-      "render-mode.posterize-levels"
-    ],
-    "100": [
-      "blade.taper-base"
-    ],
+    "0": ["blade.edge-bevel", "blade.hollow-mix", "render-mode.posterize-levels"],
+    "1": ["blade.edge-bevel", "blade.hollow-mix", "render-mode.render-mode"],
+    "3": ["render-mode.posterize-levels"],
+    "8": ["render-mode.pixel-size", "render-mode.posterize-levels"],
+    "16": ["render-mode.pixel-size", "render-mode.posterize-levels"],
+    "100": ["blade.taper-base"],
     "base": [
       "blade.base-width",
       "blade.sori-profile",
@@ -58,28 +40,12 @@
       "pommel.size",
       "task.add-fuller"
     ],
-    "at": [
-      "blade.base-width",
-      "blade.taper-base",
-      "blade.taper-tip"
-    ],
-    "wider": [
-      "blade.base-width",
-      "blade.fuller-width",
-      "concept.fuller"
-    ],
-    "reads": [
-      "blade.base-width"
-    ],
-    "heavier": [
-      "blade.base-width"
-    ],
-    "narrower": [
-      "blade.base-width"
-    ],
-    "quicker": [
-      "blade.base-width"
-    ],
+    "at": ["blade.base-width", "blade.taper-base", "blade.taper-tip"],
+    "wider": ["blade.base-width", "blade.fuller-width", "concept.fuller"],
+    "reads": ["blade.base-width"],
+    "heavier": ["blade.base-width"],
+    "narrower": ["blade.base-width"],
+    "quicker": ["blade.base-width"],
     "controls": [
       "blade.base-width",
       "blade.hollow-grind",
@@ -87,12 +53,7 @@
       "pommel.style",
       "render-post.bloom-enabled"
     ],
-    "silhouette": [
-      "blade.base-width",
-      "blade.blade-family",
-      "guard.style",
-      "handle.wrap-depth"
-    ],
+    "silhouette": ["blade.base-width", "blade.blade-family", "guard.style", "handle.wrap-depth"],
     "the": [
       "blade.base-width",
       "blade.blade-thickness",
@@ -129,11 +90,7 @@
       "guard.tilt",
       "guard.width"
     ],
-    "pair": [
-      "blade.base-width",
-      "blade.blade-thickness",
-      "render-mode.pixel-size"
-    ],
+    "pair": ["blade.base-width", "blade.blade-thickness", "render-mode.pixel-size"],
     "with": [
       "blade.base-width",
       "blade.blade-thickness",
@@ -183,9 +140,7 @@
       "render-post.vignette",
       "task.add-fuller"
     ],
-    "distal": [
-      "blade.base-width"
-    ],
+    "distal": ["blade.base-width"],
     "taper": [
       "blade.base-width",
       "blade.blade-thickness",
@@ -194,55 +149,20 @@
       "blade.taper-mid",
       "blade.taper-tip"
     ],
-    "family": [
-      "blade.blade-family",
-      "blade.tip-shape",
-      "guard.style",
-      "pommel.style"
-    ],
-    "preset": [
-      "blade.blade-family"
-    ],
-    "helpers": [
-      "blade.blade-family"
-    ],
-    "straight": [
-      "blade.blade-family"
-    ],
-    "flamberge": [
-      "blade.blade-family"
-    ],
-    "kris": [
-      "blade.blade-family",
-      "blade.kris-waves"
-    ],
-    "wavy": [
-      "blade.blade-family"
-    ],
-    "edges": [
-      "blade.blade-family"
-    ],
-    "centerline": [
-      "blade.blade-family",
-      "blade.kris-waves"
-    ],
-    "undulation": [
-      "blade.blade-family"
-    ],
-    "uses": [
-      "blade.blade-family"
-    ],
-    "odd": [
-      "blade.blade-family",
-      "blade.kris-waves"
-    ],
-    "wave": [
-      "blade.blade-family"
-    ],
-    "counts": [
-      "blade.blade-family",
-      "blade.kris-waves"
-    ],
+    "family": ["blade.blade-family", "blade.tip-shape", "guard.style", "pommel.style"],
+    "preset": ["blade.blade-family"],
+    "helpers": ["blade.blade-family"],
+    "straight": ["blade.blade-family"],
+    "flamberge": ["blade.blade-family"],
+    "kris": ["blade.blade-family", "blade.kris-waves"],
+    "wavy": ["blade.blade-family"],
+    "edges": ["blade.blade-family"],
+    "centerline": ["blade.blade-family", "blade.kris-waves"],
+    "undulation": ["blade.blade-family"],
+    "uses": ["blade.blade-family"],
+    "odd": ["blade.blade-family", "blade.kris-waves"],
+    "wave": ["blade.blade-family"],
+    "counts": ["blade.blade-family", "blade.kris-waves"],
     "thickness": [
       "blade.blade-thickness",
       "blade.fuller-inset",
@@ -254,15 +174,8 @@
       "blade.taper-tip",
       "render-post.outline-enabled"
     ],
-    "z": [
-      "blade.blade-thickness",
-      "blade.left-thickness",
-      "blade.right-thickness"
-    ],
-    "through": [
-      "blade.blade-thickness",
-      "blade.taper-mid"
-    ],
+    "z": ["blade.blade-thickness", "blade.left-thickness", "blade.right-thickness"],
+    "through": ["blade.blade-thickness", "blade.taper-mid"],
     "affects": [
       "blade.blade-thickness",
       "blade.fuller-profile",
@@ -271,16 +184,8 @@
       "guard.tilt",
       "pommel.style"
     ],
-    "stiffness": [
-      "blade.blade-thickness",
-      "concept.fuller"
-    ],
-    "mass": [
-      "blade.blade-thickness",
-      "blade.length",
-      "blade.taper-mid",
-      "concept.fuller"
-    ],
+    "stiffness": ["blade.blade-thickness", "concept.fuller"],
+    "mass": ["blade.blade-thickness", "blade.length", "blade.taper-mid", "concept.fuller"],
     "for": [
       "blade.blade-thickness",
       "blade.fuller-inset",
@@ -301,23 +206,15 @@
       "render-post.outline-enabled",
       "task.add-fuller"
     ],
-    "realistic": [
-      "blade.blade-thickness"
-    ],
-    "dynamics": [
-      "blade.blade-thickness"
-    ],
+    "realistic": ["blade.blade-thickness"],
+    "dynamics": ["blade.blade-thickness"],
     "left": [
       "blade.blade-thickness",
       "blade.left-thickness",
       "blade.right-thickness",
       "guard.width"
     ],
-    "right": [
-      "blade.blade-thickness",
-      "blade.right-thickness",
-      "guard.width"
-    ],
+    "right": ["blade.blade-thickness", "blade.right-thickness", "guard.width"],
     "bias": [
       "blade.blade-thickness",
       "blade.hollow-bias",
@@ -326,24 +223,11 @@
       "blade.left-thickness",
       "blade.sori-bias"
     ],
-    "allows": [
-      "blade.blade-thickness"
-    ],
-    "asymmetry": [
-      "blade.blade-thickness"
-    ],
-    "cross": [
-      "blade.cross-section",
-      "blade.right-thickness",
-      "handle.wrap-turns"
-    ],
-    "section": [
-      "blade.cross-section",
-      "blade.right-thickness"
-    ],
-    "transverse": [
-      "blade.cross-section"
-    ],
+    "allows": ["blade.blade-thickness"],
+    "asymmetry": ["blade.blade-thickness"],
+    "cross": ["blade.cross-section", "blade.right-thickness", "handle.wrap-turns"],
+    "section": ["blade.cross-section", "blade.right-thickness"],
+    "transverse": ["blade.cross-section"],
     "profile": [
       "blade.cross-section",
       "blade.fuller-profile",
@@ -356,31 +240,13 @@
       "blade.hollow-mix",
       "render-mode.posterize-levels"
     ],
-    "diamond": [
-      "blade.cross-section"
-    ],
-    "lenticular": [
-      "blade.cross-section"
-    ],
-    "hex": [
-      "blade.cross-section"
-    ],
-    "triangular": [
-      "blade.cross-section"
-    ],
-    "t": [
-      "blade.cross-section"
-    ],
-    "spine": [
-      "blade.cross-section",
-      "blade.edge-bevel",
-      "blade.fuller-inset",
-      "blade.hollow-bias"
-    ],
-    "changes": [
-      "blade.cross-section",
-      "blade.edge-bevel"
-    ],
+    "diamond": ["blade.cross-section"],
+    "lenticular": ["blade.cross-section"],
+    "hex": ["blade.cross-section"],
+    "triangular": ["blade.cross-section"],
+    "t": ["blade.cross-section"],
+    "spine": ["blade.cross-section", "blade.edge-bevel", "blade.fuller-inset", "blade.hollow-bias"],
+    "changes": ["blade.cross-section", "blade.edge-bevel"],
     "edge": [
       "blade.cross-section",
       "blade.curvature",
@@ -390,67 +256,26 @@
       "blade.right-thickness",
       "render-post.outline-enabled"
     ],
-    "geometry": [
-      "blade.cross-section"
-    ],
-    "how": [
-      "blade.cross-section",
-      "blade.edge-bevel",
-      "blade.hollow-depth",
-      "blade.hollow-grind"
-    ],
-    "light": [
-      "blade.cross-section",
-      "blade.edge-bevel"
-    ],
-    "rolls": [
-      "blade.cross-section"
-    ],
-    "some": [
-      "blade.cross-section",
-      "guard.style",
-      "pommel.style"
-    ],
-    "sections": [
-      "blade.cross-section"
-    ],
-    "suit": [
-      "blade.cross-section"
-    ],
-    "certain": [
-      "blade.cross-section"
-    ],
-    "eras": [
-      "blade.cross-section"
-    ],
-    "styles": [
-      "blade.cross-section",
-      "guard.style"
-    ],
+    "geometry": ["blade.cross-section"],
+    "how": ["blade.cross-section", "blade.edge-bevel", "blade.hollow-depth", "blade.hollow-grind"],
+    "light": ["blade.cross-section", "blade.edge-bevel"],
+    "rolls": ["blade.cross-section"],
+    "some": ["blade.cross-section", "guard.style", "pommel.style"],
+    "sections": ["blade.cross-section"],
+    "suit": ["blade.cross-section"],
+    "certain": ["blade.cross-section"],
+    "eras": ["blade.cross-section"],
+    "styles": ["blade.cross-section", "guard.style"],
     "curvature": [
       "blade.curvature",
       "blade.hollow-radius",
       "blade.sori-bias",
       "blade.sori-profile"
     ],
-    "curves": [
-      "blade.curvature",
-      "blade.hollow-radius"
-    ],
-    "into": [
-      "blade.curvature",
-      "blade.hollow-depth",
-      "blade.hollow-grind",
-      "guard.fillet-style"
-    ],
-    "an": [
-      "blade.curvature"
-    ],
-    "arc": [
-      "blade.curvature",
-      "blade.hollow-radius",
-      "blade.sori-profile"
-    ],
+    "curves": ["blade.curvature", "blade.hollow-radius"],
+    "into": ["blade.curvature", "blade.hollow-depth", "blade.hollow-grind", "guard.fillet-style"],
+    "an": ["blade.curvature"],
+    "arc": ["blade.curvature", "blade.hollow-radius", "blade.sori-profile"],
     "higher": [
       "blade.curvature",
       "blade.edge-bevel",
@@ -467,33 +292,13 @@
       "render-mode.pixel-size",
       "render-post.bloom-enabled"
     ],
-    "curved": [
-      "blade.curvature"
-    ],
-    "positive": [
-      "blade.curvature",
-      "blade.hollow-bias"
-    ],
-    "arcs": [
-      "blade.curvature"
-    ],
-    "toward": [
-      "blade.curvature",
-      "blade.hollow-bias",
-      "blade.leaf-bulge",
-      "pommel.size"
-    ],
-    "negative": [
-      "blade.curvature",
-      "blade.hollow-bias",
-      "guard.tilt"
-    ],
-    "away": [
-      "blade.curvature"
-    ],
-    "interacts": [
-      "blade.curvature"
-    ],
+    "curved": ["blade.curvature"],
+    "positive": ["blade.curvature", "blade.hollow-bias"],
+    "arcs": ["blade.curvature"],
+    "toward": ["blade.curvature", "blade.hollow-bias", "blade.leaf-bulge", "pommel.size"],
+    "negative": ["blade.curvature", "blade.hollow-bias", "guard.tilt"],
+    "away": ["blade.curvature"],
+    "interacts": ["blade.curvature"],
     "fuller": [
       "blade.curvature",
       "blade.fuller-inset",
@@ -503,10 +308,7 @@
       "concept.fuller",
       "task.add-fuller"
     ],
-    "placement": [
-      "blade.curvature",
-      "concept.fuller"
-    ],
+    "placement": ["blade.curvature", "concept.fuller"],
     "style": [
       "blade.curvature",
       "guard.blend-fillet",
@@ -515,48 +317,18 @@
       "handle.wrap-style",
       "pommel.style"
     ],
-    "bevel": [
-      "blade.edge-bevel",
-      "blade.right-thickness"
-    ],
-    "bevels": [
-      "blade.edge-bevel"
-    ],
-    "versus": [
-      "blade.edge-bevel"
-    ],
-    "thickens": [
-      "blade.edge-bevel"
-    ],
-    "facets": [
-      "blade.edge-bevel"
-    ],
-    "sharp": [
-      "blade.edge-bevel"
-    ],
-    "thin": [
-      "blade.edge-bevel",
-      "blade.fuller-inset",
-      "blade.taper-tip"
-    ],
-    "thick": [
-      "blade.edge-bevel"
-    ],
-    "sweeps": [
-      "blade.edge-bevel"
-    ],
-    "across": [
-      "blade.edge-bevel",
-      "blade.fuller-width"
-    ],
-    "faces": [
-      "blade.edge-bevel",
-      "blade.hollow-mix"
-    ],
-    "inset": [
-      "blade.fuller-inset",
-      "task.add-fuller"
-    ],
+    "bevel": ["blade.edge-bevel", "blade.right-thickness"],
+    "bevels": ["blade.edge-bevel"],
+    "versus": ["blade.edge-bevel"],
+    "thickens": ["blade.edge-bevel"],
+    "facets": ["blade.edge-bevel"],
+    "sharp": ["blade.edge-bevel"],
+    "thin": ["blade.edge-bevel", "blade.fuller-inset", "blade.taper-tip"],
+    "thick": ["blade.edge-bevel"],
+    "sweeps": ["blade.edge-bevel"],
+    "across": ["blade.edge-bevel", "blade.fuller-width"],
+    "faces": ["blade.edge-bevel", "blade.hollow-mix"],
+    "inset": ["blade.fuller-inset", "task.add-fuller"],
     "groove": [
       "blade.fuller-inset",
       "blade.fuller-mode",
@@ -577,23 +349,10 @@
       "handle.wrap-turns",
       "task.add-fuller"
     ],
-    "inside": [
-      "blade.fuller-inset"
-    ],
-    "carved": [
-      "blade.fuller-inset",
-      "blade.fuller-mode",
-      "task.add-fuller"
-    ],
-    "fullers": [
-      "blade.fuller-inset",
-      "blade.fuller-mode",
-      "blade.fuller-width",
-      "concept.fuller"
-    ],
-    "defaults": [
-      "blade.fuller-inset"
-    ],
+    "inside": ["blade.fuller-inset"],
+    "carved": ["blade.fuller-inset", "blade.fuller-mode", "task.add-fuller"],
+    "fullers": ["blade.fuller-inset", "blade.fuller-mode", "blade.fuller-width", "concept.fuller"],
+    "defaults": ["blade.fuller-inset"],
     "to": [
       "blade.fuller-inset",
       "blade.hollow-mix",
@@ -610,32 +369,14 @@
       "render-post.vignette",
       "task.add-fuller"
     ],
-    "if": [
-      "blade.fuller-inset"
-    ],
-    "unset": [
-      "blade.fuller-inset"
-    ],
-    "too": [
-      "blade.fuller-inset"
-    ],
-    "deep": [
-      "blade.fuller-inset",
-      "blade.hollow-depth"
-    ],
-    "may": [
-      "blade.fuller-inset"
-    ],
-    "weaken": [
-      "blade.fuller-inset"
-    ],
-    "on": [
-      "blade.fuller-inset"
-    ],
-    "blades": [
-      "blade.fuller-inset",
-      "blade.kris-waves"
-    ],
+    "if": ["blade.fuller-inset"],
+    "unset": ["blade.fuller-inset"],
+    "too": ["blade.fuller-inset"],
+    "deep": ["blade.fuller-inset", "blade.hollow-depth"],
+    "may": ["blade.fuller-inset"],
+    "weaken": ["blade.fuller-inset"],
+    "on": ["blade.fuller-inset"],
+    "blades": ["blade.fuller-inset", "blade.kris-waves"],
     "rib": [
       "blade.fuller-inset",
       "blade.fuller-mode",
@@ -658,17 +399,9 @@
       "render-mode.render-mode",
       "task.add-fuller"
     ],
-    "overlay": [
-      "blade.fuller-mode",
-      "task.add-fuller"
-    ],
-    "visual": [
-      "blade.fuller-mode",
-      "blade.tip-width"
-    ],
-    "ribbons": [
-      "blade.fuller-mode"
-    ],
+    "overlay": ["blade.fuller-mode", "task.add-fuller"],
+    "visual": ["blade.fuller-mode", "blade.tip-width"],
+    "ribbons": ["blade.fuller-mode"],
     "or": [
       "blade.fuller-mode",
       "blade.fuller-profile",
@@ -680,30 +413,12 @@
       "render-mode.pixel-size",
       "task.add-fuller"
     ],
-    "carve": [
-      "blade.fuller-mode",
-      "blade.fuller-width",
-      "task.add-fuller"
-    ],
-    "actual": [
-      "blade.fuller-mode"
-    ],
-    "is": [
-      "blade.fuller-mode",
-      "blade.sori-profile",
-      "concept.fuller",
-      "handle.wrap-depth"
-    ],
-    "faster": [
-      "blade.fuller-mode"
-    ],
-    "reduces": [
-      "blade.fuller-mode",
-      "render-mode.posterize-levels"
-    ],
-    "interact": [
-      "blade.fuller-mode"
-    ],
+    "carve": ["blade.fuller-mode", "blade.fuller-width", "task.add-fuller"],
+    "actual": ["blade.fuller-mode"],
+    "is": ["blade.fuller-mode", "blade.sori-profile", "concept.fuller", "handle.wrap-depth"],
+    "faster": ["blade.fuller-mode"],
+    "reduces": ["blade.fuller-mode", "render-mode.posterize-levels"],
+    "interact": ["blade.fuller-mode"],
     "shape": [
       "blade.fuller-profile",
       "blade.tip-shape",
@@ -711,25 +426,11 @@
       "guard.fillet-style",
       "render-mode.posterize-levels"
     ],
-    "u": [
-      "blade.fuller-profile"
-    ],
-    "v": [
-      "blade.fuller-profile"
-    ],
-    "bottom": [
-      "blade.fuller-profile"
-    ],
-    "highlights": [
-      "blade.fuller-profile",
-      "render-mode.posterize-levels"
-    ],
-    "feel": [
-      "blade.fuller-profile",
-      "guard.style",
-      "pommel.style",
-      "render-post.outline-enabled"
-    ],
+    "u": ["blade.fuller-profile"],
+    "v": ["blade.fuller-profile"],
+    "bottom": ["blade.fuller-profile"],
+    "highlights": ["blade.fuller-profile", "render-mode.posterize-levels"],
+    "feel": ["blade.fuller-profile", "guard.style", "pommel.style", "render-post.outline-enabled"],
     "a": [
       "blade.fuller-width",
       "blade.leaf-bulge",
@@ -740,31 +441,12 @@
       "render-post.outline-enabled",
       "task.add-fuller"
     ],
-    "face": [
-      "blade.fuller-width",
-      "blade.hollow-depth",
-      "blade.hollow-grind",
-      "concept.fuller"
-    ],
-    "set": [
-      "blade.fuller-width",
-      "task.add-fuller"
-    ],
-    "per": [
-      "blade.fuller-width",
-      "render-mode.posterize-levels"
-    ],
-    "auto": [
-      "blade.fuller-width",
-      "pommel.size"
-    ],
-    "lighten": [
-      "blade.fuller-width",
-      "task.add-fuller"
-    ],
-    "visually": [
-      "blade.fuller-width"
-    ],
+    "face": ["blade.fuller-width", "blade.hollow-depth", "blade.hollow-grind", "concept.fuller"],
+    "set": ["blade.fuller-width", "task.add-fuller"],
+    "per": ["blade.fuller-width", "render-mode.posterize-levels"],
+    "auto": ["blade.fuller-width", "pommel.size"],
+    "lighten": ["blade.fuller-width", "task.add-fuller"],
+    "visually": ["blade.fuller-width"],
     "use": [
       "blade.fuller-width",
       "blade.kris-waves",
@@ -774,18 +456,10 @@
       "render-post.vignette",
       "task.add-fuller"
     ],
-    "side": [
-      "blade.fuller-width"
-    ],
-    "slots": [
-      "blade.fuller-width"
-    ],
-    "multiple": [
-      "blade.fuller-width"
-    ],
-    "grooves": [
-      "blade.fuller-width"
-    ],
+    "side": ["blade.fuller-width"],
+    "slots": ["blade.fuller-width"],
+    "multiple": ["blade.fuller-width"],
+    "grooves": ["blade.fuller-width"],
     "hollow": [
       "blade.hollow-bias",
       "blade.hollow-depth",
@@ -793,100 +467,40 @@
       "blade.hollow-mix",
       "blade.hollow-radius"
     ],
-    "offsets": [
-      "blade.hollow-bias"
-    ],
+    "offsets": ["blade.hollow-bias"],
     "grind": [
       "blade.hollow-bias",
       "blade.hollow-depth",
       "blade.hollow-grind",
       "blade.hollow-radius"
     ],
-    "cuts": [
-      "blade.hollow-depth"
-    ],
-    "stronger": [
-      "blade.hollow-depth"
-    ],
+    "cuts": ["blade.hollow-depth"],
+    "stronger": ["blade.hollow-depth"],
     "concavity": [
       "blade.hollow-depth",
       "blade.hollow-grind",
       "blade.hollow-mix",
       "blade.hollow-radius"
     ],
-    "works": [
-      "blade.hollow-depth",
-      "render-mode.pixel-size"
-    ],
-    "radius": [
-      "blade.hollow-depth",
-      "blade.hollow-grind",
-      "blade.hollow-radius"
-    ],
-    "enable": [
-      "blade.hollow-grind",
-      "handle.wrap-style",
-      "render-post.bloom-enabled"
-    ],
-    "concave": [
-      "blade.hollow-grind"
-    ],
-    "tune": [
-      "blade.hollow-grind",
-      "concept.fuller",
-      "render-mode.render-mode"
-    ],
-    "smaller": [
-      "blade.hollow-grind",
-      "blade.hollow-radius"
-    ],
-    "deeper": [
-      "blade.hollow-grind"
-    ],
-    "far": [
-      "blade.hollow-grind"
-    ],
-    "bites": [
-      "blade.hollow-grind"
-    ],
-    "mix": [
-      "blade.hollow-mix"
-    ],
-    "blend": [
-      "blade.hollow-mix",
-      "guard.blend-fillet",
-      "guard.fillet-style"
-    ],
-    "between": [
-      "blade.hollow-mix",
-      "guard.blend-fillet",
-      "render-mode.render-mode"
-    ],
-    "hollowed": [
-      "blade.hollow-mix"
-    ],
-    "increases": [
-      "blade.hollow-mix",
-      "blade.leaf-bulge"
-    ],
-    "contribution": [
-      "blade.hollow-mix"
-    ],
-    "pairs": [
-      "blade.hollow-radius"
-    ],
-    "overall": [
-      "blade.hollow-radius",
-      "blade.length",
-      "pommel.size"
-    ],
-    "waves": [
-      "blade.kris-waves"
-    ],
-    "number": [
-      "blade.kris-waves",
-      "handle.wrap-turns"
-    ],
+    "works": ["blade.hollow-depth", "render-mode.pixel-size"],
+    "radius": ["blade.hollow-depth", "blade.hollow-grind", "blade.hollow-radius"],
+    "enable": ["blade.hollow-grind", "handle.wrap-style", "render-post.bloom-enabled"],
+    "concave": ["blade.hollow-grind"],
+    "tune": ["blade.hollow-grind", "concept.fuller", "render-mode.render-mode"],
+    "smaller": ["blade.hollow-grind", "blade.hollow-radius"],
+    "deeper": ["blade.hollow-grind"],
+    "far": ["blade.hollow-grind"],
+    "bites": ["blade.hollow-grind"],
+    "mix": ["blade.hollow-mix"],
+    "blend": ["blade.hollow-mix", "guard.blend-fillet", "guard.fillet-style"],
+    "between": ["blade.hollow-mix", "guard.blend-fillet", "render-mode.render-mode"],
+    "hollowed": ["blade.hollow-mix"],
+    "increases": ["blade.hollow-mix", "blade.leaf-bulge"],
+    "contribution": ["blade.hollow-mix"],
+    "pairs": ["blade.hollow-radius"],
+    "overall": ["blade.hollow-radius", "blade.length", "pommel.size"],
+    "waves": ["blade.kris-waves"],
+    "number": ["blade.kris-waves", "handle.wrap-turns"],
     "of": [
       "blade.kris-waves",
       "blade.length",
@@ -897,12 +511,8 @@
       "handle.wrap-turns",
       "render-mode.pixel-size"
     ],
-    "undulations": [
-      "blade.kris-waves"
-    ],
-    "traditional": [
-      "blade.kris-waves"
-    ],
+    "undulations": ["blade.kris-waves"],
+    "traditional": ["blade.kris-waves"],
     "look": [
       "blade.kris-waves",
       "render-mode.pixel-size",
@@ -910,33 +520,13 @@
       "render-post.outline-enabled",
       "task.add-fuller"
     ],
-    "leaf": [
-      "blade.leaf-bulge",
-      "blade.tip-shape"
-    ],
-    "bulge": [
-      "blade.leaf-bulge",
-      "blade.tip-shape"
-    ],
-    "adds": [
-      "blade.leaf-bulge",
-      "guard.blend-fillet",
-      "handle.wrap-style"
-    ],
-    "belly": [
-      "blade.leaf-bulge"
-    ],
-    "shapes": [
-      "blade.leaf-bulge",
-      "blade.sori-profile"
-    ],
-    "mid": [
-      "blade.leaf-bulge",
-      "blade.taper-mid"
-    ],
-    "tapering": [
-      "blade.leaf-bulge"
-    ],
+    "leaf": ["blade.leaf-bulge", "blade.tip-shape"],
+    "bulge": ["blade.leaf-bulge", "blade.tip-shape"],
+    "adds": ["blade.leaf-bulge", "guard.blend-fillet", "handle.wrap-style"],
+    "belly": ["blade.leaf-bulge"],
+    "shapes": ["blade.leaf-bulge", "blade.sori-profile"],
+    "mid": ["blade.leaf-bulge", "blade.taper-mid"],
+    "tapering": ["blade.leaf-bulge"],
     "along": [
       "blade.left-thickness",
       "blade.length",
@@ -944,16 +534,9 @@
       "concept.fuller",
       "handle.wrap-turns"
     ],
-    "x": [
-      "blade.left-thickness",
-      "blade.right-thickness"
-    ],
-    "asymmetrical": [
-      "blade.left-thickness"
-    ],
-    "grinds": [
-      "blade.left-thickness"
-    ],
+    "x": ["blade.left-thickness", "blade.right-thickness"],
+    "asymmetrical": ["blade.left-thickness"],
+    "grinds": ["blade.left-thickness"],
     "keep": [
       "blade.left-thickness",
       "blade.tip-width",
@@ -961,29 +544,13 @@
       "pommel.size",
       "render-mode.pixel-size"
     ],
-    "within": [
-      "blade.left-thickness"
-    ],
-    "structural": [
-      "blade.left-thickness"
-    ],
-    "limits": [
-      "blade.left-thickness"
-    ],
-    "length": [
-      "blade.length",
-      "pommel.size"
-    ],
-    "y": [
-      "blade.length"
-    ],
-    "longer": [
-      "blade.length"
-    ],
-    "shifts": [
-      "blade.length",
-      "pommel.size"
-    ],
+    "within": ["blade.left-thickness"],
+    "structural": ["blade.left-thickness"],
+    "limits": ["blade.left-thickness"],
+    "length": ["blade.length", "pommel.size"],
+    "y": ["blade.length"],
+    "longer": ["blade.length"],
+    "shifts": ["blade.length", "pommel.size"],
     "balance": [
       "blade.length",
       "blade.right-thickness",
@@ -992,764 +559,250 @@
       "pommel.size",
       "pommel.style"
     ],
-    "forward": [
-      "blade.length"
-    ],
-    "sets": [
-      "blade.length",
-      "render-mode.pixel-size",
-      "render-post.outline-enabled"
-    ],
-    "span": [
-      "blade.length",
-      "guard.width"
-    ],
-    "from": [
-      "blade.length"
-    ],
-    "impacts": [
-      "blade.length"
-    ],
-    "center": [
-      "blade.length"
-    ],
-    "point": [
-      "blade.length",
-      "blade.tip-width"
-    ],
-    "mirror": [
-      "blade.right-thickness"
-    ],
-    "sori": [
-      "blade.sori-bias",
-      "blade.sori-profile"
-    ],
-    "exponent": [
-      "blade.sori-bias"
-    ],
-    "selected": [
-      "blade.sori-bias"
-    ],
-    "curve": [
-      "blade.sori-bias"
-    ],
-    "fine": [
-      "blade.sori-bias"
-    ],
-    "tunes": [
-      "blade.sori-bias"
-    ],
-    "where": [
-      "blade.sori-bias",
-      "blade.sori-profile"
-    ],
-    "concentrates": [
-      "blade.sori-bias"
-    ],
-    "distribution": [
-      "blade.sori-profile"
-    ],
-    "centered": [
-      "blade.sori-profile"
-    ],
-    "torii": [
-      "blade.sori-profile"
-    ],
-    "koshi": [
-      "blade.sori-profile"
-    ],
-    "saki": [
-      "blade.sori-profile"
-    ],
-    "requires": [
-      "blade.sori-profile"
-    ],
-    "non": [
-      "blade.sori-profile"
-    ],
-    "zero": [
-      "blade.sori-profile"
-    ],
-    "strongest": [
-      "blade.sori-profile"
-    ],
-    "scale": [
-      "blade.taper-base",
-      "blade.taper-mid",
-      "blade.taper-tip",
-      "pommel.size"
-    ],
-    "no": [
-      "blade.taper-base"
-    ],
-    "change": [
-      "blade.taper-base"
-    ],
-    "starting": [
-      "blade.taper-base"
-    ],
-    "near": [
-      "blade.taper-base",
-      "blade.tip-width"
-    ],
-    "around": [
-      "blade.taper-mid",
-      "guard.tilt",
-      "render-post.bloom-enabled"
-    ],
-    "adjusts": [
-      "blade.taper-mid"
-    ],
-    "working": [
-      "blade.taper-mid"
-    ],
-    "region": [
-      "blade.taper-mid"
-    ],
-    "lower": [
-      "blade.taper-tip",
-      "blade.tip-width",
-      "render-mode.pixel-size"
-    ],
-    "values": [
-      "blade.taper-tip",
-      "render-mode.pixel-size"
-    ],
-    "choose": [
-      "blade.tip-shape",
-      "guard.style",
-      "pommel.style"
-    ],
-    "pointed": [
-      "blade.tip-shape"
-    ],
-    "rounded": [
-      "blade.tip-shape"
-    ],
-    "clip": [
-      "blade.tip-shape",
-      "guard.width"
-    ],
-    "tanto": [
-      "blade.tip-shape"
-    ],
-    "spear": [
-      "blade.tip-shape"
-    ],
-    "sheepsfoot": [
-      "blade.tip-shape"
-    ],
-    "alters": [
-      "blade.tip-shape"
-    ],
-    "last": [
-      "blade.tip-shape"
-    ],
-    "portion": [
-      "blade.tip-shape"
-    ],
-    "outline": [
-      "blade.tip-shape",
-      "render-mode.posterize-levels",
-      "render-post.outline-enabled"
-    ],
-    "unlocks": [
-      "blade.tip-shape"
-    ],
-    "control": [
-      "blade.tip-shape",
-      "render-post.outline-enabled"
-    ],
-    "finer": [
-      "blade.tip-width"
-    ],
-    "less": [
-      "blade.tip-width"
-    ],
-    "drag": [
-      "blade.tip-width"
-    ],
-    "penetration": [
-      "blade.tip-width"
-    ],
-    "sharpness": [
-      "blade.tip-width"
-    ],
-    "reasonable": [
-      "blade.tip-width"
-    ],
-    "vs": [
-      "blade.tip-width"
-    ],
-    "avoid": [
-      "blade.tip-width"
-    ],
-    "stubby": [
-      "blade.tip-width"
-    ],
-    "tips": [
-      "blade.tip-width"
-    ],
-    "what": [
-      "concept.fuller"
-    ],
-    "longitudinal": [
-      "concept.fuller"
-    ],
-    "reduce": [
-      "concept.fuller"
-    ],
-    "also": [
-      "concept.fuller"
-    ],
-    "called": [
-      "concept.fuller"
-    ],
-    "myth": [
-      "concept.fuller"
-    ],
-    "weight": [
-      "concept.fuller"
-    ],
-    "without": [
-      "concept.fuller"
-    ],
-    "greatly": [
-      "concept.fuller"
-    ],
-    "sacrificing": [
-      "concept.fuller"
-    ],
-    "rigidity": [
-      "concept.fuller"
-    ],
-    "matter": [
-      "concept.fuller"
-    ],
+    "forward": ["blade.length"],
+    "sets": ["blade.length", "render-mode.pixel-size", "render-post.outline-enabled"],
+    "span": ["blade.length", "guard.width"],
+    "from": ["blade.length"],
+    "impacts": ["blade.length"],
+    "center": ["blade.length"],
+    "point": ["blade.length", "blade.tip-width"],
+    "mirror": ["blade.right-thickness"],
+    "sori": ["blade.sori-bias", "blade.sori-profile"],
+    "exponent": ["blade.sori-bias"],
+    "selected": ["blade.sori-bias"],
+    "curve": ["blade.sori-bias"],
+    "fine": ["blade.sori-bias"],
+    "tunes": ["blade.sori-bias"],
+    "where": ["blade.sori-bias", "blade.sori-profile"],
+    "concentrates": ["blade.sori-bias"],
+    "distribution": ["blade.sori-profile"],
+    "centered": ["blade.sori-profile"],
+    "torii": ["blade.sori-profile"],
+    "koshi": ["blade.sori-profile"],
+    "saki": ["blade.sori-profile"],
+    "requires": ["blade.sori-profile"],
+    "non": ["blade.sori-profile"],
+    "zero": ["blade.sori-profile"],
+    "strongest": ["blade.sori-profile"],
+    "scale": ["blade.taper-base", "blade.taper-mid", "blade.taper-tip", "pommel.size"],
+    "no": ["blade.taper-base"],
+    "change": ["blade.taper-base"],
+    "starting": ["blade.taper-base"],
+    "near": ["blade.taper-base", "blade.tip-width"],
+    "around": ["blade.taper-mid", "guard.tilt", "render-post.bloom-enabled"],
+    "adjusts": ["blade.taper-mid"],
+    "working": ["blade.taper-mid"],
+    "region": ["blade.taper-mid"],
+    "lower": ["blade.taper-tip", "blade.tip-width", "render-mode.pixel-size"],
+    "values": ["blade.taper-tip", "render-mode.pixel-size"],
+    "choose": ["blade.tip-shape", "guard.style", "pommel.style"],
+    "pointed": ["blade.tip-shape"],
+    "rounded": ["blade.tip-shape"],
+    "clip": ["blade.tip-shape", "guard.width"],
+    "tanto": ["blade.tip-shape"],
+    "spear": ["blade.tip-shape"],
+    "sheepsfoot": ["blade.tip-shape"],
+    "alters": ["blade.tip-shape"],
+    "last": ["blade.tip-shape"],
+    "portion": ["blade.tip-shape"],
+    "outline": ["blade.tip-shape", "render-mode.posterize-levels", "render-post.outline-enabled"],
+    "unlocks": ["blade.tip-shape"],
+    "control": ["blade.tip-shape", "render-post.outline-enabled"],
+    "finer": ["blade.tip-width"],
+    "less": ["blade.tip-width"],
+    "drag": ["blade.tip-width"],
+    "penetration": ["blade.tip-width"],
+    "sharpness": ["blade.tip-width"],
+    "reasonable": ["blade.tip-width"],
+    "vs": ["blade.tip-width"],
+    "avoid": ["blade.tip-width"],
+    "stubby": ["blade.tip-width"],
+    "tips": ["blade.tip-width"],
+    "what": ["concept.fuller"],
+    "longitudinal": ["concept.fuller"],
+    "reduce": ["concept.fuller"],
+    "also": ["concept.fuller"],
+    "called": ["concept.fuller"],
+    "myth": ["concept.fuller"],
+    "weight": ["concept.fuller"],
+    "without": ["concept.fuller"],
+    "greatly": ["concept.fuller"],
+    "sacrificing": ["concept.fuller"],
+    "rigidity": ["concept.fuller"],
+    "matter": ["concept.fuller"],
     "strength": [
       "concept.fuller",
       "render-post.bloom-enabled",
       "render-post.outline-enabled",
       "render-post.vignette"
     ],
-    "aesthetics": [
-      "concept.fuller",
-      "guard.tilt"
-    ],
-    "fillet": [
-      "guard.blend-fillet",
-      "guard.fillet-style"
-    ],
-    "small": [
-      "guard.blend-fillet",
-      "guard.tilt"
-    ],
-    "bridge": [
-      "guard.blend-fillet",
-      "guard.fillet-style"
-    ],
-    "piece": [
-      "guard.blend-fillet",
-      "guard.fillet-style"
-    ],
-    "smoother": [
-      "guard.blend-fillet"
-    ],
-    "transition": [
-      "guard.blend-fillet"
-    ],
-    "pick": [
-      "guard.blend-fillet"
-    ],
-    "box": [
-      "guard.fillet-style"
-    ],
-    "smooth": [
-      "guard.fillet-style"
-    ],
-    "transitions": [
-      "guard.fillet-style"
-    ],
-    "organically": [
-      "guard.fillet-style"
-    ],
-    "bar": [
-      "guard.style"
-    ],
-    "winged": [
-      "guard.style"
-    ],
-    "claw": [
-      "guard.style"
-    ],
-    "disk": [
-      "guard.style",
-      "pommel.style"
-    ],
-    "knucklebow": [
-      "guard.style"
-    ],
-    "swept": [
-      "guard.style"
-    ],
-    "basket": [
-      "guard.style"
-    ],
-    "period": [
-      "guard.style",
-      "pommel.style"
-    ],
-    "unlock": [
-      "guard.style",
-      "pommel.style"
-    ],
-    "extra": [
-      "guard.style",
-      "pommel.style"
-    ],
-    "options": [
-      "guard.style",
-      "pommel.style"
-    ],
-    "rods": [
-      "guard.style"
-    ],
-    "rings": [
-      "guard.style"
-    ],
-    "tilt": [
-      "guard.tilt"
-    ],
-    "rotates": [
-      "guard.tilt"
-    ],
-    "axis": [
-      "guard.tilt"
-    ],
-    "radians": [
-      "guard.tilt"
-    ],
-    "tilts": [
-      "guard.tilt"
-    ],
-    "favor": [
-      "guard.tilt"
-    ],
-    "downward": [
-      "guard.tilt"
-    ],
-    "quillons": [
-      "guard.tilt"
-    ],
-    "hand": [
-      "guard.tilt",
-      "handle.wrap-depth",
-      "pommel.size"
-    ],
-    "clearance": [
-      "guard.tilt"
-    ],
-    "crossguard": [
-      "guard.width"
-    ],
-    "protection": [
-      "guard.width"
-    ],
-    "match": [
-      "guard.width"
-    ],
-    "classical": [
-      "guard.width"
-    ],
-    "looks": [
-      "guard.width"
-    ],
-    "very": [
-      "guard.width"
-    ],
-    "wide": [
-      "guard.width"
-    ],
-    "guards": [
-      "guard.width"
-    ],
-    "can": [
-      "guard.width"
-    ],
-    "accessories": [
-      "guard.width"
-    ],
-    "wrap": [
-      "handle.wrap-depth",
-      "handle.wrap-style",
-      "handle.wrap-turns"
-    ],
-    "radial": [
-      "handle.wrap-depth"
-    ],
-    "amplitude": [
-      "handle.wrap-depth"
-    ],
-    "pattern": [
-      "handle.wrap-depth",
-      "handle.wrap-turns"
-    ],
-    "pronounced": [
-      "handle.wrap-depth"
-    ],
-    "comfort": [
-      "handle.wrap-depth",
-      "handle.wrap-turns"
-    ],
+    "aesthetics": ["concept.fuller", "guard.tilt"],
+    "fillet": ["guard.blend-fillet", "guard.fillet-style"],
+    "small": ["guard.blend-fillet", "guard.tilt"],
+    "bridge": ["guard.blend-fillet", "guard.fillet-style"],
+    "piece": ["guard.blend-fillet", "guard.fillet-style"],
+    "smoother": ["guard.blend-fillet"],
+    "transition": ["guard.blend-fillet"],
+    "pick": ["guard.blend-fillet"],
+    "box": ["guard.fillet-style"],
+    "smooth": ["guard.fillet-style"],
+    "transitions": ["guard.fillet-style"],
+    "organically": ["guard.fillet-style"],
+    "bar": ["guard.style"],
+    "winged": ["guard.style"],
+    "claw": ["guard.style"],
+    "disk": ["guard.style", "pommel.style"],
+    "knucklebow": ["guard.style"],
+    "swept": ["guard.style"],
+    "basket": ["guard.style"],
+    "period": ["guard.style", "pommel.style"],
+    "unlock": ["guard.style", "pommel.style"],
+    "extra": ["guard.style", "pommel.style"],
+    "options": ["guard.style", "pommel.style"],
+    "rods": ["guard.style"],
+    "rings": ["guard.style"],
+    "tilt": ["guard.tilt"],
+    "rotates": ["guard.tilt"],
+    "axis": ["guard.tilt"],
+    "radians": ["guard.tilt"],
+    "tilts": ["guard.tilt"],
+    "favor": ["guard.tilt"],
+    "downward": ["guard.tilt"],
+    "quillons": ["guard.tilt"],
+    "hand": ["guard.tilt", "handle.wrap-depth", "pommel.size"],
+    "clearance": ["guard.tilt"],
+    "crossguard": ["guard.width"],
+    "protection": ["guard.width"],
+    "match": ["guard.width"],
+    "classical": ["guard.width"],
+    "looks": ["guard.width"],
+    "very": ["guard.width"],
+    "wide": ["guard.width"],
+    "guards": ["guard.width"],
+    "can": ["guard.width"],
+    "accessories": ["guard.width"],
+    "wrap": ["handle.wrap-depth", "handle.wrap-style", "handle.wrap-turns"],
+    "radial": ["handle.wrap-depth"],
+    "amplitude": ["handle.wrap-depth"],
+    "pattern": ["handle.wrap-depth", "handle.wrap-turns"],
+    "pronounced": ["handle.wrap-depth"],
+    "comfort": ["handle.wrap-depth", "handle.wrap-turns"],
     "stylized": [
       "handle.wrap-style",
       "render-mode.posterize-levels",
       "render-post.outline-enabled"
     ],
-    "grip": [
-      "handle.wrap-style",
-      "handle.wrap-turns"
-    ],
-    "wrapping": [
-      "handle.wrap-style"
-    ],
-    "hineri": [
-      "handle.wrap-style"
-    ],
-    "katate": [
-      "handle.wrap-style"
-    ],
-    "wire": [
-      "handle.wrap-style"
-    ],
-    "texture": [
-      "handle.wrap-style"
-    ],
-    "show": [
-      "handle.wrap-style"
-    ],
-    "diagonals": [
-      "handle.wrap-style"
-    ],
-    "combine": [
-      "handle.wrap-style",
-      "render-mode.posterize-levels"
-    ],
-    "turns": [
-      "handle.wrap-style",
-      "handle.wrap-turns"
-    ],
-    "helical": [
-      "handle.wrap-turns"
-    ],
-    "cycles": [
-      "handle.wrap-turns"
-    ],
-    "denser": [
-      "handle.wrap-turns"
-    ],
-    "over": [
-      "handle.wrap-turns"
-    ],
-    "adjust": [
-      "handle.wrap-turns",
-      "render-post.vignette",
-      "task.add-fuller"
-    ],
-    "pommel": [
-      "pommel.size",
-      "pommel.style"
-    ],
-    "size": [
-      "pommel.size",
-      "render-mode.pixel-size",
-      "render-mode.render-mode"
-    ],
-    "larger": [
-      "pommel.size"
-    ],
-    "slider": [
-      "pommel.size"
-    ],
-    "target": [
-      "pommel.size"
-    ],
-    "proportionate": [
-      "pommel.size"
-    ],
-    "orb": [
-      "pommel.style"
-    ],
-    "spike": [
-      "pommel.style"
-    ],
-    "wheel": [
-      "pommel.style"
-    ],
-    "ring": [
-      "pommel.style"
-    ],
-    "crown": [
-      "pommel.style"
-    ],
-    "pixel": [
-      "render-mode.pixel-size",
-      "render-mode.posterize-levels",
-      "render-mode.render-mode"
-    ],
-    "one": [
-      "render-mode.pixel-size"
-    ],
-    "block": [
-      "render-mode.pixel-size"
-    ],
-    "in": [
-      "render-mode.pixel-size",
-      "render-post.bloom-enabled"
-    ],
-    "screen": [
-      "render-mode.pixel-size"
-    ],
-    "pixels": [
-      "render-mode.pixel-size"
-    ],
-    "produce": [
-      "render-mode.pixel-size"
-    ],
-    "chunkier": [
-      "render-mode.pixel-size"
-    ],
-    "detail": [
-      "render-mode.pixel-size"
-    ],
-    "only": [
-      "render-mode.pixel-size"
-    ],
-    "art": [
-      "render-mode.pixel-size",
-      "render-mode.posterize-levels",
-      "render-mode.render-mode"
-    ],
+    "grip": ["handle.wrap-style", "handle.wrap-turns"],
+    "wrapping": ["handle.wrap-style"],
+    "hineri": ["handle.wrap-style"],
+    "katate": ["handle.wrap-style"],
+    "wire": ["handle.wrap-style"],
+    "texture": ["handle.wrap-style"],
+    "show": ["handle.wrap-style"],
+    "diagonals": ["handle.wrap-style"],
+    "combine": ["handle.wrap-style", "render-mode.posterize-levels"],
+    "turns": ["handle.wrap-style", "handle.wrap-turns"],
+    "helical": ["handle.wrap-turns"],
+    "cycles": ["handle.wrap-turns"],
+    "denser": ["handle.wrap-turns"],
+    "over": ["handle.wrap-turns"],
+    "adjust": ["handle.wrap-turns", "render-post.vignette", "task.add-fuller"],
+    "pommel": ["pommel.size", "pommel.style"],
+    "size": ["pommel.size", "render-mode.pixel-size", "render-mode.render-mode"],
+    "larger": ["pommel.size"],
+    "slider": ["pommel.size"],
+    "target": ["pommel.size"],
+    "proportionate": ["pommel.size"],
+    "orb": ["pommel.style"],
+    "spike": ["pommel.style"],
+    "wheel": ["pommel.style"],
+    "ring": ["pommel.style"],
+    "crown": ["pommel.style"],
+    "pixel": ["render-mode.pixel-size", "render-mode.posterize-levels", "render-mode.render-mode"],
+    "one": ["render-mode.pixel-size"],
+    "block": ["render-mode.pixel-size"],
+    "in": ["render-mode.pixel-size", "render-post.bloom-enabled"],
+    "screen": ["render-mode.pixel-size"],
+    "pixels": ["render-mode.pixel-size"],
+    "produce": ["render-mode.pixel-size"],
+    "chunkier": ["render-mode.pixel-size"],
+    "detail": ["render-mode.pixel-size"],
+    "only": ["render-mode.pixel-size"],
+    "art": ["render-mode.pixel-size", "render-mode.posterize-levels", "render-mode.render-mode"],
     "posterize": [
       "render-mode.pixel-size",
       "render-mode.posterize-levels",
       "render-mode.render-mode"
     ],
-    "levels": [
-      "render-mode.pixel-size",
-      "render-mode.posterize-levels",
-      "render-mode.render-mode"
-    ],
-    "bit": [
-      "render-mode.pixel-size",
-      "render-mode.posterize-levels"
-    ],
-    "colors": [
-      "render-mode.posterize-levels"
-    ],
-    "channel": [
-      "render-mode.posterize-levels"
-    ],
-    "create": [
-      "render-mode.posterize-levels"
-    ],
-    "shading": [
-      "render-mode.posterize-levels"
-    ],
-    "disables": [
-      "render-mode.posterize-levels",
-      "render-mode.render-mode"
-    ],
-    "posterization": [
-      "render-mode.posterize-levels"
-    ],
-    "steps": [
-      "render-mode.posterize-levels"
-    ],
-    "mimic": [
-      "render-mode.posterize-levels"
-    ],
-    "palettes": [
-      "render-mode.posterize-levels"
-    ],
-    "applied": [
-      "render-mode.posterize-levels"
-    ],
-    "after": [
-      "render-mode.posterize-levels"
-    ],
-    "tone": [
-      "render-mode.posterize-levels"
-    ],
-    "mapping": [
-      "render-mode.posterize-levels"
-    ],
-    "so": [
-      "render-mode.posterize-levels"
-    ],
-    "retain": [
-      "render-mode.posterize-levels"
-    ],
-    "ink": [
-      "render-mode.posterize-levels"
-    ],
-    "comic": [
-      "render-mode.posterize-levels"
-    ],
-    "hybrids": [
-      "render-mode.posterize-levels"
-    ],
-    "render": [
-      "render-mode.render-mode"
-    ],
-    "switch": [
-      "render-mode.render-mode"
-    ],
-    "standard": [
-      "render-mode.render-mode"
-    ],
-    "output": [
-      "render-mode.render-mode"
-    ],
-    "modes": [
-      "render-mode.render-mode"
-    ],
-    "snaps": [
-      "render-mode.render-mode"
-    ],
-    "final": [
-      "render-mode.render-mode"
-    ],
-    "image": [
-      "render-mode.render-mode"
-    ],
-    "coarse": [
-      "render-mode.render-mode"
-    ],
-    "grid": [
-      "render-mode.render-mode"
-    ],
-    "retro": [
-      "render-mode.render-mode"
-    ],
-    "anti": [
-      "render-mode.render-mode"
-    ],
-    "aliasing": [
-      "render-mode.render-mode"
-    ],
-    "bloom": [
-      "render-mode.render-mode",
-      "render-post.bloom-enabled"
-    ],
-    "heat": [
-      "render-mode.render-mode"
-    ],
-    "haze": [
-      "render-mode.render-mode"
-    ],
-    "caps": [
-      "render-mode.render-mode"
-    ],
-    "dpr": [
-      "render-mode.render-mode"
-    ],
-    "crisp": [
-      "render-mode.render-mode"
-    ],
-    "blocks": [
-      "render-mode.render-mode"
-    ],
-    "effect": [
-      "render-mode.render-mode"
-    ],
-    "enabled": [
-      "render-post.bloom-enabled",
-      "render-post.outline-enabled"
-    ],
-    "bright": [
-      "render-post.bloom-enabled"
-    ],
-    "glow": [
-      "render-post.bloom-enabled"
-    ],
-    "high": [
-      "render-post.bloom-enabled"
-    ],
-    "intensity": [
-      "render-post.bloom-enabled"
-    ],
-    "areas": [
-      "render-post.bloom-enabled"
-    ],
-    "increase": [
-      "render-post.bloom-enabled"
-    ],
-    "threshold": [
-      "render-post.bloom-enabled"
-    ],
-    "when": [
-      "render-post.bloom-enabled"
-    ],
-    "it": [
-      "render-post.bloom-enabled"
-    ],
-    "kicks": [
-      "render-post.bloom-enabled"
-    ],
-    "pass": [
-      "render-post.outline-enabled"
-    ],
-    "line": [
-      "render-post.outline-enabled"
-    ],
-    "color": [
-      "render-post.outline-enabled"
-    ],
-    "tint": [
-      "render-post.outline-enabled"
-    ],
-    "vignette": [
-      "render-post.vignette"
-    ],
-    "darken": [
-      "render-post.vignette"
-    ],
-    "corners": [
-      "render-post.vignette"
-    ],
-    "frame": [
-      "render-post.vignette"
-    ],
-    "subject": [
-      "render-post.vignette"
-    ],
-    "sparingly": [
-      "render-post.vignette"
-    ],
-    "softness": [
-      "render-post.vignette"
-    ],
-    "fade": [
-      "render-post.vignette"
-    ],
-    "task": [
-      "task.add-fuller"
-    ],
-    "add": [
-      "task.add-fuller"
-    ],
-    "its": [
-      "task.add-fuller"
-    ],
-    "preview": [
-      "task.add-fuller"
-    ],
-    "explain": [
-      "task.add-fuller"
-    ],
-    "highlight": [
-      "task.add-fuller"
-    ]
+    "levels": ["render-mode.pixel-size", "render-mode.posterize-levels", "render-mode.render-mode"],
+    "bit": ["render-mode.pixel-size", "render-mode.posterize-levels"],
+    "colors": ["render-mode.posterize-levels"],
+    "channel": ["render-mode.posterize-levels"],
+    "create": ["render-mode.posterize-levels"],
+    "shading": ["render-mode.posterize-levels"],
+    "disables": ["render-mode.posterize-levels", "render-mode.render-mode"],
+    "posterization": ["render-mode.posterize-levels"],
+    "steps": ["render-mode.posterize-levels"],
+    "mimic": ["render-mode.posterize-levels"],
+    "palettes": ["render-mode.posterize-levels"],
+    "applied": ["render-mode.posterize-levels"],
+    "after": ["render-mode.posterize-levels"],
+    "tone": ["render-mode.posterize-levels"],
+    "mapping": ["render-mode.posterize-levels"],
+    "so": ["render-mode.posterize-levels"],
+    "retain": ["render-mode.posterize-levels"],
+    "ink": ["render-mode.posterize-levels"],
+    "comic": ["render-mode.posterize-levels"],
+    "hybrids": ["render-mode.posterize-levels"],
+    "render": ["render-mode.render-mode"],
+    "switch": ["render-mode.render-mode"],
+    "standard": ["render-mode.render-mode"],
+    "output": ["render-mode.render-mode"],
+    "modes": ["render-mode.render-mode"],
+    "snaps": ["render-mode.render-mode"],
+    "final": ["render-mode.render-mode"],
+    "image": ["render-mode.render-mode"],
+    "coarse": ["render-mode.render-mode"],
+    "grid": ["render-mode.render-mode"],
+    "retro": ["render-mode.render-mode"],
+    "anti": ["render-mode.render-mode"],
+    "aliasing": ["render-mode.render-mode"],
+    "bloom": ["render-mode.render-mode", "render-post.bloom-enabled"],
+    "heat": ["render-mode.render-mode"],
+    "haze": ["render-mode.render-mode"],
+    "caps": ["render-mode.render-mode"],
+    "dpr": ["render-mode.render-mode"],
+    "crisp": ["render-mode.render-mode"],
+    "blocks": ["render-mode.render-mode"],
+    "effect": ["render-mode.render-mode"],
+    "enabled": ["render-post.bloom-enabled", "render-post.outline-enabled"],
+    "bright": ["render-post.bloom-enabled"],
+    "glow": ["render-post.bloom-enabled"],
+    "high": ["render-post.bloom-enabled"],
+    "intensity": ["render-post.bloom-enabled"],
+    "areas": ["render-post.bloom-enabled"],
+    "increase": ["render-post.bloom-enabled"],
+    "threshold": ["render-post.bloom-enabled"],
+    "when": ["render-post.bloom-enabled"],
+    "it": ["render-post.bloom-enabled"],
+    "kicks": ["render-post.bloom-enabled"],
+    "pass": ["render-post.outline-enabled"],
+    "line": ["render-post.outline-enabled"],
+    "color": ["render-post.outline-enabled"],
+    "tint": ["render-post.outline-enabled"],
+    "vignette": ["render-post.vignette"],
+    "darken": ["render-post.vignette"],
+    "corners": ["render-post.vignette"],
+    "frame": ["render-post.vignette"],
+    "subject": ["render-post.vignette"],
+    "sparingly": ["render-post.vignette"],
+    "softness": ["render-post.vignette"],
+    "fade": ["render-post.vignette"],
+    "task": ["task.add-fuller"],
+    "add": ["task.add-fuller"],
+    "its": ["task.add-fuller"],
+    "preview": ["task.add-fuller"],
+    "explain": ["task.add-fuller"],
+    "highlight": ["task.add-fuller"]
   }
 }

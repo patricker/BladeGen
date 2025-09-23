@@ -13,4 +13,3 @@
 ```
 
 Thinner tips favor thrust; thicker tips read sturdier and resist damage.
-

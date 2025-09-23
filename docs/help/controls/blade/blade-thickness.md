@@ -8,9 +8,8 @@
     "Left/Right thickness bias allows asymmetry."
   ],
   "parts": ["blade"],
-  "related": ["blade.left-thickness","blade.right-thickness"]
+  "related": ["blade.left-thickness", "blade.right-thickness"]
 }
 ```
 
 Higher values look sturdier; watch weight and breaking strain for very thin blades.
-

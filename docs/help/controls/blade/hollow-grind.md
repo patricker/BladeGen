@@ -8,9 +8,8 @@
     "Depth controls how far the hollow bites into the face."
   ],
   "parts": ["blade"],
-  "related": ["blade.hollow-radius","blade.hollow-depth","blade.hollow-bias"]
+  "related": ["blade.hollow-radius", "blade.hollow-depth", "blade.hollow-bias"]
 }
 ```
 
 Common on razors; use lightly for swords.
-

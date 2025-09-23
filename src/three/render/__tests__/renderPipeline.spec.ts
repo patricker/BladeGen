@@ -16,7 +16,11 @@ describe('render pipeline', () => {
 
   it('uses composer when post FX enabled', () => {
     const { renderer, scene, camera, composer, preFX, beforeRender } = makeStubs();
-    const pipeline = createRenderPipeline(renderer, scene, camera, { composer, preFX, beforeRender });
+    const pipeline = createRenderPipeline(renderer, scene, camera, {
+      composer,
+      preFX,
+      beforeRender,
+    });
     pipeline.render();
     expect(beforeRender).toHaveBeenCalledTimes(1);
     expect(preFX).toHaveBeenCalledTimes(1);
@@ -26,7 +30,11 @@ describe('render pipeline', () => {
 
   it('falls back to direct renderer when post FX disabled', () => {
     const { renderer, scene, camera, composer, preFX, beforeRender } = makeStubs();
-    const pipeline = createRenderPipeline(renderer, scene, camera, { composer, preFX, beforeRender });
+    const pipeline = createRenderPipeline(renderer, scene, camera, {
+      composer,
+      preFX,
+      beforeRender,
+    });
     pipeline.setPostFXEnabled(false);
     pipeline.render();
     expect(beforeRender).toHaveBeenCalledTimes(1);

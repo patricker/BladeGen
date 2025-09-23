@@ -8,9 +8,14 @@
     "Adjust width and profile; use inset for carved depth.",
     "Preview with Explain Mode and highlight the blade."
   ],
-  "related": ["concept.fuller","blade.fuller-mode","blade.fuller-width","blade.fuller-profile","blade.fuller-inset"]
+  "related": [
+    "concept.fuller",
+    "blade.fuller-mode",
+    "blade.fuller-width",
+    "blade.fuller-profile",
+    "blade.fuller-inset"
+  ]
 }
 ```
 
 Use carve mode for geometry-accurate grooves; overlay for faster visuals.
-

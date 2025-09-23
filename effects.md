@@ -1,12 +1,12 @@
 You’re right — the earlier snippets were too hand‑wavy and conflicted with your loop/composer. Below is a **hardened, drop‑in second/third pass** that:
 
-* **Doesn’t** take over your `setAnimationLoop`.
-* **Composites selective bloom correctly** (separate composer + final composite pass).
-* **Removes UV dependency** from the flame shader (uses object/world space).
-* **Adds a mask-based heat‑haze** (only distorts where you mark).
-* **Upgrades mist** (alpha noise + CPU curl turbulence that’s light enough for a few hundred particles).
-* **Adds sparks/embers** with lifetime fade.
-* **Handles resize** for both bloom and heat mask.
+- **Doesn’t** take over your `setAnimationLoop`.
+- **Composites selective bloom correctly** (separate composer + final composite pass).
+- **Removes UV dependency** from the flame shader (uses object/world space).
+- **Adds a mask-based heat‑haze** (only distorts where you mark).
+- **Upgrades mist** (alpha noise + CPU curl turbulence that’s light enough for a few hundred particles).
+- **Adds sparks/embers** with lifetime fade.
+- **Handles resize** for both bloom and heat mask.
 
 I’ve structured this as minimal patches to your existing `setupScene`. Copy the blocks into the marked places.
 
@@ -30,7 +30,7 @@ const MistShader = {
   uniforms: {
     uColor: { value: new THREE.Color(0x88aadd) },
     uSize: { value: 6.0 },
-    uNoiseTex: { value: null }
+    uNoiseTex: { value: null },
   },
   vertexShader: `
     uniform float uSize;
@@ -54,7 +54,7 @@ const MistShader = {
       float a = soft * vLife * n;
       gl_FragColor = vec4(uColor, a * 0.6);
     }
-  `
+  `,
 } as const;
 ```
 
@@ -63,22 +63,32 @@ Helper to create a small, repeatable noise texture (CPU, cheap):
 ```ts
 // === Utility: small repeatable noise texture (tile-ish) ===
 function makeNoiseTexture(size = 128, seed = 1337) {
-  const c = document.createElement('canvas'); c.width = c.height = size;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
   const ctx = c.getContext('2d')!;
   const img = ctx.createImageData(size, size);
-  let s = seed|0;
-  const rnd = () => ((s = (s ^ (s<<13)) ^ (s>>17) ^ (s<<5)) >>> 0) / 0xffffffff;
-  for (let y=0;y<size;y++){
-    for (let x=0;x<size;x++){
+  let s = seed | 0;
+  const rnd = () => ((s = s ^ (s << 13) ^ (s >> 17) ^ (s << 5)) >>> 0) / 0xffffffff;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
       // 3 octave value-ish noise (hash grid)
-      let n=0, amp=0.5, f=1;
-      for (let o=0;o<3;o++){
-        const u = Math.floor((x/size)*16*f), v = Math.floor((y/size)*16*f);
-        const h = Math.sin((u*127.1+v*311.7+o*19.19)) * 43758.5453;
-        n += (h - Math.floor(h)) * amp; amp *= 0.5; f *= 2.0;
+      let n = 0,
+        amp = 0.5,
+        f = 1;
+      for (let o = 0; o < 3; o++) {
+        const u = Math.floor((x / size) * 16 * f),
+          v = Math.floor((y / size) * 16 * f);
+        const h = Math.sin(u * 127.1 + v * 311.7 + o * 19.19) * 43758.5453;
+        n += (h - Math.floor(h)) * amp;
+        amp *= 0.5;
+        f *= 2.0;
       }
-      const v = Math.max(0, Math.min(255, Math.floor(n*255)));
-      const i = (y*size + x)*4; img.data[i]=v; img.data[i+1]=v; img.data[i+2]=v; img.data[i+3]=255;
+      const v = Math.max(0, Math.min(255, Math.floor(n * 255)));
+      const i = (y * size + x) * 4;
+      img.data[i] = v;
+      img.data[i + 1] = v;
+      img.data[i + 2] = v;
+      img.data[i + 3] = 255;
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -96,34 +106,44 @@ CPU curl noise for particle drift:
 
 ```ts
 // === Utility: light-weight 3D noise + curl on CPU (ok for a few hundred particles) ===
-function hash3(x:number,y:number,z:number){
-  const s = Math.sin(x*12.9898 + y*78.233 + z*37.719)*43758.5453;
+function hash3(x: number, y: number, z: number) {
+  const s = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453;
   return s - Math.floor(s); // [0,1)
 }
-function noise3(x:number,y:number,z:number){
-  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
-  const xf = x - xi, yf = y - yi, zf = z - zi;
-  const u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf), w = zf*zf*(3-2*zf);
-  const n000 = hash3(xi,yi,zi), n100 = hash3(xi+1,yi,zi);
-  const n010 = hash3(xi,yi+1,zi), n110 = hash3(xi+1,yi+1,zi);
-  const n001 = hash3(xi,yi,zi+1), n101 = hash3(xi+1,yi,zi+1);
-  const n011 = hash3(xi,yi+1,zi+1), n111 = hash3(xi+1,yi+1,zi+1);
-  const nx00 = n000 + u*(n100 - n000);
-  const nx10 = n010 + u*(n110 - n010);
-  const nx01 = n001 + u*(n101 - n001);
-  const nx11 = n011 + u*(n111 - n011);
-  const nxy0 = nx00 + v*(nx10 - nx00);
-  const nxy1 = nx01 + v*(nx11 - nx01);
-  return nxy0 + w*(nxy1 - nxy0); // [0,1]
+function noise3(x: number, y: number, z: number) {
+  const xi = Math.floor(x),
+    yi = Math.floor(y),
+    zi = Math.floor(z);
+  const xf = x - xi,
+    yf = y - yi,
+    zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf),
+    v = yf * yf * (3 - 2 * yf),
+    w = zf * zf * (3 - 2 * zf);
+  const n000 = hash3(xi, yi, zi),
+    n100 = hash3(xi + 1, yi, zi);
+  const n010 = hash3(xi, yi + 1, zi),
+    n110 = hash3(xi + 1, yi + 1, zi);
+  const n001 = hash3(xi, yi, zi + 1),
+    n101 = hash3(xi + 1, yi, zi + 1);
+  const n011 = hash3(xi, yi + 1, zi + 1),
+    n111 = hash3(xi + 1, yi + 1, zi + 1);
+  const nx00 = n000 + u * (n100 - n000);
+  const nx10 = n010 + u * (n110 - n010);
+  const nx01 = n001 + u * (n101 - n001);
+  const nx11 = n011 + u * (n111 - n011);
+  const nxy0 = nx00 + v * (nx10 - nx00);
+  const nxy1 = nx01 + v * (nx11 - nx01);
+  return nxy0 + w * (nxy1 - nxy0); // [0,1]
 }
-function curlNoise(p: THREE.Vector3){
+function curlNoise(p: THREE.Vector3) {
   const e = 0.1;
-  const dx = noise3(p.x+e,p.y,p.z) - noise3(p.x-e,p.y,p.z);
-  const dy = noise3(p.x,p.y+e,p.z) - noise3(p.x,p.y-e,p.z);
-  const dz = noise3(p.x,p.y,p.z+e) - noise3(p.x,p.y,p.z-e);
+  const dx = noise3(p.x + e, p.y, p.z) - noise3(p.x - e, p.y, p.z);
+  const dy = noise3(p.x, p.y + e, p.z) - noise3(p.x, p.y - e, p.z);
+  const dz = noise3(p.x, p.y, p.z + e) - noise3(p.x, p.y, p.z - e);
   const v = new THREE.Vector3(dy - dz, dz - dx, dx - dy);
   const len = v.length() || 1.0;
-  return v.multiplyScalar(1/len);
+  return v.multiplyScalar(1 / len);
 }
 ```
 
@@ -138,7 +158,7 @@ const FlameAuraShader = {
     color2: { value: new THREE.Color(0xffe87a) },
     noiseScale: { value: 2.2 },
     speed: { value: 1.5 },
-    intensity: { value: 1.0 }
+    intensity: { value: 1.0 },
   },
   vertexShader: `
     varying vec3 vWPos; varying vec3 vN;
@@ -187,7 +207,7 @@ const FlameAuraShader = {
       vec3 col = mix(color1, color2, clamp((f-0.35)/0.4, 0.0, 1.0));
       gl_FragColor = vec4(col * glow, glow);
     }
-  `
+  `,
 } as const;
 ```
 
@@ -201,10 +221,11 @@ This adds: selective bloom (proper dual-composer + composite) and heat‑haze pa
 // === FX Layers ===
 const BLOOM_LAYER = 1;
 const HEAT_LAYER = 2;
-const bloomLayers = new THREE.Layers(); bloomLayers.set(BLOOM_LAYER);
+const bloomLayers = new THREE.Layers();
+bloomLayers.set(BLOOM_LAYER);
 
 // === Selective Bloom (separate composer, then composite back) ===
-const nonBloomMats = new Map<THREE.Mesh, THREE.Material|THREE.Material[]>();
+const nonBloomMats = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
 const blackMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
 function darkenNonBloom(o: THREE.Object3D) {
@@ -225,16 +246,16 @@ function restoreNonBloom(o: THREE.Object3D) {
 // Dedicated bloom composer
 const bloomComposer = new EffectComposer(renderer);
 bloomComposer.addPass(new RenderPass(scene, camera));
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(1,1), 1.1, 0.35, 0.8);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 1.1, 0.35, 0.8);
 // NOTE: UnrealBloomPass signature is (resolution, strength, radius, threshold)
 bloomComposer.addPass(bloomPass);
 
 // Composite bloom back into your main composer
 const BloomCompositeShader = {
   uniforms: {
-    tDiffuse: { value: null },               // main chain input
-    tBloom:   { value: bloomComposer.renderTarget2.texture },
-    intensity:{ value: 1.0 }
+    tDiffuse: { value: null }, // main chain input
+    tBloom: { value: bloomComposer.renderTarget2.texture },
+    intensity: { value: 1.0 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -248,13 +269,13 @@ const BloomCompositeShader = {
       vec4 bloom = texture2D(tBloom, vUv) * intensity;
       gl_FragColor = base + bloom;
     }
-  `
+  `,
 } as const;
 const bloomCompositePass = new ShaderPass(BloomCompositeShader as any);
 composer.addPass(bloomCompositePass);
 
 let selectiveBloomEnabled = false;
-function preRenderBloom(){
+function preRenderBloom() {
   if (!selectiveBloomEnabled) return;
   scene.traverse(darkenNonBloom);
   bloomComposer.render();
@@ -263,15 +284,15 @@ function preRenderBloom(){
 }
 
 // === Heat Haze (mask-based refraction) ===
-const heatMaskRT = new THREE.WebGLRenderTarget(1,1, { depthBuffer: false, stencilBuffer: false });
+const heatMaskRT = new THREE.WebGLRenderTarget(1, 1, { depthBuffer: false, stencilBuffer: false });
 const heatMaskMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
 const HeatHazeShader = {
   uniforms: {
     tDiffuse: { value: null },
-    tMask:    { value: heatMaskRT.texture },
-    time:     { value: 0.0 },
-    distortion: { value: 0.004 } // adjust via renderHooks
+    tMask: { value: heatMaskRT.texture },
+    time: { value: 0.0 },
+    distortion: { value: 0.004 }, // adjust via renderHooks
   },
   vertexShader: `
     varying vec2 vUv;
@@ -294,7 +315,7 @@ const HeatHazeShader = {
       vec2 uv2 = vUv + dir * (distortion * m * (0.6 + 0.4*wobble));
       gl_FragColor = texture2D(tDiffuse, uv2);
     }
-  `
+  `,
 } as const;
 const heatHazePass = new ShaderPass(HeatHazeShader as any);
 (heatHazePass.material as any).extensions = { derivatives: true };
@@ -302,7 +323,7 @@ heatHazePass.enabled = false;
 composer.addPass(heatHazePass);
 
 let heatHazeEnabled = false;
-function renderHeatMask(){
+function renderHeatMask() {
   if (!heatHazeEnabled) return;
   const prevMask = camera.layers.mask;
   const prevMat = scene.overrideMaterial;
@@ -331,8 +352,23 @@ function renderHeatMask(){
 ```ts
 // === Flame aura (attach to blade), contributes to bloom & heat mask ===
 let flameMesh: THREE.Mesh | null = null;
-function setFlameAura(enabled: boolean, { scale=1.05, color1=0xff5a00, color2=0xfff18a, noiseScale=2.2, speed=1.6, intensity=1.0 }={}){
-  if (flameMesh) { sword.group.remove(flameMesh); (flameMesh.material as any).dispose?.(); (flameMesh.geometry as any).dispose?.(); flameMesh = null; }
+function setFlameAura(
+  enabled: boolean,
+  {
+    scale = 1.05,
+    color1 = 0xff5a00,
+    color2 = 0xfff18a,
+    noiseScale = 2.2,
+    speed = 1.6,
+    intensity = 1.0,
+  } = {}
+) {
+  if (flameMesh) {
+    sword.group.remove(flameMesh);
+    (flameMesh.material as any).dispose?.();
+    (flameMesh.geometry as any).dispose?.();
+    flameMesh = null;
+  }
   if (!enabled || !sword.bladeMesh) return;
   const mat = new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.clone((FlameAuraShader as any).uniforms),
@@ -341,7 +377,7 @@ function setFlameAura(enabled: boolean, { scale=1.05, color1=0xff5a00, color2=0x
     blending: THREE.AdditiveBlending,
     transparent: true,
     depthWrite: false,
-    side: THREE.DoubleSide
+    side: THREE.DoubleSide,
   });
   (mat.uniforms as any).color1.value = new THREE.Color(color1);
   (mat.uniforms as any).color2.value = new THREE.Color(color2);
@@ -361,22 +397,33 @@ function setFlameAura(enabled: boolean, { scale=1.05, color1=0xff5a00, color2=0x
 }
 
 // === Sparks / embers ===
-let sparks: THREE.Points | null = null, sparksPos: Float32Array, sparksVel: Float32Array, sparksLife: Float32Array, sparksGeom: THREE.BufferGeometry;
-function setEmbers(enabled: boolean, {count=120, size=3, color=0xffaa55}={}){
-  if (sparks){ sword.group.remove(sparks); sparksGeom.dispose(); (sparks.material as any).dispose?.(); sparks=null as any; }
+let sparks: THREE.Points | null = null,
+  sparksPos: Float32Array,
+  sparksVel: Float32Array,
+  sparksLife: Float32Array,
+  sparksGeom: THREE.BufferGeometry;
+function setEmbers(enabled: boolean, { count = 120, size = 3, color = 0xffaa55 } = {}) {
+  if (sparks) {
+    sword.group.remove(sparks);
+    sparksGeom.dispose();
+    (sparks.material as any).dispose?.();
+    sparks = null as any;
+  }
   if (!enabled) return;
   sparksGeom = new THREE.BufferGeometry();
-  sparksPos = new Float32Array(count*3);
-  sparksVel = new Float32Array(count*3);
+  sparksPos = new Float32Array(count * 3);
+  sparksVel = new Float32Array(count * 3);
   sparksLife = new Float32Array(count);
-  for(let i=0;i<count;i++){
-    sparksPos[i*3+0]=0; sparksPos[i*3+1]=0; sparksPos[i*3+2]=0;
-    sparksVel[i*3+0]=(Math.random()-0.5)*0.35;
-    sparksVel[i*3+1]=1.2+Math.random()*1.6;
-    sparksVel[i*3+2]=(Math.random()-0.5)*0.35;
-    sparksLife[i]=Math.random();
+  for (let i = 0; i < count; i++) {
+    sparksPos[i * 3 + 0] = 0;
+    sparksPos[i * 3 + 1] = 0;
+    sparksPos[i * 3 + 2] = 0;
+    sparksVel[i * 3 + 0] = (Math.random() - 0.5) * 0.35;
+    sparksVel[i * 3 + 1] = 1.2 + Math.random() * 1.6;
+    sparksVel[i * 3 + 2] = (Math.random() - 0.5) * 0.35;
+    sparksLife[i] = Math.random();
   }
-  sparksGeom.setAttribute('position', new THREE.BufferAttribute(sparksPos,3));
+  sparksGeom.setAttribute('position', new THREE.BufferAttribute(sparksPos, 3));
   const mat = new THREE.ShaderMaterial({
     uniforms: { uColor: { value: new THREE.Color(color) } },
     vertexShader: `
@@ -401,7 +448,9 @@ function setEmbers(enabled: boolean, {count=120, size=3, color=0xffaa55}={}){
         gl_FragColor = vec4(c, a);
       }
     `,
-    blending: THREE.AdditiveBlending, transparent: true, depthWrite: false
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
   });
   sparks = new THREE.Points(sparksGeom, mat);
   sparks.layers.enable(BLOOM_LAYER);
@@ -481,7 +530,10 @@ Update sizes for bloom and heat mask in your existing `updateFXAA()`:
 ```ts
 const updateFXAA = () => {
   renderer.getSize(size);
-  (fxaa.uniforms as any).resolution.value.set(1 / (size.x * renderer.getPixelRatio()), 1 / (size.y * renderer.getPixelRatio()));
+  (fxaa.uniforms as any).resolution.value.set(
+    1 / (size.x * renderer.getPixelRatio()),
+    1 / (size.y * renderer.getPixelRatio())
+  );
   smaa.setSize(size.x, size.y);
 
   // === add: keep bloom & heat buffers in sync ===
@@ -552,14 +604,20 @@ After your `sword` is created:
 ```ts
 // Make the aura itself glow and serve as heat source
 renderHooks.setFlameAura(true, { scale: 1.05, speed: 1.7, noiseScale: 2.4, intensity: 1.1 });
-renderHooks.markForBloom(flameMesh ?? sword.bladeMesh, true);  // if you want the blade itself to glow too
+renderHooks.markForBloom(flameMesh ?? sword.bladeMesh, true); // if you want the blade itself to glow too
 renderHooks.markForHeat(flameMesh ?? sword.bladeMesh, true);
 
 // Turn on selective bloom (tight, not washed out)
-renderHooks.setSelectiveBloom(true, /*strength*/1.15, /*threshold*/0.82, /*radius*/0.35, /*intensity*/1.0);
+renderHooks.setSelectiveBloom(
+  true,
+  /*strength*/ 1.15,
+  /*threshold*/ 0.82,
+  /*radius*/ 0.35,
+  /*intensity*/ 1.0
+);
 
 // Heat haze shimmer focused around the sword
-renderHooks.setHeatHaze(true, /*distortion*/0.0038);
+renderHooks.setHeatHaze(true, /*distortion*/ 0.0038);
 
 // Upgraded mist (you already enable with setBladeMist)
 renderHooks.setBladeMist(true, 0x88aadd, 0.6, 0.65, 0.12, 7.0); // (enabled, color, density, speed, spread, size)
@@ -573,12 +631,12 @@ renderHooks.setEmbers(true, { count: 140, size: 3, color: 0xffb070 });
 
 ## Why your previous results “didn’t render correctly”
 
-* **Composer conflict**: another `setAnimationLoop` and no final composite pass → bloom never blended back.
-* **Wrong dependency**: flame shader used `vUv` but your geometry may have no UVs → black/NaN fragments. Now it uses world/object space.
-* **Layer visibility**: objects were put on a new layer but the camera wasn’t set to see them in base, or they were removed from default layer → they vanished. Now we **enable** extra layers instead of replacing.
-* **No resize updates** for the extra composer/targets → blurred or offset buffers. Fixed in `updateFXAA()`.
-* **Smoke too uniform**: alpha cutoff looked like round dots; noise breakup + light curl gives it turbulent edges and drift.
-* **Heat haze global**: the old pass distorted the whole screen; now a **mask render** limits it to your marked geometry.
+- **Composer conflict**: another `setAnimationLoop` and no final composite pass → bloom never blended back.
+- **Wrong dependency**: flame shader used `vUv` but your geometry may have no UVs → black/NaN fragments. Now it uses world/object space.
+- **Layer visibility**: objects were put on a new layer but the camera wasn’t set to see them in base, or they were removed from default layer → they vanished. Now we **enable** extra layers instead of replacing.
+- **No resize updates** for the extra composer/targets → blurred or offset buffers. Fixed in `updateFXAA()`.
+- **Smoke too uniform**: alpha cutoff looked like round dots; noise breakup + light curl gives it turbulent edges and drift.
+- **Heat haze global**: the old pass distorted the whole screen; now a **mask render** limits it to your marked geometry.
 
 ---
 

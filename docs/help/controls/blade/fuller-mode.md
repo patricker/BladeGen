@@ -8,9 +8,8 @@
     "Carved fullers interact with thickness/taper."
   ],
   "parts": ["blade"],
-  "related": ["blade.fuller-profile","blade.fuller-width","blade.fuller-inset"]
+  "related": ["blade.fuller-profile", "blade.fuller-width", "blade.fuller-inset"]
 }
 ```
 
 Overlay suits stylized looks; carve suits realism and dynamics.
-

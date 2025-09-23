@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/build-help-docs.mjs && node scripts/build-help-index.mjs",
+    "predev": "node scripts/sync-schema.mjs",
+    "prebuild": "node scripts/sync-schema.mjs && node scripts/build-help-docs.mjs && node scripts/build-help-index.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --port 5173",

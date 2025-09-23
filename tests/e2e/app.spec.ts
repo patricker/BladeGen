@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('SwordMaker smoke', () => {
+test.describe('BladeGen smoke', () => {
   test('renders main UI without runtime errors', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => {
@@ -14,7 +14,7 @@ test.describe('SwordMaker smoke', () => {
 
     await page.goto('/');
 
-    await expect(page).toHaveTitle(/SwordMaker/i);
+    await expect(page).toHaveTitle(/BladeGen/i);
     await expect(page.locator('#sidebar')).toBeVisible();
     await expect(page.locator('canvas')).toHaveCount(1);
 

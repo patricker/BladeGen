@@ -1,4 +1,4 @@
-# SwordMaker Roadmap (Phase 8+)
+# BladeGen Roadmap (Phase 8+)
 
 Reference specs: see `VISION.md` (goals), `uxplan.md` (in‑app help), and `KNOBS.md` (controls/parameters).
 
@@ -189,7 +189,7 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
 - Stronger typing for material patches
   - Replace `any` in `setPartMaterial` patch parameter with a `MaterialPatch` type to catch typos and ensure compile‑time safety.
 - Documentation updates
-  - Note blade tangent generation (enables anisotropy), Auto Spin persistence (`swordmaker.autoSpinEnabled`), and Reset Render baseline.
+  - Note blade tangent generation (enables anisotropy), Auto Spin persistence (`bladegen.autoSpinEnabled`), and Reset Render baseline.
 
 ## Tests to Add
 

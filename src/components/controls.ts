@@ -1058,7 +1058,15 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   // First-run tour prompt (non-blocking)
   try {
     const ls = window.localStorage
-    const tourKey = 'swordmaker.tourPrompt'
+    // Migrate selected storage keys to new prefix
+    const migrateKey = (oldKey: string, newKey: string) => {
+      try { const v = ls.getItem(newKey); if (v == null) { const o = ls.getItem(oldKey); if (o != null) ls.setItem(newKey, o) } } catch {}
+    }
+    migrateKey('swordmaker.tourPrompt', 'bladegen.tourPrompt')
+    migrateKey('swordmaker.tourAutoStart', 'bladegen.tourAutoStart')
+    migrateKey('swordmaker.ui.tab', 'bladegen.ui.tab')
+    migrateKey('swordmaker.preset.custom', 'bladegen.preset.custom')
+    const tourKey = 'bladegen.tourPrompt'
     const state = ls.getItem(tourKey) // 'dismissed' | 'completed' | null
     if (!state) {
       const prompt = document.createElement('div')
@@ -1101,7 +1109,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       prompt.appendChild(skip)
       toolbar.appendChild(prompt)
       // Auto-start once after a short delay if not dismissed
-      const autoKey = 'swordmaker.tourAutoStart'
+      const autoKey = 'bladegen.tourAutoStart'
       const autoState = ls.getItem(autoKey) // 'done' | null
       if (!autoState) {
         setTimeout(async () => {
@@ -1219,8 +1227,8 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     modelOnly.forEach((b) => { (b as HTMLElement).style.display = isRender ? 'none' : ''; });
     try { syncVisibility(); } catch {}
   };
-  tabModel.addEventListener('click', () => { try{ localStorage.setItem('swordmaker.ui.tab','Model'); }catch{} try { const t = localStorage.getItem('swordmaker.ui.tab'); showTab(t==='Render'?'Render':'Model'); } catch { showTab('Model'); } });
-  tabRender.addEventListener('click', () => { try{ localStorage.setItem('swordmaker.ui.tab','Render'); }catch{} showTab('Render'); });
+  tabModel.addEventListener('click', () => { try{ localStorage.setItem('bladegen.ui.tab','Model'); }catch{} try { const t = localStorage.getItem('bladegen.ui.tab'); showTab(t==='Render'?'Render':'Model'); } catch { showTab('Model'); } });
+  tabRender.addEventListener('click', () => { try{ localStorage.setItem('bladegen.ui.tab','Render'); }catch{} showTab('Render'); });
   showTab('Model');
 
   // Per-section shuffle buttons
@@ -1264,6 +1272,14 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   fxSyncBox.textContent = '';
   sections.Other.appendChild(fxSyncBox);
   try {
+    window.addEventListener('bladegen:fx-synced' as any, (e: any) => {
+      const when = new Date();
+      const hh = String(when.getHours()).padStart(2,'0');
+      const mm = String(when.getMinutes()).padStart(2,'0');
+      const ss = String(when.getSeconds()).padStart(2,'0');
+      const parts = (e?.detail?.parts || []).join(', ');
+      fxSyncBox.textContent = `FX synced ${hh}:${mm}:${ss}` + (parts ? ` (${parts})` : '');
+    });
     window.addEventListener('swordmaker:fx-synced' as any, (e: any) => {
       const when = new Date();
       const hh = String(when.getHours()).padStart(2,'0');
@@ -2888,7 +2904,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     syncUi();
   });
   btnSave.addEventListener('click', () => {
-    localStorage.setItem('swordmaker.preset.custom', JSON.stringify(state));
+    localStorage.setItem('bladegen.preset.custom', JSON.stringify(state));
     presetSel.value = 'custom';
   });
   btnRandom.addEventListener('click', () => {
@@ -3019,7 +3035,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'swordmaker.json'; a.click();
+    a.href = url; a.download = 'bladegen.json'; a.click();
     URL.revokeObjectURL(url);
   };
   // Dropdown interactions
@@ -3464,7 +3480,7 @@ function addSection(root: HTMLElement, title: string) {
   const text = document.createElement('span'); text.textContent = ' ' + title;
   h.appendChild(caret); h.appendChild(text);
   // Persisted collapsed state
-  const key = `swordmaker.ui.section.${title}.collapsed`;
+  const key = `bladegen.ui.section.${title}.collapsed`;
   try {
     const col = localStorage.getItem(key);
     if (col === '1') wrap.classList.add('collapsed');

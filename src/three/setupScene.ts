@@ -34,11 +34,19 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
   const bootstrap = createBootstrap(canvas);
   const { renderer, scene, camera, controls, pmrem, envTexture, background, ground, groundClearance } = bootstrap;
 
-  const autoSpinStorageKey = 'swordmaker.autoSpinEnabled';
+  const autoSpinStorageKeyNew = 'bladegen.autoSpinEnabled';
+  const autoSpinStorageKeyOld = 'swordmaker.autoSpinEnabled';
   const readAutoSpinPreference = () => {
     if (typeof window === 'undefined') return true;
     try {
-      const value = window.localStorage?.getItem(autoSpinStorageKey);
+      // Migrate old key to new prefix if present
+      const ls = window.localStorage;
+      const rawNew = ls?.getItem(autoSpinStorageKeyNew);
+      const rawOld = ls?.getItem(autoSpinStorageKeyOld);
+      const value = rawNew ?? rawOld;
+      if (rawNew == null && rawOld != null) {
+        try { ls?.setItem(autoSpinStorageKeyNew, rawOld); } catch {}
+      }
       if (value === 'false') return false;
       if (value === 'true') return true;
     } catch {
@@ -49,7 +57,7 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
   const persistAutoSpinPreference = (enabled: boolean) => {
     if (typeof window === 'undefined') return;
     try {
-      window.localStorage?.setItem(autoSpinStorageKey, enabled ? 'true' : 'false');
+      window.localStorage?.setItem(autoSpinStorageKeyNew, enabled ? 'true' : 'false');
     } catch {
       // ignore storage access errors
     }
@@ -495,7 +503,8 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
         if (fxFlags.heatHaze) bladeMesh.layers.enable(HEAT_LAYER);
         if (!bladeVisibility.visible) applyBladeVisibility(false, bladeVisibility.occlude);
         try { (scene as any).__rebuildBladeGradient?.(); } catch {}
-        try { window.dispatchEvent(new CustomEvent('swordmaker:fx-synced', { detail: { parts: resynced } } as any)); } catch {}
+      try { window.dispatchEvent(new CustomEvent('bladegen:fx-synced', { detail: { parts: resynced } } as any)); } catch {}
+      try { window.dispatchEvent(new CustomEvent('swordmaker:fx-synced', { detail: { parts: resynced } } as any)); } catch {}
       }
     }
 

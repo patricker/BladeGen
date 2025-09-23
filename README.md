@@ -1,4 +1,4 @@
-# SwordMaker
+# BladeGen
 
 Parametric sword generator and renderer for the web.
 

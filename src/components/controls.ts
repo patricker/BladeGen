@@ -8,15 +8,28 @@ import { attachRenderPostPanel } from './renderPost';
 import { attachRenderPixelArtPanel } from './renderPixelArt';
 import { attachRenderAtmosPanel } from './renderAtmos';
 import { hexToInt } from '../utils/color';
+import { PARTS, type Part, type MatExt, type MaterialVariant } from './types';
+import {
+  presetKatana,
+  presetArming,
+  presetGladius,
+  presetJian,
+  presetClaymore,
+  presetRapier,
+  presetDemon,
+  presetLightsaber,
+  presetSabre,
+  type PresetEntry,
+  type PresetRenderOverrides,
+  type PresetPostOverrides,
+  type PresetAtmosOverrides,
+  type PresetFxOverrides,
+} from './presets';
 import { SwordGenerator, SwordParams, defaultSwordParams, buildBladeOutlinePoints, bladeOutlineToSVG } from '../three/SwordGenerator';
 import { createMaterial } from '../three/sword/materials';
 import { initHelp, attachHelp } from './help/HelpRegistry';
 import { TextureCache } from '../three/sword/textures';
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
-import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
-import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
-
-type Part = 'blade' | 'guard' | 'handle' | 'pommel' | 'scabbard' | 'tassel';
+import { exportGLB, exportOBJ, exportSTL, exportSVG, exportJSON } from './exporters';
 
 type Category = 'Blade' | 'Engravings' | 'Guard' | 'Handle' | 'Pommel' | 'Accessories' | 'Other' | 'Render';
 
@@ -221,21 +234,6 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     Object.assign(fxState, clone(fxStateDefaults));
   };
   let resetRenderAndFx = resetStateOnly;
-  type MatExt = {
-    color: string; metalness: number; roughness: number; clearcoat: number; clearcoatRoughness: number; preset: string;
-    bumpEnabled: boolean; bumpScale: number; bumpNoiseScale: number; bumpSeed: number;
-    emissiveColor?: string; emissiveIntensity?: number;
-    transmission?: number; ior?: number; thickness?: number; attenuationColor?: string; attenuationDistance?: number;
-    sheen?: number; sheenColor?: string; iridescence?: number; iridescenceIOR?: number; iridescenceThicknessMin?: number; iridescenceThicknessMax?: number;
-    envMapIntensity?: number; anisotropy?: number; anisotropyRotation?: number;
-    map?: string; normalMap?: string; roughnessMap?: string; metalnessMap?: string; aoMap?: string; bumpMap?: string; displacementMap?: string; alphaMap?: string; clearcoatNormalMap?: string;
-  };
-  type MaterialVariant = {
-    id: string;
-    name: string;
-    description?: string;
-    parts: Partial<Record<Part, MatExt>>;
-  };
 
   type PresetRenderOverrides = Partial<{
     exposure: number;
@@ -258,75 +256,8 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     shadowMapSize: 1024 | 2048 | 4096;
     qualityPreset: 'Low' | 'Medium' | 'High';
     toneMapping: 'ACES' | 'Reinhard' | 'Cineon' | 'Linear' | 'None';
-  }> & {
-    shadowBias?: number;
-    dprCap?: number;
-  };
+  }> & { shadowBias?: number; dprCap?: number };
 
-  type PresetPostOverrides = Partial<{
-    outlineEnabled: boolean;
-    outlineStrength: number;
-    outlineThickness: number;
-    outlineColor: string;
-    inkEnabled: boolean;
-    inkThickness: number;
-    inkColor: string;
-    vignetteEnabled: boolean;
-    vignetteStrength: number;
-    vignetteSoftness: number;
-    bladeGradientEnabled: boolean;
-    gradBase: string;
-    gradEdge: string;
-    gradFade: number;
-    gradWear: number;
-  }>;
-
-  type PresetAtmosOverrides = Partial<{
-    envUrl: string;
-    envPreset: 'None' | 'Room' | 'Royal Esplanade' | 'Venice Sunset';
-    envAsBackground: boolean;
-    fogColor: string;
-    fogDensity: number;
-    fresnelEnabled: boolean;
-    fresnelColor: string;
-    fresnelIntensity: number;
-    fresnelPower: number;
-    bladeInvisible: boolean;
-    occludeInvisible: boolean;
-  }>;
-
-  type PresetFxOverrides = Partial<{
-    innerGlow: Partial<{ enabled: boolean; color: string; min: number; max: number; speed: number }>;
-    mist: Partial<{
-      enabled: boolean;
-      color: string;
-      density: number;
-      speed: number;
-      spread: number;
-      size: number;
-      lifeRate: number;
-      turbulence: number;
-      windX: number;
-      windZ: number;
-      emission: 'base' | 'edge' | 'tip' | 'full';
-      sizeMinRatio: number;
-      occlude: boolean;
-    }>;
-    flame: Partial<{
-      enabled: boolean;
-      color1: string;
-      color2: string;
-      intensity: number;
-      speed: number;
-      noiseScale: number;
-      scale: number;
-      direction: 'Up' | 'Down';
-      blend: 'Add' | 'Darken' | 'Multiply';
-    }>;
-    embers: Partial<{ enabled: boolean; count: number; size: number; color: string }>;
-    selectiveBloom: boolean;
-    heatHaze: boolean;
-  }>;
   const matState: Record<Part, MatExt>
     = {
       blade: { color: '#b9c6ff', metalness: 0.8, roughness: 0.25, clearcoat: 0.0, clearcoatRoughness: 0.5, preset: 'None', bumpEnabled: false, bumpScale: 0.02, bumpNoiseScale: 8, bumpSeed: 1337, envMapIntensity: 1, anisotropy: 0, anisotropyRotation: 0 },
@@ -353,19 +284,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
   const getScabbard = () => ensureAccessories().scabbard;
   const getTassel = () => ensureAccessories().tassel;
 
-  type PresetEntry = {
-    id: string;
-    label: string;
-    build: () => SwordParams;
-    materials?: Partial<Record<Part, Partial<MatExt>>>;
-    variants?: Array<{ id?: string; name: string; description?: string; parts: Partial<Record<Part, Partial<MatExt>>> }>;
-    render?: PresetRenderOverrides;
-    post?: PresetPostOverrides;
-    atmos?: PresetAtmosOverrides;
-    fx?: PresetFxOverrides;
-  };
-
-  const PARTS: Part[] = ['blade', 'guard', 'handle', 'pommel', 'scabbard', 'tassel'];
+  // PresetEntry type imported from './presets'; PARTS imported from './types'
 
   const swordPresets: PresetEntry[] = [
     {
@@ -2796,126 +2715,11 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     syncUi();
   });
   // Export helpers for dropdown
-  const doExportGLB = async () => {
-    const exporter = new GLTFExporter();
-    if (matVariants.length) {
-      const texCache = new TextureCache();
-      const configs: VariantExportConfig[] = [];
-      const ownedMaterials: THREE.Material[] = [];
-      const parts: Part[] = [...PARTS];
-      const partRoots: Record<Part, THREE.Object3D | null> = {
-        blade: sword.bladeMesh,
-        guard: sword.guardMesh ?? (sword as any).guardGroup ?? null,
-        handle: sword.handleMesh ?? (sword as any).handleGroup ?? null,
-        pommel: sword.pommelMesh,
-        scabbard: (sword as any).scabbardGroup ?? null,
-        tassel: (sword as any).tasselGroup ?? null
-      };
-      const gatherMeshes = (root: THREE.Object3D | null | undefined): THREE.Mesh[] => {
-        if (!root) return [];
-        const meshes: THREE.Mesh[] = [];
-        root.traverse((obj) => {
-          const mesh = obj as THREE.Mesh;
-          if ((mesh as any).isMesh) meshes.push(mesh);
-        });
-        return meshes;
-      };
-      for (const variant of matVariants) {
-        const mappings: Array<{ mesh: THREE.Mesh; material: THREE.Material }> = [];
-        for (const part of parts) {
-          const state = variant.parts[part];
-          if (!state) continue;
-          const meshes = gatherMeshes(partRoots[part]);
-          if (!meshes.length) continue;
-          const material = createMaterial(part, state, texCache);
-          material.name = `${variant.name} / ${part}`;
-          ownedMaterials.push(material);
-          for (const mesh of meshes) {
-            mappings.push({ mesh, material });
-          }
-        }
-        if (mappings.length) {
-          configs.push({ name: variant.name, description: variant.description, mappings });
-        }
-      }
-      if (configs.length) {
-        exporter.register((writer) => new KHRMaterialsVariantsExporter(writer, configs, ownedMaterials));
-      }
-    }
-    exporter.parse(
-      sword.group,
-      (result) => {
-        const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'sword.glb'; a.click();
-        URL.revokeObjectURL(url);
-      },
-      (error) => { console.error('GLTF export error', error); },
-      { binary: true }
-    );
-  };
-  const doExportOBJ = () => {
-    const exporter = new OBJExporter();
-    const result = exporter.parse(sword.group);
-    const blob = new Blob([result], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'sword.obj'; a.click();
-    URL.revokeObjectURL(url);
-  };
-  const doExportSTL = () => {
-    const exporter = new STLExporter();
-    const result = exporter.parse(sword.group, { binary: true } as any);
-    const blob = new Blob([result as ArrayBuffer], { type: 'model/stl' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'sword.stl'; a.click();
-    URL.revokeObjectURL(url);
-  };
-  const doExportSVG = () => {
-    const pts = buildBladeOutlinePoints(state.blade);
-    const svg = bladeOutlineToSVG(pts);
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'blade_outline.svg'; a.click();
-    URL.revokeObjectURL(url);
-  };
-  const doExportJSON = () => {
-    const materialsOut: Record<string, any> = {};
-    for (const part of PARTS) {
-      materialsOut[part] = JSON.parse(JSON.stringify(matState[part]));
-    }
-    if (matVariants.length) {
-      materialsOut.variants = matVariants.map((variant) => ({
-        id: variant.id,
-        name: variant.name,
-        description: variant.description,
-        parts: PARTS.reduce((acc, part) => {
-          if (variant.parts[part]) {
-            acc[part] = JSON.parse(JSON.stringify(variant.parts[part]));
-          }
-          return acc;
-        }, {} as Partial<Record<Part, MatExt>>)
-      }));
-    }
-    if (currentVariantId) {
-      materialsOut.activeVariant = currentVariantId;
-    }
-    const payload = {
-      $schema: 'schema/sword.schema.json',
-      version: 4,
-      model: state,
-      render: { ...rstate },
-      materials: materialsOut
-    } as const;
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'bladegen.json'; a.click();
-    URL.revokeObjectURL(url);
-  };
+  const doExportGLB = async () => { try { await exportGLB(sword, matVariants) } catch (e) { console.error('GLB export error', e) } };
+  const doExportOBJ = () => exportOBJ(sword);
+  const doExportSTL = () => exportSTL(sword);
+  const doExportSVG = () => exportSVG(state);
+  const doExportJSON = () => exportJSON(state, rstate as any, matState, matVariants, currentVariantId);
   // Dropdown interactions
   btnExportMenu.addEventListener('click', (e) => {
     e.stopPropagation();

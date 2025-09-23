@@ -30,7 +30,8 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build -- --base=/${{ github.event.repository.name }}/
+        # Custom domain (bladegen.net) serves at root, so use default base '/'
+        run: npm run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://swordmaker.local/schema/sword.schema.json",
-  "title": "SwordMaker Document",
-  "description": "Complete, portable description of a SwordMaker design including geometry (model), per-part PBR material settings (materials), and renderer/lighting state (render). Coordinate system is Y-up; X is horizontal (guard width), Z is blade thickness. Units are scene units (dimensionless), designed to be visually consistent; typical blades are 2.5–3.6 units long.",
+  "$id": "https://bladegen.local/schema/sword.schema.json",
+  "title": "bladegen Document",
+  "description": "Complete, portable description of a bladegen design including geometry (model), per-part PBR material settings (materials), and renderer/lighting state (render). Coordinate system is Y-up; X is horizontal (guard width), Z is blade thickness. Units are scene units (dimensionless), designed to be visually consistent; typical blades are 2.5–3.6 units long.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -2004,7 +2004,7 @@
   },
   "examples": [
     {
-      "$schema": "https://swordmaker.local/schema/sword.schema.json",
+      "$schema": "https://bladegen.local/schema/sword.schema.json",
       "version": 3,
       "model": {
         "blade": {

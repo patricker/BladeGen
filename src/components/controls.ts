@@ -1062,10 +1062,6 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
     const migrateKey = (oldKey: string, newKey: string) => {
       try { const v = ls.getItem(newKey); if (v == null) { const o = ls.getItem(oldKey); if (o != null) ls.setItem(newKey, o) } } catch {}
     }
-    migrateKey('swordmaker.tourPrompt', 'bladegen.tourPrompt')
-    migrateKey('swordmaker.tourAutoStart', 'bladegen.tourAutoStart')
-    migrateKey('swordmaker.ui.tab', 'bladegen.ui.tab')
-    migrateKey('swordmaker.preset.custom', 'bladegen.preset.custom')
     const tourKey = 'bladegen.tourPrompt'
     const state = ls.getItem(tourKey) // 'dismissed' | 'completed' | null
     if (!state) {
@@ -1280,7 +1276,7 @@ export function createSidebar(el: HTMLElement, sword: SwordGenerator, params: Sw
       const parts = (e?.detail?.parts || []).join(', ');
       fxSyncBox.textContent = `FX synced ${hh}:${mm}:${ss}` + (parts ? ` (${parts})` : '');
     });
-    window.addEventListener('swordmaker:fx-synced' as any, (e: any) => {
+    window.addEventListener('bladegen:fx-synced' as any, (e: any) => {
       const when = new Date();
       const hh = String(when.getHours()).padStart(2,'0');
       const mm = String(when.getMinutes()).padStart(2,'0');

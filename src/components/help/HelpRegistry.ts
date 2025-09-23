@@ -397,10 +397,8 @@ try {
   // Seed built-in docs so tooltips/popovers have content without extra wiring.
   // This JSON is generated/maintained by scripts/build-help-docs.mjs from docs/help/controls/*.md
   // and checked into the repo for now.
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  import('./docs.json').then((mod) => {
-    const list = (mod?.default || mod) as HelpDoc[] | undefined;
+  import('./docs.json').then((mod: any) => {
+    const list = (mod?.default ?? mod) as HelpDoc[] | undefined;
     if (Array.isArray(list) && list.length) addDocs(list);
   }).catch(() => {/* optional */});
 } catch {/* ignore dynamic import issues in SSR/tests */}

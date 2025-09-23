@@ -8,6 +8,14 @@ export default defineConfig({
     exclude: ['tests/e2e/**'],
     coverage: {
       provider: 'v8',
+      // Enforce thresholds on CI only; run locally with `--coverage` when needed
+      enabled: !!process.env.CI,
+      thresholds: {
+        lines: 75,
+        functions: 75,
+        statements: 75,
+        branches: 65,
+      },
     },
   },
 })

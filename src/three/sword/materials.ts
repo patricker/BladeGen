@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import type { Material } from 'three'
 import type { SwordParams } from './types'
 import { TextureCache } from './textures'
 

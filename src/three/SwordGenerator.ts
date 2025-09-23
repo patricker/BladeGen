@@ -36,7 +36,6 @@ export type {
 import { buildBladeGeometry, buildFullerOverlays, buildHamonOverlays, buildBladeOutlinePoints, bladeOutlineToSVG } from './sword/bladeGeometry';
 import { buildGuard } from './sword/guardGeometry';
 import { decorateGuard } from './sword/guardDecor';
-import { buildGuardHalfShape } from './sword/guardShapes';
 import { buildHandle } from './sword/handleGeometry';
 import { buildPommel } from './sword/pommelGeometry';
 import { buildEngravingsGroup } from './sword/engravings';
@@ -311,15 +310,6 @@ export class SwordGenerator {
       disposeObject3D(this.guardGroup);
       this.guardGroup = null;
     }
-
-    // Compute guard placement: align its top to the blade base
-    const GUARD_HEIGHT = 0.08;
-    let bladeBaseY: number | undefined;
-    if (this.bladeMesh) {
-      const bb = new THREE.Box3().setFromObject(this.bladeMesh);
-      if (isFinite(bb.min.y)) bladeBaseY = bb.min.y;
-    }
-    const targetTopY = (bladeBaseY ?? 0.0) + (g.heightOffset ?? 0);
 
     // Build guard core and decorate
     const built = buildGuard(g, { bladeMesh: this.bladeMesh, handleMesh: this.handleMesh, makeMaterial: (p)=> this.makeMaterial(p) })

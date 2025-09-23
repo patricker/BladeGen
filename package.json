@@ -13,7 +13,9 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "help:build": "node scripts/build-help-docs.mjs && node scripts/build-help-index.mjs",
-    "help:lint": "node scripts/lint-help-docs.mjs"
+    "help:lint": "node scripts/lint-help-docs.mjs",
+    "lint": "eslint \"src/**/*.ts\" --max-warnings=0",
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "@playwright/test": "^1.47.2",

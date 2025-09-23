@@ -12,7 +12,7 @@ const { renderer, camera, controls, scene, composer, dispose, updateFXAA, render
 // Simple FPS overlay
 const fpsEl = document.getElementById('fps');
 const themeSel = document.getElementById('theme') as HTMLSelectElement | null;
-let _fpsAccum = 0; let _fpsFrames = 0; let _fpsLast = performance.now();
+let _fpsFrames = 0; let _fpsLast = performance.now();
 
 let disposed = false;
 function onResize() {

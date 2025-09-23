@@ -14,6 +14,18 @@ Reference specs: see `VISION.md` (goals), `uxplan.md` (in‑app help), and `KNOB
 - [x] Replace the JSON deep-clone in `resolveDerivedParams` with a typed normaliser that preserves texture/material references and shared objects.
 - [x] Extract a render-material service so highlight/emissive toggles and material patching live outside the generator class (fewer side effects, easier testing).
 
+### Code review follow‑ups
+- [ ] Controls module refactor — split `src/components/controls.ts` into smaller modules: `registry`, `modelPanel`, `presets`, `exportImport`, and `renderPanel` (reduce scope and ease testing).
+- [ ] Add ESLint/Prettier configs and scripts; wire a CI lint step.
+- [ ] Remove TypeScript suppressions by using typed dynamic imports:
+  - Replace `@ts-ignore` around JSON import in `src/components/help/HelpRegistry.ts`.
+  - Replace `@ts-ignore` around Ajv import in `src/components/controls.ts`.
+- [ ] Remove unused imports/variables to reduce noise:
+  - `buildGuardHalfShape` import and unused guard placement variables in `src/three/SwordGenerator.ts`.
+  - `_fpsAccum` in `src/main.ts`.
+  - Unused `Material` type import in `src/three/sword/materials.ts`.
+- [ ] Improve `TextureCache` placeholder: use a 1×1 neutral `DataTexture` and set color space to avoid black flashes before load.
+
 ## Geometry & Dynamics
 - [x] Distal taper thicknessProfile (Bezier/points) varying Z thickness along Y.
 - [x] Derived metrics: PoB (cmY), CoP, polar moment; expose in UI (readout).
@@ -57,6 +69,7 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
 - [x] Tooltip/Popover: custom lightweight micro-tooltips and popovers; native Popover used when available.
 - [x] Search: custom build-time index (`scripts/build-help-index.mjs`) + runtime filter with simple synonyms; defer MiniSearch/Lunr to future if needed.
 - [x] Guided tours: use Driver.js (MIT). Load on demand from CDN; keep fallback lightweight tour for offline/dev.
+  - [ ] Loader hardening: prefer local vendored Driver.js (`/vendor/driver.min.js` + CSS) with CDN fallback; add integrity attributes when using CDN.
 
 ### Phase 1 — Tooltips & Popovers
 - [x] Introduce HelpRegistry (in‑memory map `helpId → doc`) in `src/ui/help/` with `getDoc(id)`, `getSummary(id)`, `preload()`.
@@ -141,6 +154,7 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
 - [x] Expand Playwright coverage: JSON import/export error paths.
 - [x] Add unit tests around accessories (scabbard/tassel anchor sampling) and render hook mutations to prevent regressions.
 - [x] Validate schema vs `SwordParams` with a generated fixture per guard/handle/pommel style so Ajv tests cover more combinations.
+ - [ ] Add Vitest coverage thresholds (gated on CI) targeting ≥80% for core geometry/validation.
 
 ---
 

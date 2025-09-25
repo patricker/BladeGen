@@ -18,13 +18,20 @@ Reference specs: see `VISION.md` (goals), `uxplan.md` (in‑app help), and `KNOB
 
 ### Code review follow‑ups
 
-- [ ] Controls module refactor — split `src/components/controls.ts` into smaller modules: `registry`, `modelPanel`, `presets`, `exportImport`, and `renderPanel` (reduce scope and ease testing).
+- [x] Controls module refactor — split `src/components/controls.ts` into smaller modules: `registry`, `modelPanel`, `presets`, `exportImport`, and `renderPanel` (reduce scope and ease testing).
   - [x] Extracted `ControlRegistry` to `src/components/ControlRegistry.ts`.
   - [x] Extracted preset builders to `src/components/presets.ts`.
   - [x] Moved full preset list (materials/variants) to `src/components/presets.ts` and wired in.
   - [x] Extract export/import helpers to `src/components/exporters.ts` and wire in.
   - [x] Extract Looks/Variants panel to `src/components/looksPanel.ts` and wire in.
-  - [ ] Extract Model panel (Blade/Guard/Handle/Pommel/Accessories) to `src/components/modelPanel.ts`.
+  - [x] Extract Model panel (Blade/Guard/Handle/Pommel/Accessories) to `src/components/modelPanel.ts`.
+    - [x] Create `modelPanel.ts` and implement Blade controls.
+    - [x] Wire Blade controls into `controls.ts` (clear section + attach).
+    - [x] Extract Guard controls into module and wire.
+      - [x] Implement Guard controls in module.
+      - [x] Wire Guard controls (clear section + attach after legacy build).
+    - [x] Extract Handle controls into module and wire.
+    - [x] Extract Pommel and Accessories controls into module and wire.
   - [ ] Consider further splitting panels once stable.
 - [x] Add ESLint/Prettier configs and scripts; wire a CI lint step.
 - [x] Remove TypeScript suppressions by using typed dynamic imports:

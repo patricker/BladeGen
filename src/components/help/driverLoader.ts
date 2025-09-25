@@ -1,9 +1,10 @@
 // Minimal loader for Driver.js via CDN with CSS
 // Prefers existing global Driver if already present
 
-const CDN_JS = 'https://cdn.jsdelivr.net/npm/driver.js@1.3.3/dist/driver.min.js';
-const CDN_CSS = 'https://cdn.jsdelivr.net/npm/driver.js@1.3.3/dist/driver.min.css';
-const LOCAL_JS = '/vendor/driver.min.js';
+// Prefer ESM build for modern browsers; fallback to older UMD only if needed
+const CDN_ESM = 'https://cdn.jsdelivr.net/npm/driver.js@1.3.6/dist/driver.js.mjs';
+const CDN_CSS = 'https://cdn.jsdelivr.net/npm/driver.js@1.3.6/dist/driver.min.css';
+const LOCAL_ESM = '/vendor/driver.mjs';
 const LOCAL_CSS = '/vendor/driver.min.css';
 
 function ensureCss(): void {
@@ -30,25 +31,29 @@ export async function loadDriver(): Promise<any> {
     return g.driver || g.driverJs;
   }
   ensureCss();
-  // Load script tag (prefer local vendor; fallback to CDN)
-  const id = 'driverjs-script';
-  if (!document.getElementById(id)) {
-    const s = document.createElement('script');
-    s.id = id;
-    s.src = LOCAL_JS;
-    s.async = true;
-    s.onerror = () => {
-      s.src = CDN_JS;
-    };
-    document.head.appendChild(s);
-  }
-  await new Promise<void>((resolve, reject) => {
-    const check = () => {
-      if ((window as any).Driver) resolve();
-      else setTimeout(check, 40);
-    };
-    setTimeout(check, 40);
-    setTimeout(() => reject(new Error('Driver.js load timeout')), 10000);
-  }).catch(() => {});
+  // Try ESM dynamic import (local vendored first, then CDN)
+  try {
+    // @vite-ignore to allow external/absolute import path
+    const mod: any = await import(/* @vite-ignore */ LOCAL_ESM);
+    if (mod?.driver) {
+      const Wrapper: any = function (opts?: any) {
+        return mod.driver(opts);
+      };
+      return Wrapper;
+    }
+    return mod?.Driver || mod?.default || mod;
+  } catch {}
+  try {
+    const mod: any = await import(/* @vite-ignore */ CDN_ESM);
+    if (mod?.driver) {
+      const Wrapper: any = function (opts?: any) {
+        return mod.driver(opts);
+      };
+      return Wrapper;
+    }
+    return mod?.Driver || mod?.default || mod;
+  } catch {}
+  // As a last resort, poll for any global that may have been provided by other means
+  await new Promise<void>((resolve) => setTimeout(resolve, 200));
   return (window as any).Driver || (window as any).driver || (window as any).driverJs;
 }

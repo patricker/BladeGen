@@ -9,10 +9,39 @@ function toDriverSteps(def: Step[]) {
   }));
 }
 
-export async function startIntroTourDriver() {
+async function createDriverInstance() {
   const Driver: any = await loadDriver();
   if (!Driver) throw new Error('Driver.js not available');
-  const driver = new Driver({ allowClose: true, overlayOpacity: 0.45 });
+  let inst: any = null;
+  try {
+    // Legacy API (class constructor)
+    inst = new (Driver as any)({ allowClose: true, overlayOpacity: 0.45 });
+  } catch {
+    try {
+      // New API (factory function returning a driver instance)
+      inst = (Driver as any)({ allowClose: true, overlayOpacity: 0.45 });
+    } catch {
+      inst = null;
+    }
+  }
+  if (!inst) throw new Error('Failed to create driver instance');
+  return inst;
+}
+
+function applySteps(driver: any, steps: any[]) {
+  if (typeof driver.defineSteps === 'function') driver.defineSteps(steps);
+  else if (typeof driver.setSteps === 'function') driver.setSteps(steps);
+  else if (typeof driver.setConfig === 'function')
+    driver.setConfig({ ...(driver.getConfig?.() || {}), steps });
+}
+
+function startDriver(driver: any) {
+  if (typeof driver.start === 'function') driver.start();
+  else if (typeof driver.drive === 'function') driver.drive();
+}
+
+export async function startIntroTourDriver() {
+  const driver = await createDriverInstance();
   const def: Step[] = [
     {
       selector: '#scene',
@@ -41,7 +70,7 @@ export async function startIntroTourDriver() {
       body: 'Toggle labels in the viewport with the Explain button or press E.',
     },
   ];
-  driver.defineSteps(toDriverSteps(def));
+  applySteps(driver, toDriverSteps(def));
   try {
     (window as any).__smkHelpEvents = (window as any).__smkHelpEvents || [];
     (window as any).__smkHelpEvents.push({
@@ -50,13 +79,11 @@ export async function startIntroTourDriver() {
       data: { lib: 'driver.js' },
     });
   } catch {}
-  driver.start();
+  startDriver(driver);
 }
 
 export async function startAddFullerTourDriver() {
-  const Driver: any = await loadDriver();
-  if (!Driver) throw new Error('Driver.js not available');
-  const driver = new Driver({ allowClose: true, overlayOpacity: 0.45 });
+  const driver = await createDriverInstance();
   const def: Step[] = [
     {
       selector: '#sidebar [data-field^="blade"]',
@@ -79,7 +106,7 @@ export async function startAddFullerTourDriver() {
       body: 'Pick U, V, or flat-bottom.',
     },
   ];
-  driver.defineSteps(toDriverSteps(def));
+  applySteps(driver, toDriverSteps(def));
   try {
     (window as any).__smkHelpEvents?.push({
       t: Date.now(),
@@ -87,13 +114,11 @@ export async function startAddFullerTourDriver() {
       data: { lib: 'driver.js', task: 'add-fuller' },
     });
   } catch {}
-  driver.start();
+  startDriver(driver);
 }
 
 export async function startLeafBladeTourDriver() {
-  const Driver: any = await loadDriver();
-  if (!Driver) throw new Error('Driver.js not available');
-  const driver = new Driver({ allowClose: true, overlayOpacity: 0.45 });
+  const driver = await createDriverInstance();
   const def: Step[] = [
     {
       selector: '#sidebar [data-field="blade.tip-shape"]',
@@ -111,7 +136,7 @@ export async function startLeafBladeTourDriver() {
       body: 'Adjust distal taper to balance mass and stiffness.',
     },
   ];
-  driver.defineSteps(toDriverSteps(def));
+  applySteps(driver, toDriverSteps(def));
   try {
     (window as any).__smkHelpEvents?.push({
       t: Date.now(),
@@ -119,13 +144,11 @@ export async function startLeafBladeTourDriver() {
       data: { lib: 'driver.js', task: 'leaf-blade' },
     });
   } catch {}
-  driver.start();
+  startDriver(driver);
 }
 
 export async function startExportStlTourDriver() {
-  const Driver: any = await loadDriver();
-  if (!Driver) throw new Error('Driver.js not available');
-  const driver = new Driver({ allowClose: true, overlayOpacity: 0.45 });
+  const driver = await createDriverInstance();
   const def: Step[] = [
     {
       selector: '.toolbar .dropdown',
@@ -143,7 +166,7 @@ export async function startExportStlTourDriver() {
       body: 'For colored materials and variants, prefer exporting GLB (GLTF).',
     },
   ];
-  driver.defineSteps(toDriverSteps(def));
+  applySteps(driver, toDriverSteps(def));
   try {
     (window as any).__smkHelpEvents?.push({
       t: Date.now(),
@@ -151,5 +174,5 @@ export async function startExportStlTourDriver() {
       data: { lib: 'driver.js', task: 'export-stl' },
     });
   } catch {}
-  driver.start();
+  startDriver(driver);
 }

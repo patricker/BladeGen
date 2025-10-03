@@ -44,6 +44,8 @@ import {
 import { createMaterial } from '../three/sword/materials';
 import { initHelp, attachHelp } from './help/HelpRegistry';
 import { TextureCache } from '../three/sword/textures';
+// Re-export ControlRegistry for tests/consumers that import from 'components/controls'
+export { ControlRegistry } from './ControlRegistry';
 import { exportGLB, exportOBJ, exportSTL, exportSVG, exportJSON } from './exporters';
 
 type Category =
@@ -1000,6 +1002,14 @@ export function createSidebar(
   // First-run tour prompt (non-blocking)
   try {
     const ls = window.localStorage;
+    // Disable guided tour auto-start in automated/browser-driven environments (e2e)
+    const isAutomated = (navigator as any).webdriver === true;
+    if (isAutomated) {
+      try {
+        ls.setItem('bladegen.tourPrompt', 'disabled');
+        ls.setItem('bladegen.tourAutoStart', 'done');
+      } catch {}
+    }
     // Migrate selected storage keys to new prefix
     const migrateKey = (oldKey: string, newKey: string) => {
       try {
@@ -1012,7 +1022,7 @@ export function createSidebar(
     };
     const tourKey = 'bladegen.tourPrompt';
     const state = ls.getItem(tourKey); // 'dismissed' | 'completed' | null
-    if (!state) {
+    if (!state && !isAutomated) {
       const prompt = document.createElement('div');
       prompt.style.display = 'flex';
       prompt.style.alignItems = 'center';
@@ -2933,11 +2943,13 @@ export function createSidebar(
       if (v)
         rest.push({
           type: 'text',
-          content: 'ᚠᚢᚦ',
+          // Use ASCII default to avoid unsupported glyphs rendering as '???'
+          content: 'TEST',
           fontUrl:
             'https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_regular.typeface.json',
-          width: 0.18,
-          height: 0.03,
+          // Safer default sizing so it fits most blades without spilling
+          width: 0.10,
+          height: 0.02,
           depth: 0.002,
           offsetY: state.blade.length * 0.5,
           offsetX: 0,
@@ -2945,6 +2957,10 @@ export function createSidebar(
           side: 'right',
         });
       (state.blade as any).engravings = rest;
+      // Keep the edit controls in sync with the actual engraving array
+      try {
+        syncEngravingControls();
+      } catch {}
     },
     rerender,
     'Adds a text engraving (provide font URL and content).'
@@ -2989,6 +3005,12 @@ export function createSidebar(
     engrIndex = Math.max(0, Math.min(engrIndex, arr.length - 1));
     rerender();
     syncEngravingControls();
+    // If no engravings remain, reflect that in the simple toggle
+    if (arr.length === 0) {
+      try {
+        registry.setValue('engravings', 'Text Engraving', false);
+      } catch {}
+    }
   };
   const engrUpBtn = document.createElement('button');
   engrUpBtn.textContent = 'Move Up';
@@ -3081,7 +3103,7 @@ export function createSidebar(
   engrFields.text = textRow(
     engrContent,
     'Engrave Text',
-    'ᚠᚢᚦ',
+    'TEST',
     (v) => {
       const e = getEngr();
       if (!e) return;
@@ -4714,8 +4736,11 @@ function textRow(
   input.type = 'text';
   input.value = value || '';
   input.placeholder = 'http(s):// or relative path';
-  input.addEventListener('change', () => {
-    onChange(input.value);
+  const commit = () => onChange(input.value);
+  input.addEventListener('change', commit);
+  input.addEventListener('input', commit);
+  input.addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter') commit();
   });
   const field = registry.registerControl(
     parent,

@@ -36,7 +36,9 @@ export function createPostProcessing(
   // step. Until a resolve path is wired in, fall back to the standard single-sample targets so presets
   // don’t collapse to black on multi-pass renders when MSAA is requested.
   const msaaSupported = false;
-  const composer = new EffectComposer(renderer);
+  // Ensure composer targets include stencil buffer so engraving masks work
+  const rt = new THREE.WebGLRenderTarget(1, 1, { depthBuffer: true, stencilBuffer: true });
+  const composer = new EffectComposer(renderer, rt);
   const maxSamples = 0;
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);

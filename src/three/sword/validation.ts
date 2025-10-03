@@ -281,7 +281,12 @@ export function validateSwordParams(params: SwordParams): SwordParams {
     bevel: clamp(b.bevel ?? 0.5, 0, 1),
     tipShape: (b.tipShape ?? 'pointed') as any,
     tipBulge: clamp(b.tipBulge ?? 0.2, 0, 1),
-    engravings: Array.isArray((b as any).engravings) ? (b as any).engravings : undefined,
+    // Clone engravings array to avoid sharing references with incoming params.
+    // Sharing would make change detection think nothing changed when UI mutates
+    // objects in-place, preventing rebuilds (e.g., engraving knobs not updating).
+    engravings: Array.isArray((b as any).engravings)
+      ? (b as any).engravings.map((e: any) => ({ ...e }))
+      : undefined,
     ricassoLength: clamp((b as any).ricassoLength ?? 0, 0, 0.3),
     falseEdgeLength: clamp((b as any).falseEdgeLength ?? 0, 0, 1),
     falseEdgeDepth: clamp((b as any).falseEdgeDepth ?? 0, 0, 0.2),

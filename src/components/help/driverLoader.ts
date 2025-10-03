@@ -22,38 +22,43 @@ function ensureCss(): void {
 
 export async function loadDriver(): Promise<any> {
   const g: any = window as any;
-  if (g.Driver) {
+  if (g.Driver || g.driver || g.driverJs) {
     ensureCss();
-    return g.Driver;
-  }
-  if (g.driver || g.driverJs) {
-    ensureCss();
-    return g.driver || g.driverJs;
+    return g.Driver || g.driver || g.driverJs;
   }
   ensureCss();
-  // Try ESM dynamic import (local vendored first, then CDN)
-  try {
-    // @vite-ignore to allow external/absolute import path
-    const mod: any = await import(/* @vite-ignore */ LOCAL_ESM);
-    if (mod?.driver) {
-      const Wrapper: any = function (opts?: any) {
-        return mod.driver(opts);
-      };
-      return Wrapper;
-    }
-    return mod?.Driver || mod?.default || mod;
-  } catch {}
-  try {
-    const mod: any = await import(/* @vite-ignore */ CDN_ESM);
-    if (mod?.driver) {
-      const Wrapper: any = function (opts?: any) {
-        return mod.driver(opts);
-      };
-      return Wrapper;
-    }
-    return mod?.Driver || mod?.default || mod;
-  } catch {}
-  // As a last resort, poll for any global that may have been provided by other means
-  await new Promise<void>((resolve) => setTimeout(resolve, 200));
-  return (window as any).Driver || (window as any).driver || (window as any).driverJs;
+  // Avoid importing from /public in source — inject a module script that imports
+  // the vendored ESM and assigns a global for consumers.
+  if (!g.__smkDriverInjecting) {
+    g.__smkDriverInjecting = true;
+    const s = document.createElement('script');
+    s.type = 'module';
+    s.textContent = `
+      (async () => {
+        try {
+          const mod = await import('${LOCAL_ESM}');
+          const drv = mod.driver || mod.default || mod.Driver;
+          window.driver = drv;
+          window.Driver = window.Driver || drv;
+        } catch (err) {
+          try {
+            const mod = await import('${CDN_ESM}');
+            const drv = mod.driver || mod.default || mod.Driver;
+            window.driver = drv;
+            window.Driver = window.Driver || drv;
+          } catch (e) {
+            // leave globals undefined; caller will see null and can handle
+          }
+        }
+      })();
+    `;
+    document.head.appendChild(s);
+  }
+  // Poll for the global to appear
+  for (let i = 0; i < 60; i++) {
+    const drv = g.Driver || g.driver || g.driverJs;
+    if (drv) return drv;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return g.Driver || g.driver || g.driverJs;
 }

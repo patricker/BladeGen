@@ -175,6 +175,13 @@ export class SwordGenerator {
     const mat = this.makeMaterial(part);
     if (part === 'blade') {
       (mat as any).side = THREE.DoubleSide as any;
+      // Keep stencil configuration consistent on reapply
+      ;(mat as any).stencilWrite = true;
+      ;(mat as any).stencilRef = 0;
+      ;(mat as any).stencilFunc = THREE.EqualStencilFunc;
+      ;(mat as any).stencilZPass = THREE.KeepStencilOp;
+      ;(mat as any).stencilZFail = THREE.KeepStencilOp;
+      ;(mat as any).stencilFail = THREE.KeepStencilOp;
     }
     obj.traverse((o) => {
       const mesh = o as THREE.Mesh;
@@ -317,10 +324,19 @@ export class SwordGenerator {
 
     const mat = this.makeMaterial('blade');
     mat.side = THREE.DoubleSide as any;
+    // Configure blade to only draw where stencil is 0 (engraving mask writes 1)
+    ;(mat as any).stencilWrite = true;
+    ;(mat as any).stencilRef = 0;
+    ;(mat as any).stencilFunc = THREE.EqualStencilFunc;
+    ;(mat as any).stencilZPass = THREE.KeepStencilOp;
+    ;(mat as any).stencilZFail = THREE.KeepStencilOp;
+    ;(mat as any).stencilFail = THREE.KeepStencilOp;
     this.bladeMesh = new THREE.Mesh(geo, mat);
     // Align blade base exactly at y=0 (no extra offset)
     this.bladeMesh.position.y = 0.0;
     this.bladeMesh.castShadow = true;
+    // Ensure blade draws after stencil mask but before cavity fill
+    this.bladeMesh.renderOrder = 200;
     this.group.add(this.bladeMesh);
 
     // Fuller grooves: overlay ribbons (default) or carved geometry reduction

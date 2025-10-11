@@ -2,7 +2,7 @@
 
 Parametric sword generator and renderer for the web.
 
-- Website: https://bladegen.net/
+- Website: http://bladegen.net/
 
 ## Quick start
 

@@ -195,6 +195,8 @@ export type BladeParams = {
     depth?: number;
     offsetY: number;
     offsetX: number;
+    /** Optional offset along the face normal (scene units). Positive lifts off the face; negative sinks in. */
+    offsetZ?: number;
     rotation?: number;
     side?: 'left' | 'right' | 'both';
     align?: 'left' | 'center' | 'right';

@@ -78,8 +78,59 @@ class KHRMaterialsVariantsExporter {
   }
 }
 
+// Bake engravings into the blade mesh using BVH-accelerated CSG.
+// This mutates sword.bladeMesh.geometry for the duration of the export and restores it afterwards.
+async function maybeBakeEngravings(sword: SwordGenerator) {
+  const blade = sword.bladeMesh as THREE.Mesh | null;
+  if (!blade) return;
+  // Find engraving fill meshes (the actual cavity volumes)
+  let fillGroup: THREE.Object3D | null = null;
+  (sword.group as THREE.Object3D).traverse((o) => {
+    if (o.name === 'engravingFill') fillGroup = o;
+  });
+  const solids: THREE.Mesh[] = [];
+  if (fillGroup) {
+    fillGroup.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if ((m as any).isMesh) solids.push(m);
+    });
+  }
+  if (!solids.length) return;
+  // Dynamic import to avoid bundling cost if baking is never used
+  const mod = await import('three-bvh-csg');
+  const { Brush, Evaluator, SUBTRACTION } = mod as any;
+  const toBrush = (mesh: THREE.Mesh) => {
+    const b = new Brush(mesh.geometry.clone());
+    b.matrix.copy(mesh.matrixWorld);
+    // three-bvh-csg expects updated world matrix
+    b.matrix.decompose(b.position, b.quaternion, b.scale);
+    b.updateMatrixWorld(true);
+    return b;
+  };
+  const base = toBrush(blade);
+  const evaluator = new Evaluator();
+  let carved = base as any;
+  for (const s of solids) {
+    const sub = toBrush(s);
+    carved = evaluator.evaluate(carved, sub, SUBTRACTION);
+  }
+  // Swap geometry on the live blade for export
+  const original = blade.geometry;
+  blade.geometry = carved.geometry;
+  // Ensure geometry carries normals/uvs reasonably
+  blade.geometry.computeVertexNormals();
+  // After a tick, restore to avoid affecting the interactive scene
+  queueMicrotask(() => {
+    try {
+      blade.geometry.dispose?.();
+    } catch {}
+    blade.geometry = original;
+  });
+}
+
 export async function exportGLB(sword: SwordGenerator, variants: MaterialVariant[]): Promise<void> {
   const exporter = new GLTFExporter();
+  await maybeBakeEngravings(sword); // default: bake engravings into blade for export
   if (variants && variants.length) {
     const texCache = new TextureCache();
     const configs: VariantExportConfig[] = [];
@@ -140,8 +191,9 @@ export async function exportGLB(sword: SwordGenerator, variants: MaterialVariant
   });
 }
 
-export function exportOBJ(sword: SwordGenerator) {
+export async function exportOBJ(sword: SwordGenerator) {
   const exporter = new OBJExporter();
+  await maybeBakeEngravings(sword);
   const result = exporter.parse(sword.group);
   const blob = new Blob([result], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
@@ -152,9 +204,13 @@ export function exportOBJ(sword: SwordGenerator) {
   URL.revokeObjectURL(url);
 }
 
-export function exportSTL(sword: SwordGenerator) {
+export async function exportSTL(sword: SwordGenerator) {
   const exporter = new STLExporter();
-  const result = exporter.parse(sword.group, { binary: true } as any);
+  await maybeBakeEngravings(sword);
+  // Build a print-safe, watertight subset: core solids only
+  const { buildPrintableGroup } = await import('../three/export/printable');
+  const printable = buildPrintableGroup(sword);
+  const result = exporter.parse(printable, { binary: true } as any);
   const blob = new Blob([result as ArrayBuffer], { type: 'model/stl' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

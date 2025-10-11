@@ -524,6 +524,10 @@
               "offsetX": {
                 "type": "number"
               },
+              "offsetZ": {
+                "type": "number",
+                "description": "Signed offset along the face normal (scene units). Positive lifts off the face; negative sinks into the blade."
+              },
               "rotation": {
                 "type": "number"
               },

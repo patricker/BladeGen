@@ -2953,6 +2953,7 @@ export function createSidebar(
           depth: 0.002,
           offsetY: state.blade.length * 0.5,
           offsetX: 0,
+          offsetZ: 0,
           rotation: 0,
           side: 'right',
         });
@@ -2984,6 +2985,7 @@ export function createSidebar(
       depth: 0.002,
       offsetY: state.blade.length * 0.5,
       offsetX: 0,
+      offsetZ: 0,
       rotation: 0,
       side: 'right',
       align: 'center',
@@ -3220,6 +3222,22 @@ export function createSidebar(
     rerender,
     'Lateral offset across blade width.'
   );
+  engrFields.offsetZ = slider(
+    engrTransform,
+    'Engrave OffsetZ',
+    -0.02,
+    0.02,
+    0.0005,
+    0,
+    (val) => {
+      const e = getEngr();
+      if (!e) return;
+      (e as any).offsetZ = val;
+      rerender();
+    },
+    rerender,
+    'Positive sinks into blade (depth bias); negative lifts outward.'
+  );
   engrFields.rotY = slider(
     engrTransform,
     'Engrave RotY',
@@ -3298,6 +3316,7 @@ export function createSidebar(
     registry.setValue('engravings', 'Letter Spacing', e.letterSpacing ?? 0);
     registry.setValue('engravings', 'Engrave OffsetY', (e.offsetY ?? bladeLen * 0.5) / bladeLen);
     registry.setValue('engravings', 'Engrave OffsetX', e.offsetX ?? 0);
+    registry.setValue('engravings', 'Engrave OffsetZ', (e as any).offsetZ ?? 0);
     registry.setValue('engravings', 'Engrave RotY', ((e.rotation ?? 0) * 180) / Math.PI);
     registry.setValue('engravings', 'Engrave Side', e.side ?? 'right');
     registry.setValue('engravings', 'Text Align', e.align ?? 'center');
@@ -3598,8 +3617,8 @@ export function createSidebar(
       console.error('GLB export error', e);
     }
   };
-  const doExportOBJ = () => exportOBJ(sword);
-  const doExportSTL = () => exportSTL(sword);
+  const doExportOBJ = () => { exportOBJ(sword); };
+  const doExportSTL = () => { exportSTL(sword); };
   const doExportSVG = () => exportSVG(state);
   const doExportJSON = () =>
     exportJSON(state, rstate as any, matState, looksState.matVariants, looksState.currentVariantId);

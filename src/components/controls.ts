@@ -166,7 +166,8 @@ export function createSidebar(
   el: HTMLElement,
   sword: SwordGenerator,
   params: SwordParams,
-  render?: RenderHooks
+  render?: RenderHooks,
+  options?: { initialPresetId?: string }
 ) {
   // Initialize contextual help wiring with 3D highlighter hookup
   initHelp({
@@ -3595,6 +3596,15 @@ export function createSidebar(
     rerender();
     syncUi();
   });
+
+  // Apply initial preset on boot if requested
+  try {
+    const initialId = options?.initialPresetId;
+    if (initialId && presetSel.querySelector(`option[value="${initialId}"]`)) {
+      presetSel.value = initialId;
+      presetSel.dispatchEvent(new Event('change'));
+    }
+  } catch {}
   btnSave.addEventListener('click', () => {
     localStorage.setItem('bladegen.preset.custom', JSON.stringify(state));
     presetSel.value = 'custom';

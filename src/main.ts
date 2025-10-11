@@ -1,5 +1,6 @@
 import { setupScene } from './three/setupScene';
 import { createSidebar } from './components/controls';
+import { presetShowcaseArming } from './components/presets';
 import { defaultSwordParams } from './three/SwordGenerator';
 
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
@@ -68,7 +69,10 @@ requestAnimationFrame(animate);
 // Build UI controls
 const sidebar = document.getElementById('sidebar');
 if (sidebar && sword) {
-  createSidebar(sidebar, sword, defaultSwordParams(), renderHooks);
+  // Start with the Showcase Arming hero default and apply its overrides
+  createSidebar(sidebar, sword, presetShowcaseArming(), renderHooks, {
+    initialPresetId: 'showcase-arming',
+  });
 }
 
 // Header Help button (opens Help Panel)

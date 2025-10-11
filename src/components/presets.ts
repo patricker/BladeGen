@@ -164,6 +164,64 @@ export function presetArming(): SwordParams {
   return p;
 }
 
+// Showcase hero default used on initial load (see launch.md)
+export function presetShowcaseArming(): SwordParams {
+  const p = defaultSwordParams();
+  // Blade
+  p.blade.length = 2.65;
+  p.blade.baseWidth = 0.22;
+  p.blade.tipWidth = 0.012;
+  p.blade.tipRampStart = 0.82;
+  p.blade.tipShape = 'spear';
+  p.blade.crossSection = 'diamond' as any;
+  p.blade.thickness = 0.07;
+  p.blade.thicknessLeft = 0.07;
+  p.blade.thicknessRight = 0.07;
+  p.blade.fullerEnabled = true;
+  p.blade.fullerDepth = 0.015;
+  p.blade.fullerLength = 0.55;
+  // Some builds expose fullerWidth/count/profile via unions; guard behind any
+  ;(p.blade as any).fullerWidth = 0.05;
+  p.blade.fullerProfile = 'u' as any;
+  p.blade.fullerMode = 'overlay';
+  ;(p.blade as any).fullerCount = 1;
+  p.blade.ricassoLength = 0.04;
+  p.blade.chaos = 0;
+  p.blade.edgeType = 'double';
+
+  // Guard
+  p.guard.style = 'winged' as any;
+  p.guard.width = 1.15;
+  p.guard.thickness = 0.18;
+  p.guard.curve = 0.0;
+  p.guard.tilt = 0.0;
+  p.guard.guardBlendFillet = 0.05;
+  p.guard.guardBlendFilletStyle = 'smooth';
+
+  // Handle
+  p.handle.length = 0.88;
+  p.handle.radiusTop = 0.11;
+  p.handle.radiusBottom = 0.11;
+  p.handle.segmentation = false;
+  p.handle.wrapEnabled = true;
+  p.handle.wrapTurns = 6;
+  p.handle.wrapDepth = 0.01;
+  ;(p.handle as any).wrapTexture = true;
+  p.handle.wrapTexScale = 9;
+  p.handle.wrapTexAngle = Math.PI / 6;
+  ;(p.handle as any).ovalRatio = 1.1;
+
+  // Pommel
+  p.pommel.style = 'scentStopper' as any;
+  p.pommel.size = 0.17;
+  p.pommel.elongation = 1.2;
+  p.pommel.shapeMorph = 0.25;
+  p.pommel.facetCount = 20 as any;
+  p.pommel.balance = 0.1 as any;
+
+  return p;
+}
+
 export function presetJian(): SwordParams {
   const p = defaultSwordParams();
   p.blade.length = 2.9;
@@ -439,6 +497,91 @@ export function presetSabre(): SwordParams {
 
 // Full preset list with materials, variants, and optional render overrides
 export const swordPresets: PresetEntry[] = [
+  {
+    id: 'showcase-arming',
+    label: 'Showcase Arming',
+    build: presetShowcaseArming,
+    materials: {
+      blade: {
+        color: '#eef4ff',
+        metalness: 0.93,
+        roughness: 0.15,
+        clearcoat: 0.3,
+        clearcoatRoughness: 0.28,
+        envMapIntensity: 1.6,
+        anisotropy: 0.36,
+      },
+      guard: { color: '#c9a347', metalness: 0.82, roughness: 0.32, anisotropy: 0.28 },
+      pommel: { color: '#c9a347', metalness: 0.8, roughness: 0.33, anisotropy: 0.24 },
+      handle: { color: '#2f3338', roughness: 0.52, sheen: 0.36, sheenColor: '#556d8a' },
+    },
+    variants: [
+      {
+        name: 'Battleworn Steel',
+        parts: {
+          blade: { color: '#e6ebf5', roughness: 0.24, metalness: 0.88, envMapIntensity: 1.3 },
+          guard: { color: '#a6843f', roughness: 0.44, metalness: 0.76 },
+          pommel: { color: '#a6843f', roughness: 0.46, metalness: 0.76 },
+          handle: { color: '#4a3b2d', roughness: 0.62, sheen: 0.22, sheenColor: '#3d2a1d' },
+        },
+      },
+      {
+        name: 'Nocturne',
+        parts: {
+          blade: {
+            color: '#5c6599',
+            metalness: 0.7,
+            roughness: 0.22,
+            envMapIntensity: 1.4,
+            anisotropy: 0.18,
+          },
+          guard: { color: '#3f2a22', metalness: 0.3, roughness: 0.52 },
+          pommel: { color: '#3f2a22', metalness: 0.3, roughness: 0.52 },
+          handle: { color: '#1f2328', roughness: 0.56, sheen: 0.18 },
+        },
+      },
+      {
+        name: 'Ivory & Gold',
+        parts: {
+          blade: {
+            color: '#fdfdf8',
+            metalness: 0.95,
+            roughness: 0.16,
+            envMapIntensity: 1.5,
+            anisotropy: 0.24,
+          },
+          guard: { color: '#e4b972', metalness: 0.86, roughness: 0.32 },
+          pommel: { color: '#e4b972', metalness: 0.86, roughness: 0.34 },
+          handle: {
+            color: '#e8d9b7',
+            metalness: 0.02,
+            roughness: 0.58,
+            sheen: 0.22,
+            sheenColor: '#f3e9ce',
+          },
+        },
+      },
+    ],
+    render: {
+      exposure: 1.15,
+      ambient: 0.18,
+      keyIntensity: 1.3,
+      keyAz: 35,
+      keyEl: 22,
+      rimIntensity: 0.9,
+      rimAz: -145,
+      rimEl: 35,
+      rimColor: '#9ec9ff',
+      envMapIntensity: 1.2,
+      bgColor: '#1a202b',
+      bgBrightness: 0.6,
+    },
+    post: {
+      vignetteEnabled: true,
+      vignetteStrength: 0.15,
+      vignetteSoftness: 0.6,
+    },
+  },
   {
     id: 'katana',
     label: 'Katana',

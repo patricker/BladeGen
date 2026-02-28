@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { makeQualityPresets, type QualityPreset } from './renderConfig';
+import { makeQualityPresets } from './renderConfig';
 import { createApplyQualityPreset } from './renderQuality';
 import { attachRenderQualityPanel } from './renderPanel';
 import { attachRenderBackgroundPanel } from './renderBackground';
@@ -18,18 +18,8 @@ import {
   attachAccessoryControls,
 } from './modelPanel';
 import {
-  presetKatana,
-  presetArming,
-  presetGladius,
-  presetJian,
-  presetClaymore,
-  presetRapier,
-  presetDemon,
-  presetLightsaber,
-  presetSabre,
   swordPresets as presetList,
   type PresetEntry,
-  type PresetRenderOverrides,
   type PresetPostOverrides,
   type PresetAtmosOverrides,
   type PresetFxOverrides,
@@ -38,17 +28,17 @@ import {
   SwordGenerator,
   SwordParams,
   defaultSwordParams,
-  buildBladeOutlinePoints,
-  bladeOutlineToSVG,
 } from '../three/SwordGenerator';
-import { createMaterial } from '../three/sword/materials';
 import { initHelp, attachHelp } from './help/HelpRegistry';
-import { TextureCache } from '../three/sword/textures';
 // Re-export ControlRegistry for tests/consumers that import from 'components/controls'
 export { ControlRegistry } from './ControlRegistry';
 import { exportGLB, exportOBJ, exportSTL, exportSVG, exportJSON } from './exporters';
+import { isMobileViewport } from './mobileDetect';
+import { attachAdvancedToggle } from './advancedToggle';
+import { attachGoalSliders } from './goalSliders';
 
 type Category =
+  | 'Character'
   | 'Blade'
   | 'Engravings'
   | 'Guard'
@@ -167,7 +157,7 @@ export function createSidebar(
   sword: SwordGenerator,
   params: SwordParams,
   render?: RenderHooks,
-  options?: { initialPresetId?: string }
+  options?: { initialPresetId?: string; initialQualityPreset?: 'Low' | 'Medium' | 'High' }
 ) {
   // Initialize contextual help wiring with 3D highlighter hookup
   initHelp({
@@ -179,7 +169,7 @@ export function createSidebar(
     },
   });
   // Lazy-load Help Panel on first use; set up lightweight shortcuts that import on demand
-  let helpPanelLoaded = false;
+  let _helpPanelLoaded = false;
   let helpPanelInitPromise: Promise<any> | null = null;
   const loadHelpPanel = async () => {
     if (helpPanelInitPromise) return helpPanelInitPromise;
@@ -192,7 +182,7 @@ export function createSidebar(
           } catch {}
         },
       });
-      helpPanelLoaded = true;
+      _helpPanelLoaded = true;
       return mod;
     });
     return helpPanelInitPromise;
@@ -751,7 +741,7 @@ export function createSidebar(
     currentVariantId: null,
     baseSnapshot: null,
   };
-  let matPart: Part = 'blade';
+  let _matPart: Part = 'blade';
   let raf = 0;
   let needs = false;
   let renderVariantList = () => {};
@@ -802,7 +792,7 @@ export function createSidebar(
     mappings: Array<{ mesh: THREE.Mesh; material: THREE.Material }>;
   };
 
-  class KHRMaterialsVariantsExporter {
+  class _KHRMaterialsVariantsExporter {
     private readonly writer: any;
     private readonly name = 'KHR_materials_variants';
     private readonly meshMappings = new Map<
@@ -916,6 +906,7 @@ export function createSidebar(
 
   // Presets dropdown
   const presetSel = document.createElement('select');
+  presetSel.id = 'preset-selector';
   const customOption = document.createElement('option');
   customOption.value = 'custom';
   customOption.textContent = 'Preset: Custom';
@@ -927,6 +918,14 @@ export function createSidebar(
     presetSel.appendChild(opt);
   }
   toolbar.appendChild(presetSel);
+
+  const btnGallery = document.createElement('button');
+  btnGallery.textContent = '\u2302 Browse';
+  btnGallery.title = 'Browse all sword presets';
+  btnGallery.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('bladegen:open-gallery'));
+  });
+  toolbar.appendChild(btnGallery);
 
   const BASE_LOOK_VALUE = '__base';
   const lookSel = document.createElement('select');
@@ -1012,7 +1011,7 @@ export function createSidebar(
       } catch {}
     }
     // Migrate selected storage keys to new prefix
-    const migrateKey = (oldKey: string, newKey: string) => {
+    const _migrateKey = (oldKey: string, newKey: string) => {
       try {
         const v = ls.getItem(newKey);
         if (v == null) {
@@ -1163,6 +1162,7 @@ export function createSidebar(
 
   // Sections
   const sections: Record<Category, HTMLElement> = {
+    Character: addSection(el, 'Character'),
     Blade: addSection(el, 'Blade'),
     Engravings: addSection(el, 'Engravings'),
     Guard: addSection(el, 'Guard'),
@@ -1178,6 +1178,7 @@ export function createSidebar(
     tabModel.classList.toggle('active', !isRender);
     tabRender.classList.toggle('active', isRender);
     // Toggle section visibility
+    sections.Character.style.display = isRender ? 'none' : '';
     sections.Blade.style.display = isRender ? 'none' : '';
     sections.Engravings.style.display = isRender ? 'none' : '';
     sections.Guard.style.display = isRender ? 'none' : '';
@@ -1296,7 +1297,7 @@ export function createSidebar(
   // Render controls (if hooks available)
   // Keep handles to Render subsections needed later
   let rMatSec: HTMLElement | null = null;
-  let rGradSec: HTMLElement | null = null;
+  let _rGradSec: HTMLElement | null = null;
   function syncAllMaterialInputs() {
     const slug = (p: Part) => `materials-${p}`;
     for (const p of PARTS) {
@@ -1413,6 +1414,9 @@ export function createSidebar(
     registry.setValue('render-fx', 'Ember Color', fxState.embers.color);
   };
 
+  // Forward-declared; set later after goal sliders are attached
+  let goalSliderSync: (() => void) | null = null;
+
   const syncUi = () => {
     refreshInputs(registry, state);
     syncEngravingControls();
@@ -1427,6 +1431,9 @@ export function createSidebar(
       syncAllMaterialInputs();
       renderVariantList();
     }
+    try {
+      goalSliderSync?.();
+    } catch {}
     try {
       syncVisibility();
     } catch {}
@@ -1463,7 +1470,7 @@ export function createSidebar(
     const rMat = addSection(sections.Render, 'Render: Materials');
     const rVariants = addSection(sections.Render, 'Render: Material Variants');
     rMatSec = rMat;
-    rGradSec = rGrad;
+    _rGradSec = rGrad;
 
     // hexToInt imported from ../utils/color
     const applyEnvMap = (url?: string | null, asBackground?: boolean) => {
@@ -1563,7 +1570,7 @@ export function createSidebar(
       }
     };
 
-    const QUALITY_PRESETS = makeQualityPresets(supportedAAModes);
+    const _QUALITY_PRESETS = makeQualityPresets(supportedAAModes);
 
     const applyQualityPreset = createApplyQualityPreset(
       render as any,
@@ -1573,6 +1580,11 @@ export function createSidebar(
       refreshWarnings,
       supportedAAModes
     );
+
+    // Apply initial quality preset for mobile devices
+    if (options?.initialQualityPreset) {
+      applyQualityPreset(options.initialQualityPreset, true);
+    }
 
     const applyRenderOverrides = (overrides?: PresetRenderOverrides) => {
       if (!overrides) return;
@@ -1840,7 +1852,7 @@ export function createSidebar(
     const partLabel = (p: Part) => p.charAt(0).toUpperCase() + p.slice(1);
     const buildMaterialPanel = (parent: HTMLElement, part: Part) => {
       const sect = addSection(parent, `Materials: ${partLabel(part)}`);
-      const sslug = sect.dataset.fieldNamespace || `materials-${part}`;
+      const _sslug = sect.dataset.fieldNamespace || `materials-${part}`;
       const m = matState[part];
       const gBase = addGroup(sect, 'Base PBR');
       colorPicker(
@@ -3382,6 +3394,40 @@ export function createSidebar(
     });
   } catch {}
 
+  // Goal sliders (Character section) — high-level intent sliders
+  try {
+    const gs = attachGoalSliders({
+      container: sections.Character,
+      state,
+      helpers: { addGroup, slider },
+      rerender,
+      syncUi,
+    });
+    goalSliderSync = gs.syncFromState;
+  } catch {}
+
+  // Progressive disclosure: advanced toggles on model sections
+  {
+    const advancedToggles: HTMLInputElement[] = [];
+    const applyAdvancedVisibility = (show: boolean) => {
+      el.classList.toggle('hide-advanced', !show);
+    };
+    for (const key of ['Blade', 'Guard', 'Handle', 'Pommel', 'Accessories'] as const) {
+      if (sections[key]) {
+        const toggle = attachAdvancedToggle(sections[key], applyAdvancedVisibility);
+        advancedToggles.push(toggle);
+      }
+    }
+    for (const toggle of advancedToggles) {
+      toggle.addEventListener('change', () => {
+        const val = toggle.checked;
+        for (const other of advancedToggles) {
+          if (other !== toggle) other.checked = val;
+        }
+      });
+    }
+  }
+
   // Other controls
   // Taper ratio helper: 0 => tip equals base; 1 => tip tapers to 0
   slider(
@@ -3477,7 +3523,7 @@ export function createSidebar(
 
     const next = entry.build();
     assignParams(state, next);
-    matPart = 'blade';
+    _matPart = 'blade';
 
     applyVisualOverrides(entry);
 
@@ -3595,6 +3641,12 @@ export function createSidebar(
 
     rerender();
     syncUi();
+
+    // Close mobile drawer after preset selection
+    if (isMobileViewport()) {
+      el.classList.remove('open');
+      document.querySelector('.sidebar-overlay')?.classList.remove('visible');
+    }
   });
 
   // Apply initial preset on boot if requested
@@ -3951,6 +4003,28 @@ export function createSidebar(
       registry.setWarning('engravings', lab, engrEmpty, 'No engravings — add one first')
     );
     // Render dependent warnings
+    // Cross-section: flat means center thickness equals edge thickness; hint when users try per-side thickness
+    const xsec = blade.crossSection ?? 'flat';
+    if (xsec === 'flat') {
+      registry.setWarning(
+        'blade',
+        'Blade Thickness',
+        false,
+        'Flat cross-section: spine equals edge thickness. Use Diamond/Lenticular/T‑Spine/Compound for a thicker middle.'
+      );
+      registry.setWarning(
+        'blade',
+        'Left Thickness',
+        false,
+        'Flat cross-section couples edge and center. Switch cross-section to decouple spine from edges.'
+      );
+      registry.setWarning(
+        'blade',
+        'Right Thickness',
+        false,
+        'Flat cross-section couples edge and center. Switch cross-section to decouple spine from edges.'
+      );
+    }
     registry.setWarning(
       'render-post',
       'Bloom Strength',
@@ -5080,7 +5154,7 @@ function clamp(v: number, lo: number, hi: number) {
 }
 
 function randomize(p: SwordParams, safe: boolean) {
-  const r = (a: number, b: number) => a + Math.random() * (b - a);
+  const _r = (a: number, b: number) => a + Math.random() * (b - a);
   randomizeBlade(p, safe);
   randomizeGuard(p, safe);
   randomizeHandle(p, safe);
@@ -5203,7 +5277,7 @@ function randomizeAccessories(p: SwordParams, safe: boolean) {
   tassel.strands = Math.max(1, Math.round(safe ? r(6, 14) : r(4, 20)));
 }
 
-function presetArming(): SwordParams {
+function _presetArming(): SwordParams {
   const p = defaultSwordParams();
   p.blade.length = 2.6;
   p.blade.baseWidth = 0.22;
@@ -5259,7 +5333,7 @@ function presetArming(): SwordParams {
   return p;
 }
 
-function presetJian(): SwordParams {
+function _presetJian(): SwordParams {
   const p = defaultSwordParams();
   p.blade.length = 2.9;
   p.blade.baseWidth = 0.19;
@@ -5305,7 +5379,7 @@ function presetJian(): SwordParams {
   return p;
 }
 
-function presetGladius(): SwordParams {
+function _presetGladius(): SwordParams {
   const p = defaultSwordParams();
   p.blade.length = 2.2;
   p.blade.baseWidth = 0.28;
@@ -5348,7 +5422,7 @@ function presetGladius(): SwordParams {
   return p;
 }
 
-function presetKatana(): SwordParams {
+function _presetKatana(): SwordParams {
   const p = defaultSwordParams();
   // Katana: curved, single-edged look, slender blade, tsuba disk guard, long wrapped handle
   p.blade.length = 3.3;
@@ -5400,7 +5474,7 @@ function presetKatana(): SwordParams {
   return p;
 }
 
-function presetClaymore(): SwordParams {
+function _presetClaymore(): SwordParams {
   const p = defaultSwordParams();
   p.blade.length = 2.8;
   p.blade.baseWidth = 0.32;
@@ -5426,7 +5500,7 @@ function presetClaymore(): SwordParams {
   return p;
 }
 
-function presetRapier(): SwordParams {
+function _presetRapier(): SwordParams {
   const p = defaultSwordParams();
   p.blade.length = 3.2;
   p.blade.baseWidth = 0.18;
@@ -5453,7 +5527,7 @@ function presetRapier(): SwordParams {
   return p;
 }
 
-function presetDemon(): SwordParams {
+function _presetDemon(): SwordParams {
   const p = defaultSwordParams();
   p.blade.length = 3.6;
   p.blade.baseWidth = 0.28;
@@ -5480,7 +5554,7 @@ function presetDemon(): SwordParams {
   return p;
 }
 
-function presetLightsaber(): SwordParams {
+function _presetLightsaber(): SwordParams {
   const p = defaultSwordParams();
   p.blade.length = 3.05;
   p.blade.baseWidth = 0.085;
@@ -5517,7 +5591,7 @@ function presetLightsaber(): SwordParams {
   return p;
 }
 
-function presetSabre(): SwordParams {
+function _presetSabre(): SwordParams {
   const p = defaultSwordParams();
   p.blade.length = 3.2;
   p.blade.baseWidth = 0.19;

@@ -1,5 +1,5 @@
 import { defaultSwordParams, type SwordParams } from '../three/SwordGenerator';
-import type { Part, MatExt, MaterialVariant } from './types';
+import type { Part, MatExt } from './types';
 
 export type PresetRenderOverrides = Partial<{
   exposure: number;
@@ -495,6 +495,258 @@ export function presetSabre(): SwordParams {
   return p;
 }
 
+// --- Gallery presets for launch ---
+export function presetRapierCup(): SwordParams {
+  const p = defaultSwordParams();
+  // Long, slim blade with ricasso
+  p.blade.length = 3.35;
+  p.blade.baseWidth = 0.18;
+  p.blade.tipWidth = 0.045;
+  p.blade.crossSection = 'diamond';
+  p.blade.bevel = 0.3;
+  p.blade.fullerEnabled = false;
+  p.blade.ricassoLength = 0.12;
+  p.blade.edgeType = 'double';
+  p.blade.sweepSegments = 128;
+
+  // Cup/shell guard with extras
+  p.guard.style = 'shell';
+  (p.guard as any).shellCoverage = 0.85;
+  (p.guard as any).shellThickness = 1.0;
+  (p.guard as any).shellFlare = 1.2;
+  p.guard.width = 1.1;
+  p.guard.thickness = 0.2;
+  p.guard.tilt = 0.0;
+  p.guard.curve = 0.05;
+  p.guard.extras = [
+    { kind: 'sideRing', radius: 0.14, thickness: 0.018, offsetY: -0.02 },
+    { kind: 'fingerGuard', radius: 0.11, thickness: 0.014, offsetY: -0.08 },
+  ];
+  (p.guard as any).pasDaneCount = 2;
+  (p.guard as any).pasDaneRadius = 0.085;
+  (p.guard as any).pasDaneThickness = 0.012;
+  (p.guard as any).pasDaneOffsetY = -0.02;
+
+  // Handle and pommel
+  p.handle.length = 1.02;
+  p.handle.radiusTop = 0.105;
+  p.handle.radiusBottom = 0.105;
+  p.handle.wrapEnabled = false;
+  p.pommel.style = 'wheel';
+  p.pommel.size = 0.15;
+  p.pommel.elongation = 1.0;
+  p.pommel.shapeMorph = 0.2;
+  (p.pommel as any).peenVisible = true;
+  (p.pommel as any).peenSize = 0.02;
+
+  return p;
+}
+
+export function presetBasketBroadsword(): SwordParams {
+  const p = defaultSwordParams();
+  p.blade.length = 2.6;
+  p.blade.baseWidth = 0.27;
+  p.blade.tipWidth = 0.06;
+  p.blade.crossSection = 'lenticular';
+  p.blade.bevel = 0.55;
+  p.blade.fullerEnabled = true;
+  p.blade.fullerDepth = 0.012;
+  p.blade.fullerLength = 0.32;
+  p.blade.fullerMode = 'overlay';
+  p.blade.fullerCount = 1;
+
+  p.guard.style = 'basket';
+  p.guard.width = 1.25;
+  p.guard.thickness = 0.22;
+  p.guard.curve = 0.1;
+  (p.guard as any).basketRodCount = 14;
+  (p.guard as any).basketRingCount = 2;
+  (p.guard as any).basketRingRadiusAdd = 0.03;
+  (p.guard as any).basketRingThickness = 0.012;
+
+  p.handle.length = 0.78;
+  p.handle.radiusTop = 0.12;
+  p.handle.radiusBottom = 0.12;
+  p.handle.wrapEnabled = true;
+  p.handle.wrapTurns = 6;
+  p.handle.wrapDepth = 0.009;
+
+  p.pommel.style = 'wheel';
+  p.pommel.size = 0.18;
+  p.pommel.elongation = 1.1;
+  p.pommel.shapeMorph = 0.18;
+  return p;
+}
+
+export function presetJianScholar(): SwordParams {
+  const p = defaultSwordParams();
+  p.blade.length = 2.9;
+  p.blade.baseWidth = 0.19;
+  p.blade.tipWidth = 0.04;
+  p.blade.crossSection = 'lenticular';
+  p.blade.fullerEnabled = false;
+  p.blade.edgeType = 'double';
+  p.blade.thickness = 0.065;
+
+  p.guard.style = 'disk';
+  p.guard.width = 0.42;
+  p.guard.thickness = 0.14;
+  p.guard.curve = 0.05;
+
+  p.handle.length = 0.82;
+  p.handle.radiusTop = 0.115;
+  p.handle.radiusBottom = 0.11;
+  p.handle.wrapEnabled = false;
+  (p.handle as any).ovalRatio = 1.05;
+
+  p.pommel.style = 'ring';
+  p.pommel.size = 0.15;
+  p.pommel.elongation = 1.05;
+  p.pommel.shapeMorph = 0.2;
+  p.pommel.ringInnerRadius = 0.06;
+
+  // Accessories
+  p.accessories = {
+    scabbard: {
+      enabled: true,
+      bodyMargin: 0.01,
+      bodyThickness: 0.05,
+      tipExtension: 0.06,
+      throatLength: 0.08,
+      throatScale: 1.08,
+      locketOffset: 0.22,
+      locketLength: 0.12,
+      locketScale: 1.06,
+      chapeLength: 0.4,
+      chapeScale: 0.75,
+      bodyRoundness: 0.9,
+      offsetX: 0.02,
+      offsetZ: 0.0,
+      hangAngle: -0.06,
+    },
+    tassel: {
+      enabled: true,
+      attachTo: 'guard',
+      anchorOffset: 0,
+      length: 0.55,
+      droop: 0.35,
+      sway: 0.2,
+      thickness: 0.012,
+      tuftSize: 0.03,
+      tuftLength: 0.06,
+      strands: 20,
+    },
+  };
+  return p;
+}
+
+export function presetKatanaMidare(): SwordParams {
+  const p = presetKatana();
+  (p.blade as any).hamonEnabled = true;
+  (p.blade as any).hamonWidth = 0.02;
+  (p.blade as any).hamonAmplitude = 0.008;
+  (p.blade as any).hamonFrequency = 7;
+  (p.blade as any).hamonSide = 'right';
+  p.guard.style = 'disk';
+  (p.guard as any).habakiEnabled = true;
+  (p.guard as any).habakiHeight = 0.06;
+  (p.guard as any).habakiMargin = 0.012;
+  p.handle.wrapEnabled = true;
+  (p.handle as any).wrapStyle = 'hineri';
+  (p.handle as any).rayskin = { enabled: true, scale: 8, intensity: 0.5 } as any;
+  (p.handle as any).menukiPreset = 'paired';
+  return p;
+}
+
+export function presetGladiusLeaf(): SwordParams {
+  const p = defaultSwordParams();
+  p.blade.length = 2.15;
+  p.blade.baseWidth = 0.3;
+  p.blade.tipWidth = 0.12;
+  p.blade.tipShape = 'leaf';
+  p.blade.tipBulge = 0.7;
+  p.blade.crossSection = 'lenticular';
+  p.blade.bevel = 0.5;
+  p.blade.fullerEnabled = false;
+  p.guard.style = 'bar';
+  p.guard.width = 0.52;
+  p.guard.thickness = 0.2;
+  p.handle.length = 0.68;
+  p.handle.radiusTop = 0.14;
+  p.handle.radiusBottom = 0.13;
+  p.handle.segmentation = true;
+  (p.handle as any).segmentationCount = 6;
+  p.pommel.style = 'disk';
+  p.pommel.size = 0.2;
+  p.pommel.elongation = 0.9;
+  p.pommel.shapeMorph = 0.35;
+  return p;
+}
+
+export function presetKilij(): SwordParams {
+  const p = defaultSwordParams();
+  p.blade.length = 3.3;
+  p.blade.baseWidth = 0.21;
+  p.blade.tipWidth = 0.06;
+  p.blade.curvature = 0.42;
+  p.blade.crossSection = 'lenticular';
+  p.blade.bevel = 0.6;
+  p.blade.edgeType = 'single';
+  p.blade.falseEdgeLength = 0.18;
+  p.blade.falseEdgeDepth = 0.06;
+  p.blade.fullerEnabled = true;
+  p.blade.fullerDepth = 0.012;
+  p.blade.fullerLength = 0.45;
+  p.guard.style = 'knucklebow';
+  p.guard.width = 1.0;
+  p.guard.thickness = 0.2;
+  p.guard.curve = 0.1;
+  p.handle.length = 0.95;
+  p.handle.radiusTop = 0.12;
+  p.handle.radiusBottom = 0.11;
+  p.handle.wrapEnabled = true;
+  p.handle.wrapTurns = 7;
+  p.handle.wrapDepth = 0.01;
+  p.pommel.style = 'ring';
+  p.pommel.size = 0.14;
+  p.pommel.ringInnerRadius = 0.05;
+  p.pommel.elongation = 1.0;
+  p.pommel.shapeMorph = 0.15;
+  return p;
+}
+
+export function presetFlambergeZweihander(): SwordParams {
+  const p = defaultSwordParams();
+  p.blade.family = 'flamberge';
+  p.blade.length = 3.8;
+  p.blade.baseWidth = 0.32;
+  p.blade.tipWidth = 0.06;
+  p.blade.crossSection = 'diamond';
+  p.blade.bevel = 0.45;
+  p.blade.ricassoLength = 0.2;
+  p.blade.fullerEnabled = false;
+  p.blade.waviness = { amplitude: 0.025, frequency: 8, taper: 0.6 };
+  p.guard.style = 'swept';
+  p.guard.width = 1.6;
+  p.guard.thickness = 0.26;
+  p.guard.curve = 0.2;
+  p.guard.extras = [
+    { kind: 'sideRing', radius: 0.18, thickness: 0.02, offsetY: -0.06 },
+    { kind: 'loop', radius: 0.14, thickness: 0.018, offsetY: -0.1 },
+  ];
+  p.handle.length = 1.1;
+  p.handle.radiusTop = 0.13;
+  p.handle.radiusBottom = 0.13;
+  p.handle.wrapEnabled = true;
+  p.handle.wrapTurns = 8;
+  p.handle.wrapDepth = 0.012;
+  p.pommel.style = 'wheel';
+  p.pommel.size = 0.2;
+  p.pommel.elongation = 1.1;
+  p.pommel.shapeMorph = 0.2;
+  return p;
+}
+
 // Full preset list with materials, variants, and optional render overrides
 export const swordPresets: PresetEntry[] = [
   {
@@ -561,6 +813,35 @@ export const swordPresets: PresetEntry[] = [
           },
         },
       },
+      {
+        name: 'Damascus Steel',
+        description: 'Watered steel with folded pattern and dark fittings.',
+        parts: {
+          blade: {
+            color: '#d0daf0',
+            metalness: 0.88,
+            roughness: 0.22,
+            clearcoat: 0.15,
+            clearcoatRoughness: 0.35,
+            envMapIntensity: 1.4,
+            anisotropy: 0.45,
+            anisotropyRotation: 0.1,
+            bumpEnabled: true,
+            bumpScale: 0.018,
+            bumpNoiseScale: 14,
+            bumpSeed: 42,
+          },
+          guard: { color: '#1e1e22', metalness: 0.65, roughness: 0.38, anisotropy: 0.3 },
+          pommel: { color: '#1e1e22', metalness: 0.65, roughness: 0.4, anisotropy: 0.28 },
+          handle: {
+            color: '#1a1416',
+            metalness: 0.04,
+            roughness: 0.72,
+            sheen: 0.18,
+            sheenColor: '#2a1e20',
+          },
+        },
+      },
     ],
     render: {
       exposure: 1.15,
@@ -580,6 +861,105 @@ export const swordPresets: PresetEntry[] = [
       vignetteEnabled: true,
       vignetteStrength: 0.15,
       vignetteSoftness: 0.6,
+    },
+  },
+  {
+    id: 'rapier-cup',
+    label: 'Cup-Hilt Rapier',
+    build: presetRapierCup,
+    materials: {
+      blade: { color: '#edf2ff', metalness: 0.95, roughness: 0.16, envMapIntensity: 1.35, anisotropy: 0.3 },
+      guard: { color: '#f2f0eb', metalness: 0.93, roughness: 0.22, anisotropy: 0.6, envMapIntensity: 1.55 },
+      handle: { color: '#2f2f3a', metalness: 0.12, roughness: 0.58, sheen: 0.26, sheenColor: '#4c4c61' },
+      pommel: { color: '#f2f0eb', metalness: 0.93, roughness: 0.24, anisotropy: 0.5 },
+    },
+    variants: [
+      {
+        name: 'Court Gala',
+        description: 'Gilt cup, ceremonial finish.',
+        parts: {
+          guard: { color: '#d5b16a', metalness: 0.9, roughness: 0.28, anisotropy: 0.4 },
+          pommel: { color: '#d5b16a', metalness: 0.9, roughness: 0.3 },
+          handle: { color: '#332926', roughness: 0.54, sheen: 0.24 },
+        },
+      },
+      {
+        name: "Duelist's Shadow",
+        description: 'Blackened steel, faint arcane edge.',
+        parts: {
+          guard: { color: '#1e1e26', metalness: 0.45, roughness: 0.48, anisotropy: 0.25 },
+          pommel: { color: '#1e1e26', metalness: 0.45, roughness: 0.5 },
+          blade: { color: '#cfd6ff', roughness: 0.18, emissiveColor: '#6a7dff', emissiveIntensity: 0.5 },
+        },
+      },
+    ],
+  },
+  {
+    id: 'basket-broadsword',
+    label: 'Basket-Hilt Broadsword',
+    build: presetBasketBroadsword,
+    materials: {
+      blade: { color: '#e0ebff', metalness: 0.9, roughness: 0.2, envMapIntensity: 1.4, anisotropy: 0.28 },
+      guard: { color: '#b7c3d9', metalness: 0.82, roughness: 0.3, anisotropy: 0.48 },
+      handle: { color: '#3b2e2e', metalness: 0.08, roughness: 0.56, sheen: 0.24, sheenColor: '#523c3c' },
+      pommel: { color: '#b7c3d9', metalness: 0.82, roughness: 0.32, anisotropy: 0.46 },
+    },
+  },
+  {
+    id: 'jian-scholar',
+    label: 'Jian — Scholar\'s Edge',
+    build: presetJianScholar,
+    materials: {
+      blade: { color: '#dbe4ff', metalness: 0.9, roughness: 0.22, envMapIntensity: 1.2, anisotropy: 0.2 },
+      guard: { color: '#aab6c7', metalness: 0.82, roughness: 0.32, anisotropy: 0.42 },
+      handle: { color: '#463223', metalness: 0.04, roughness: 0.74, sheen: 0.2, sheenColor: '#5f412d' },
+      pommel: { color: '#b4bccb', metalness: 0.8, roughness: 0.34, anisotropy: 0.36 },
+      scabbard: { color: '#2f2418', metalness: 0.05, roughness: 0.7, sheen: 0.25 },
+      tassel: { color: '#7c3f1d', metalness: 0.05, roughness: 0.8, sheen: 0.35, sheenColor: '#d8a273' },
+    },
+  },
+  {
+    id: 'katana-midare',
+    label: 'Katana — Midare Hamon',
+    build: presetKatanaMidare,
+    materials: {
+      blade: { color: '#d8e6ff', metalness: 0.88, roughness: 0.2, clearcoat: 0.25, clearcoatRoughness: 0.35, envMapIntensity: 1.4, anisotropy: 0.32 },
+      guard: { color: '#2f1e14', metalness: 0.4, roughness: 0.46 },
+      handle: { color: '#352d25', metalness: 0.05, roughness: 0.58, sheen: 0.28, sheenColor: '#4a3b2d' },
+      pommel: { color: '#2c1f16', metalness: 0.45, roughness: 0.42 },
+    },
+  },
+  {
+    id: 'gladius-leaf',
+    label: 'Gladius (Leaf)',
+    build: presetGladiusLeaf,
+    materials: {
+      blade: { color: '#f0f4ff', metalness: 0.9, roughness: 0.2, envMapIntensity: 1.2 },
+      guard: { color: '#d8c4a6', metalness: 0.5, roughness: 0.45 },
+      handle: { color: '#9f7a4e', metalness: 0.02, roughness: 0.7 },
+      pommel: { color: '#d8c4a6', metalness: 0.5, roughness: 0.45 },
+    },
+  },
+  {
+    id: 'kilij',
+    label: 'Sabre / Kilij',
+    build: presetKilij,
+    materials: {
+      blade: { color: '#e0ebff', metalness: 0.9, roughness: 0.2, envMapIntensity: 1.4, anisotropy: 0.28 },
+      guard: { color: '#b7c3d9', metalness: 0.82, roughness: 0.3, anisotropy: 0.48 },
+      handle: { color: '#3b2e2e', metalness: 0.08, roughness: 0.56, sheen: 0.24 },
+      pommel: { color: '#b7c3d9', metalness: 0.82, roughness: 0.32 },
+    },
+  },
+  {
+    id: 'flamberge-zweihander',
+    label: 'Flamberge Zweihänder',
+    build: presetFlambergeZweihander,
+    materials: {
+      blade: { color: '#eef4ff', metalness: 0.93, roughness: 0.16, envMapIntensity: 1.35, anisotropy: 0.24 },
+      guard: { color: '#c9a347', metalness: 0.82, roughness: 0.34 },
+      handle: { color: '#2f3338', metalness: 0.05, roughness: 0.7, sheen: 0.24 },
+      pommel: { color: '#c9a347', metalness: 0.82, roughness: 0.35 },
     },
   },
   {
@@ -710,6 +1090,38 @@ export const swordPresets: PresetEntry[] = [
           guard: { color: '#5a4332', metalness: 0.45, roughness: 0.58, anisotropy: 0.16 },
           pommel: { color: '#5a4332', metalness: 0.45, roughness: 0.55 },
           handle: { color: '#261710', roughness: 0.76, sheen: 0.16 },
+        },
+      },
+      {
+        name: 'Damascus',
+        description: 'Folded watered steel with ebony fittings.',
+        parts: {
+          blade: {
+            color: '#c8d4e8',
+            metalness: 0.86,
+            roughness: 0.24,
+            clearcoat: 0.12,
+            clearcoatRoughness: 0.38,
+            envMapIntensity: 1.35,
+            anisotropy: 0.42,
+            anisotropyRotation: 0.08,
+            bumpEnabled: true,
+            bumpScale: 0.016,
+            bumpNoiseScale: 14,
+            bumpSeed: 42,
+          },
+          guard: { color: '#2a2024', metalness: 0.6, roughness: 0.42, anisotropy: 0.26 },
+          pommel: { color: '#2a2024', metalness: 0.6, roughness: 0.44, anisotropy: 0.24 },
+          handle: {
+            color: '#1a120e',
+            metalness: 0.06,
+            roughness: 0.74,
+            sheen: 0.15,
+            sheenColor: '#3a2a22',
+            bumpEnabled: true,
+            bumpScale: 0.009,
+            bumpNoiseScale: 8,
+          },
         },
       },
     ],

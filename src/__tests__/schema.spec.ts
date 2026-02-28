@@ -102,7 +102,7 @@ describe('JSON Schema validation', () => {
       rimColor: '#ffffff',
       envMapIntensity: 1.0,
     };
-    const payload = { $schema: 'schema/sword.schema.json', version: 4, model, materials, render };
+    const payload = { $schema: 'schema/sword.schema.json', version: 5, model, materials, render };
     const ok = validate(payload);
     if (!ok) console.error(validate.errors);
     expect(ok).toBe(true);
@@ -163,7 +163,7 @@ describe('JSON Schema validation', () => {
       rimColor: '#ffffff',
       envMapIntensity: 1.0,
     };
-    const payload = { $schema: 'schema/sword.schema.json', version: 4, model, materials, render };
+    const payload = { $schema: 'schema/sword.schema.json', version: 5, model, materials, render };
     const ok = validate(payload);
     if (!ok) console.error(validate.errors);
     expect(ok).toBe(true);
@@ -268,7 +268,7 @@ describe('JSON Schema validation', () => {
       rimColor: '#ffffff',
       envMapIntensity: 1.0,
     };
-    const payload = { $schema: 'schema/sword.schema.json', version: 4, model, materials, render };
+    const payload = { $schema: 'schema/sword.schema.json', version: 5, model, materials, render };
     const ok = validate(payload);
     if (!ok) console.error(validate.errors);
     expect(ok).toBe(true);
@@ -394,7 +394,7 @@ describe('JSON Schema validation', () => {
       rimColor: '#ffffff',
       envMapIntensity: 1.0,
     };
-    const payload = { $schema: 'schema/sword.schema.json', version: 4, model, materials, render };
+    const payload = { $schema: 'schema/sword.schema.json', version: 5, model, materials, render };
     const ok = validate(payload);
     if (!ok) console.error(validate.errors);
     expect(ok).toBe(true);
@@ -554,7 +554,7 @@ describe('JSON Schema validation', () => {
       rimColor: '#ffffff',
       envMapIntensity: 1.0,
     };
-    const payload = { $schema: 'schema/sword.schema.json', version: 4, model, materials, render };
+    const payload = { $schema: 'schema/sword.schema.json', version: 5, model, materials, render };
     const ok = validate(payload);
     if (!ok) console.error(validate.errors);
     expect(ok).toBe(true);
@@ -634,7 +634,7 @@ describe('JSON Schema validation', () => {
           const materials = makeMaterials();
           const payload = {
             $schema: 'schema/sword.schema.json',
-            version: 4,
+            version: 5,
             model,
             materials,
             render,

@@ -271,7 +271,7 @@ export function exportJSON(
   if (activeVariantId) materialsOut.activeVariant = activeVariantId;
   const payload = {
     $schema: 'schema/sword.schema.json',
-    version: 4,
+    version: 5,
     model: state,
     render: { ...renderState },
     materials: materialsOut,

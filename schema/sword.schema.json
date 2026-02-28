@@ -12,8 +12,8 @@
     },
     "version": {
       "type": "integer",
-      "const": 4,
-      "description": "Document format version (4 introduces accessories/scabbards, tassels, and material slots for them in addition to v3's blade profile and fuller upgrades)."
+      "const": 5,
+      "description": "Document format version (5 adds goal sliders, Damascus material presets, URL sharing, and dynamics readouts on top of v4's accessories and fuller upgrades)."
     },
     "model": {
       "$ref": "#/$defs/SwordParams",

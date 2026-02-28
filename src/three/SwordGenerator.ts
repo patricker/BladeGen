@@ -37,14 +37,12 @@ import {
   buildBladeGeometry,
   buildFullerOverlays,
   buildHamonOverlays,
-  buildBladeOutlinePoints,
-  bladeOutlineToSVG,
 } from './sword/bladeGeometry';
 import { buildGuard } from './sword/guardGeometry';
 import { decorateGuard } from './sword/guardDecor';
 import { buildHandle } from './sword/handleGeometry';
 import { buildPommel } from './sword/pommelGeometry';
-import { buildEngravingsGroup } from './sword/engravings';
+import { buildEngravingsGroup, disposeEngravingGroup } from './sword/engravings';
 import { validateSwordParams } from './sword/validation';
 import { TextureCache } from './sword/textures';
 import { createMaterial } from './sword/materials';
@@ -357,7 +355,7 @@ export class SwordGenerator {
     // Engravings / inlays
     if (this.engravingGroup) {
       this.group.remove(this.engravingGroup);
-      disposeObject3D(this.engravingGroup);
+      disposeEngravingGroup(this.engravingGroup);
       this.engravingGroup = null;
     }
     if ((b as any).engravings && (b as any).engravings.length && this.bladeMesh) {

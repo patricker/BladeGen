@@ -8,7 +8,7 @@ export function buildInkOutline(source: THREE.Object3D, scale: number, colorHex:
   source.traverse((o) => {
     const m = o as THREE.Mesh;
     if ((m as any).isMesh && m.geometry) {
-      const om = new THREE.Mesh(m.geometry as any, outlineMat);
+      const om = new THREE.Mesh(m.geometry.clone() as any, outlineMat);
       om.position.copy(m.position);
       om.quaternion.copy(m.quaternion);
       om.scale.copy(m.scale).multiplyScalar(1 + scale);
@@ -41,7 +41,7 @@ export function buildFresnel(
   source.traverse((o) => {
     const m = o as THREE.Mesh;
     if ((m as any).isMesh && m.geometry) {
-      const mesh = new THREE.Mesh(m.geometry as any, mat);
+      const mesh = new THREE.Mesh(m.geometry.clone() as any, mat);
       mesh.position.copy(m.position);
       mesh.quaternion.copy(m.quaternion);
       mesh.scale.copy(m.scale);

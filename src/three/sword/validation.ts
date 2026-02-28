@@ -285,7 +285,12 @@ export function validateSwordParams(params: SwordParams): SwordParams {
     // Sharing would make change detection think nothing changed when UI mutates
     // objects in-place, preventing rebuilds (e.g., engraving knobs not updating).
     engravings: Array.isArray((b as any).engravings)
-      ? (b as any).engravings.map((e: any) => ({ ...e }))
+      ? (b as any).engravings.map((e: any) => ({
+          ...e,
+          depth: clamp(typeof e.depth === 'number' ? e.depth : 0.002, 0.0005, 0.1),
+          width: clamp(typeof e.width === 'number' ? e.width : 0.1, 0.005, 5),
+          height: clamp(typeof e.height === 'number' ? e.height : 0.02, 0.005, 2),
+        }))
       : undefined,
     ricassoLength: clamp((b as any).ricassoLength ?? 0, 0, 0.3),
     falseEdgeLength: clamp((b as any).falseEdgeLength ?? 0, 0, 1),
@@ -457,7 +462,14 @@ export function validateSwordParams(params: SwordParams): SwordParams {
     tangThickness: clamp(h.tangThickness ?? 0.02, 0.005, 0.2),
     handleLayers: Array.isArray((h as any).handleLayers) ? (h as any).handleLayers : undefined,
     menuki: Array.isArray((h as any).menuki) ? (h as any).menuki : undefined,
-    rivets: Array.isArray((h as any).rivets) ? (h as any).rivets : undefined,
+    rivets: Array.isArray((h as any).rivets)
+      ? (h as any).rivets.map((rv: any) => ({
+          ...rv,
+          count: Math.round(clamp(typeof rv.count === 'number' ? rv.count : 1, 1, 20)),
+          radius: clamp(typeof rv.radius === 'number' ? rv.radius : 0.01, 0.002, 0.1),
+          ringFrac: clamp(typeof rv.ringFrac === 'number' ? rv.ringFrac : 0.5, 0, 1),
+        }))
+      : undefined,
     wrapStyle: ((h as any).wrapStyle ?? 'none') as any,
     menukiPreset: ((h as any).menukiPreset ?? 'none') as any,
   };

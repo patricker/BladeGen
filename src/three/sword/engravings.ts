@@ -6,6 +6,23 @@ import type { BladeParams } from './types';
 import { tipWidthWithKissaki, bendOffsetX, thicknessScaleAt } from './math';
 
 /**
+ * Dispose all materials and geometries in an engraving group.
+ * Call this before removing/replacing the engraving group to prevent material leaks
+ * from the per-engraving fill materials created by `makeFillMat()`.
+ */
+export function disposeEngravingGroup(group: THREE.Group): void {
+  group.traverse((obj) => {
+    const m = obj as THREE.Mesh;
+    if ((m as any).isMesh) {
+      (m.geometry as any)?.dispose?.();
+      const mat = m.material as THREE.Material | THREE.Material[];
+      if (Array.isArray(mat)) mat.forEach((x) => (x as any)?.dispose?.());
+      else (mat as any)?.dispose?.();
+    }
+  });
+}
+
+/**
  * Build a group of engravings/decals for the blade faces.
  * - Accepts the current `BladeParams` and the synthesized `bladeMesh` for projection.
  * - Uses a provided `fontCache` map to avoid reloading fonts between calls.
@@ -265,10 +282,17 @@ export function buildEngravingsGroup(
       const cached = cache.get(url);
       if (cached) buildText(cached);
       else
-        loader.load(url, (font: any) => {
-          cache.set(url, font);
-          buildText(font);
-        });
+        loader.load(
+          url,
+          (font: any) => {
+            cache.set(url, font);
+            buildText(font);
+          },
+          undefined,
+          (err: unknown) => {
+            console.warn(`[engravings] Failed to load font from "${url}":`, err);
+          }
+        );
     } else if (e.type === 'shape') {
       const kind = String(e.content || 'rect').toLowerCase();
       sides.forEach((side) => {

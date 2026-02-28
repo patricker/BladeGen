@@ -25,4 +25,10 @@ export class TextureCache {
     });
     return placeholder;
   }
+
+  /** Dispose all cached textures and clear the cache map. */
+  dispose(): void {
+    this.cache.forEach((tex) => tex.dispose());
+    this.cache.clear();
+  }
 }

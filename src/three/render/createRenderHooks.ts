@@ -9,7 +9,6 @@ import type { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.
 import type { SwordGenerator } from '../SwordGenerator';
 import { buildPixelatePass } from './passes/pixelate';
 import { FxManager } from '../fx/manager';
-import { buildBladeGradientWearOverlay } from '../fx/overlays';
 import { makeValueNoiseTexture } from '../fx/noise';
 import {
   setPartBump,
@@ -333,7 +332,7 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     aaPasses.fxaa.enabled = true;
   };
 
-  const ensureSmaa = () => {
+  const _ensureSmaa = () => {
     if (!aaPasses.smaa) {
       aaPasses.smaa = new SMAAPass(1, 1);
       composer.addPass(aaPasses.smaa);
@@ -540,7 +539,14 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     setShadowMapSize: (size) => {
       if (keyLight.shadow) {
         keyLight.shadow.mapSize.set(size, size);
-        keyLight.shadow.dispose?.();
+        // Nullify the map so Three.js recreates it at the new size on the
+        // next render.  Calling shadow.dispose() would free the underlying
+        // WebGL resources while the light still holds a reference to the
+        // disposed map, leading to rendering artifacts or errors.
+        if (keyLight.shadow.map) {
+          keyLight.shadow.map.dispose();
+          keyLight.shadow.map = null;
+        }
       }
     },
     setEnvMap: async (url, asBackground) => {
@@ -754,6 +760,13 @@ export function createRenderHooks(context: RenderHookContext): RenderHooks {
     setFresnel: (enabled, colorHex, intensity, power) => {
       if (fresnelGroup.current) {
         (fresnelGroup.current.parent as any)?.remove(fresnelGroup.current);
+        fresnelGroup.current.traverse((o) => {
+          const m = o as THREE.Mesh;
+          if (m.isMesh) {
+            m.geometry?.dispose?.();
+            (m.material as any)?.dispose?.();
+          }
+        });
         fresnelGroup.current = null;
       }
       (renderHooks as any)._fresnelState = {

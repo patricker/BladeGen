@@ -141,7 +141,7 @@ export function thicknessScaleAt(b: BladeParams, t: number): number {
   while (i < pts.length - 1 && !(tt >= pts[i][0] && tt <= pts[i + 1][0])) i++;
   const [t0, s0] = pts[Math.max(0, Math.min(i, pts.length - 2))];
   const [t1, s1] = pts[Math.min(i + 1, pts.length - 1)];
-  if (t1 === t0) return s0;
+  if (Math.abs(t1 - t0) < 1e-10) return s0;
   const a = (tt - t0) / (t1 - t0);
   return (THREE as any).MathUtils.lerp(s0, s1, a);
 }

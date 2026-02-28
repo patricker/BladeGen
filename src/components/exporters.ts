@@ -1,7 +1,4 @@
 import * as THREE from 'three';
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
-import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
-import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 import type { SwordGenerator, SwordParams } from '../three/SwordGenerator';
 import { buildBladeOutlinePoints, bladeOutlineToSVG } from '../three/SwordGenerator';
 import { createMaterial } from '../three/sword/materials';
@@ -79,10 +76,13 @@ class KHRMaterialsVariantsExporter {
 }
 
 // Bake engravings into the blade mesh using BVH-accelerated CSG.
-// This mutates sword.bladeMesh.geometry for the duration of the export and restores it afterwards.
-async function maybeBakeEngravings(sword: SwordGenerator) {
+// This mutates sword.bladeMesh.geometry for the duration of the export.
+// Returns a restore function that MUST be called after the export is complete
+// to restore the original geometry on the interactive scene.
+async function maybeBakeEngravings(sword: SwordGenerator): Promise<() => void> {
+  const noop = () => {};
   const blade = sword.bladeMesh as THREE.Mesh | null;
-  if (!blade) return;
+  if (!blade) return noop;
   // Find engraving fill meshes (the actual cavity volumes)
   let fillGroup: THREE.Object3D | null = null;
   (sword.group as THREE.Object3D).traverse((o) => {
@@ -95,7 +95,7 @@ async function maybeBakeEngravings(sword: SwordGenerator) {
       if ((m as any).isMesh) solids.push(m);
     });
   }
-  if (!solids.length) return;
+  if (!solids.length) return noop;
   // Dynamic import to avoid bundling cost if baking is never used
   const mod = await import('three-bvh-csg');
   const { Brush, Evaluator, SUBTRACTION } = mod as any;
@@ -119,18 +119,19 @@ async function maybeBakeEngravings(sword: SwordGenerator) {
   blade.geometry = carved.geometry;
   // Ensure geometry carries normals/uvs reasonably
   blade.geometry.computeVertexNormals();
-  // After a tick, restore to avoid affecting the interactive scene
-  queueMicrotask(() => {
+  // Return a restore function – caller MUST invoke this after the export finishes
+  return () => {
     try {
       blade.geometry.dispose?.();
     } catch {}
     blade.geometry = original;
-  });
+  };
 }
 
 export async function exportGLB(sword: SwordGenerator, variants: MaterialVariant[]): Promise<void> {
+  const { GLTFExporter } = await import('three/examples/jsm/exporters/GLTFExporter.js');
   const exporter = new GLTFExporter();
-  await maybeBakeEngravings(sword); // default: bake engravings into blade for export
+  const restoreGeometry = await maybeBakeEngravings(sword);
   if (variants && variants.length) {
     const texCache = new TextureCache();
     const configs: VariantExportConfig[] = [];
@@ -176,48 +177,59 @@ export async function exportGLB(sword: SwordGenerator, variants: MaterialVariant
     exporter.parse(
       sword.group,
       (result) => {
+        restoreGeometry();
         const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = 'sword.glb';
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
         resolve();
       },
-      () => resolve(),
+      () => { restoreGeometry(); resolve(); },
       { binary: true }
     );
   });
 }
 
 export async function exportOBJ(sword: SwordGenerator) {
+  const { OBJExporter } = await import('three/examples/jsm/exporters/OBJExporter.js');
   const exporter = new OBJExporter();
-  await maybeBakeEngravings(sword);
-  const result = exporter.parse(sword.group);
-  const blob = new Blob([result], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'sword.obj';
-  a.click();
-  URL.revokeObjectURL(url);
+  const restoreGeometry = await maybeBakeEngravings(sword);
+  try {
+    const result = exporter.parse(sword.group);
+    const blob = new Blob([result], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sword.obj';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } finally {
+    restoreGeometry();
+  }
 }
 
 export async function exportSTL(sword: SwordGenerator) {
+  const { STLExporter } = await import('three/examples/jsm/exporters/STLExporter.js');
   const exporter = new STLExporter();
-  await maybeBakeEngravings(sword);
-  // Build a print-safe, watertight subset: core solids only
-  const { buildPrintableGroup } = await import('../three/export/printable');
-  const printable = buildPrintableGroup(sword);
-  const result = exporter.parse(printable, { binary: true } as any);
-  const blob = new Blob([result as ArrayBuffer], { type: 'model/stl' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'sword.stl';
-  a.click();
-  URL.revokeObjectURL(url);
+  const restoreGeometry = await maybeBakeEngravings(sword);
+  try {
+    // Build a print-safe, watertight subset: core solids only
+    const { buildPrintableGroup } = await import('../three/export/printable');
+    const printable = buildPrintableGroup(sword);
+    const result = exporter.parse(printable, { binary: true } as any);
+    const blob = new Blob([result as ArrayBuffer], { type: 'model/stl' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sword.stl';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } finally {
+    restoreGeometry();
+  }
 }
 
 export function exportSVG(state: SwordParams) {
@@ -229,7 +241,7 @@ export function exportSVG(state: SwordParams) {
   a.href = url;
   a.download = 'blade_outline.svg';
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 export function exportJSON(
@@ -270,5 +282,5 @@ export function exportJSON(
   a.href = url;
   a.download = 'bladegen.json';
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }

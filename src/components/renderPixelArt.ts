@@ -4,16 +4,6 @@ type RenderHooks = {
   setPixelArtOptions?: (opts: { pixelSize?: number; posterizeLevels?: number }) => void;
 };
 
-type Checkbox = (
-  parent: HTMLElement,
-  label: string,
-  value: boolean,
-  onChange: (v: boolean) => void,
-  rerender: () => void,
-  tooltip?: string,
-  fieldOverride?: string
-) => unknown;
-
 type Select = (
   parent: HTMLElement,
   label: string,

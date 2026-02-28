@@ -67,7 +67,7 @@ vi.mock('three', () => ({
   Color: ColorProxy,
 }));
 
-class BasePass {
+class _BasePass {
   enabled = false;
   uniforms: Record<string, { value: unknown }> = {};
   constructor() {

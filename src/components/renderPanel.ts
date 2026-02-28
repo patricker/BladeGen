@@ -84,7 +84,7 @@ export function attachRenderQualityPanel(opts: {
     checkbox,
     select,
     slider,
-    rerender,
+    rerender: _rerender,
   } = opts;
 
   checkbox(
@@ -140,6 +140,7 @@ export function attachRenderQualityPanel(opts: {
     'Shadow map resolution.'
   );
 
+  // Render-only tweak; no geometry rebuild needed
   slider(
     rQual,
     'Shadow Bias',
@@ -167,6 +168,7 @@ export function attachRenderQualityPanel(opts: {
     'Renderer tone mapping curve.'
   );
 
+  // Render-only tweak; no geometry rebuild needed
   slider(
     rQual,
     'Exposure',
@@ -182,6 +184,7 @@ export function attachRenderQualityPanel(opts: {
     'Tone mapping exposure.'
   );
 
+  // Render-only tweak; no geometry rebuild needed
   slider(
     rQual,
     'Env Intensity',

@@ -380,7 +380,7 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
   let mistMat: THREE.ShaderMaterial | null = null;
   let mistLife: Float32Array | null = null;
   let mistVel: Float32Array | null = null;
-  let mistTime = 0.0;
+  let _mistTime = 0.0;
   const mistState = {
     enabled: false,
     color: 0x88aadd,
@@ -507,7 +507,7 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
     updateExplainOverlay();
 
     if (mistState.enabled) {
-      mistTime += dt;
+      _mistTime += dt;
     }
 
     const elapsed = clock.getElapsedTime();

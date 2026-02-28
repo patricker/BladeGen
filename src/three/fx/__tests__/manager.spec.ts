@@ -1,10 +1,9 @@
 import * as THREE from 'three';
 import { describe, it, expect } from 'vitest';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { FxManager } from '../../../three/fx/manager';
 
 // Minimal fake renderer methods for no-op composition
-class FakeRenderer extends (THREE.WebGLRenderer as any) {
+class _FakeRenderer extends (THREE.WebGLRenderer as any) {
   constructor() {
     super({ antialias: false });
   }

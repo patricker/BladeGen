@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { defaultSwordParams, SwordGenerator } from '../SwordGenerator';
 import {
-  partBounds,
   groupDescendantsCount,
   totalVertices,
   greater,

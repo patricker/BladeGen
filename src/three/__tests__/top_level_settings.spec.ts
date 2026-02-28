@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import * as THREE from 'three';
 import { defaultSwordParams, SwordGenerator } from '../SwordGenerator';
-import { partBounds, greater, approx } from './helpers/metrics';
+import { partBounds, greater } from './helpers/metrics';
 
 describe('Top-level toggles and ratios', () => {
   it('hiltEnabled=false removes guard, handle, and pommel', () => {

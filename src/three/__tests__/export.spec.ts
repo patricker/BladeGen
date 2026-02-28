@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { describe, it, expect } from 'vitest';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';

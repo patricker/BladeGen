@@ -15,7 +15,7 @@ describe('guardDecor', () => {
       guardBlendFillet: 0.5,
       extras: [{ kind: 'sideRing', radius: 0.1, thickness: 0.02, offsetY: 0 }],
     };
-    const res = decorateGuard(params, {
+    const _res = decorateGuard(params, {
       swordGroup,
       makeMaterial: () => new THREE.MeshStandardMaterial(),
     });

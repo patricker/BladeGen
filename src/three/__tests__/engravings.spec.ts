@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock FontLoader to avoid network
 vi.mock('three/examples/jsm/loaders/FontLoader.js', () => {

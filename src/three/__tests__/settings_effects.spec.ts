@@ -2,16 +2,13 @@ import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { defaultSwordParams, SwordGenerator } from '../SwordGenerator';
 import {
-  makeSword,
   partBounds,
-  vertexCount,
   groupDescendantsCount,
   greater,
   less,
   bladeWidthAt,
   bladeCenterlineXAt,
   bladeThicknessAt,
-  bladeHalfWidthsAt,
   widthsStdDev,
   bladeThicknessAtXBand,
 } from './helpers/metrics';
@@ -200,7 +197,7 @@ describe('Per-setting geometry effects (representative)', () => {
   it('Carved fuller reduces thickness within span (local band)', () => {
     const base = defaultSwordParams();
     const s1 = new SwordGenerator(base);
-    const t1 = bladeThicknessAt(s1, 0.5)!;
+    const _t1 = bladeThicknessAt(s1, 0.5)!;
     const carved = defaultSwordParams();
     (carved.blade as any).fullers = [
       {
@@ -224,7 +221,7 @@ describe('Per-setting geometry effects (representative)', () => {
     base.blade.falseEdgeLength = 0;
     base.blade.falseEdgeDepth = 0;
     const s1 = new SwordGenerator(base);
-    const t1 = bladeThicknessAt(s1, 0.92)!;
+    const _t1 = bladeThicknessAt(s1, 0.92)!;
     const fe = defaultSwordParams();
     fe.blade.falseEdgeLength = 0.4;
     fe.blade.falseEdgeDepth = 0.12;

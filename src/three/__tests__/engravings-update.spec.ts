@@ -46,7 +46,7 @@ describe('Engraving updates via updateGeometry', () => {
     const gen = new SwordGenerator(params);
     const g1 = (gen as any).engravingGroup as THREE.Group;
     expect(g1).toBeTruthy();
-    const x1 = span(bboxOf(g1), 'x');
+    const _x1 = span(bboxOf(g1), 'x');
 
     // Increase width and verify X-span grows
     (params.blade as any).engravings[0].width = 0.16;

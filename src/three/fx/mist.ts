@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { MistShader } from './shaders';
 
 /** Tileable noise texture for mist alpha breakup. */
-export function makeMistNoiseTexture(size = 128, seed = 1337) {
+export function makeMistNoiseTexture(size = 128, _seed = 1337) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d')!;

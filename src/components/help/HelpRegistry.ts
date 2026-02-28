@@ -162,7 +162,7 @@ export function listDocs(): HelpDoc[] {
 let activeTooltip: HTMLElement | null = null;
 let activePopover: HTMLElement | null = null;
 let activePopoverAnchor: HTMLElement | null = null;
-let lastFocusEl: HTMLElement | null = null;
+let _lastFocusEl: HTMLElement | null = null;
 
 function ensureStyles() {
   if (stylesInjected) return;
@@ -448,7 +448,7 @@ function openPopover(anchor: HTMLElement, doc: HelpDoc, labelText?: string) {
   positionNear(anchor, pop, 'below');
   activePopover = pop;
   activePopoverAnchor = anchor;
-  lastFocusEl = anchor;
+  _lastFocusEl = anchor;
   // highlight relevant parts while open
   if (highlighter && doc.parts?.length) highlighter(doc.parts);
   // global listeners
@@ -474,7 +474,6 @@ export function attachHelp(
       w.__smkMissingHelp = w.__smkMissingHelp || new Set();
       if (!w.__smkMissingHelp.has(helpId)) {
         w.__smkMissingHelp.add(helpId);
-        // eslint-disable-next-line no-console
         console.warn('[help] Missing help doc for id:', helpId);
       }
     } catch {}

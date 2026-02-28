@@ -532,7 +532,7 @@ function openSearch() {
         results.appendChild(row);
       });
     }
-    const renderResults = (q: string) => {
+    const _renderResults = (q: string) => {
       results.innerHTML = '';
       const query = q.trim().toLowerCase();
       const scored = items

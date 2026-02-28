@@ -25,7 +25,20 @@ export interface BootstrapContext {
 
 export function createBootstrap(canvas: HTMLCanvasElement): BootstrapContext {
   // Enable stencil for engraving cutouts (stencil-masked carving pass)
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, stencil: true });
+  // In capture mode (?capture=1), preserveDrawingBuffer to allow reliable toDataURL screenshots.
+  let preserve = false;
+  try {
+    if (typeof window !== 'undefined') {
+      const qp = new URLSearchParams(window.location.search);
+      preserve = qp.has('capture');
+    }
+  } catch {}
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: false,
+    stencil: true,
+    preserveDrawingBuffer: preserve,
+  } as any);
   // Ensure stencil buffer is cleared between frames when using composer
   renderer.autoClearStencil = true as any;
   renderer.outputColorSpace = THREE.SRGBColorSpace;

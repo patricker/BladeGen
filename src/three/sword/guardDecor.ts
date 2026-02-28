@@ -102,7 +102,7 @@ export function decorateGuard(
     const width = Math.max(0.005, langets.width ?? 0.04);
     const thickness = Math.max(0.002, langets.thickness ?? 0.01);
     const bladeW = ctx.bladeParams?.baseWidth ?? 0.25;
-    const bladeT = Math.max(
+    const _bladeT = Math.max(
       ctx.bladeParams?.thicknessLeft ?? 0.08,
       ctx.bladeParams?.thicknessRight ?? 0.08
     );

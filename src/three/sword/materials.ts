@@ -1,6 +1,15 @@
 import * as THREE from 'three';
-import type { SwordParams } from './types';
 import { TextureCache } from './textures';
+
+// Global envMap intensity multiplier applied to all newly created materials.
+// This lets UI-driven changes persist across geometry/material re-applies.
+let GLOBAL_ENV_INTENSITY = 1.0;
+export function setGlobalEnvIntensity(v: number) {
+  GLOBAL_ENV_INTENSITY = Math.max(0, Number.isFinite(v) ? v : 1.0);
+}
+export function getGlobalEnvIntensity() {
+  return GLOBAL_ENV_INTENSITY;
+}
 
 export type SwordPart = 'blade' | 'guard' | 'handle' | 'pommel' | 'scabbard' | 'tassel';
 
@@ -118,6 +127,8 @@ export function createMaterial(
       if (tex) (mat as any)[prop] = tex;
     }
   }
-  if (m.envMapIntensity !== undefined) (mat as any).envMapIntensity = m.envMapIntensity;
+  // Apply base envMapIntensity (per-material) scaled by global multiplier
+  const baseEnv = (m.envMapIntensity !== undefined ? m.envMapIntensity : 1.0) as number;
+  (mat as any).envMapIntensity = baseEnv * GLOBAL_ENV_INTENSITY;
   return mat;
 }

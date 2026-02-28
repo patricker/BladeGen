@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 /**
  * Sword parameter type definitions used across geometry builders and the generator.
  *

@@ -20,7 +20,6 @@ describe('printable export group', () => {
       // Apply the world matrix to test actual printed orientation (not strictly needed for topology)
       g.applyMatrix4(m.matrixWorld);
       const boundaryEdges = countBoundaryEdges(g);
-      // eslint-disable-next-line no-console
       console.log('mesh', (g as any).type, 'boundaryEdges=', boundaryEdges);
       expect(boundaryEdges).toBe(0);
     }

@@ -1,4 +1,3 @@
-import type { AAMode } from './renderConfig';
 import { hexToInt } from '../utils/color';
 
 type RenderHooks = {

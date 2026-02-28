@@ -131,7 +131,7 @@ export function buildScabbard(
   const indices: number[] = [];
 
   const offset = new THREE.Vector3();
-  const tmpNormal = new THREE.Vector3();
+  const _tmpNormal = new THREE.Vector3();
   const tmpBinormal = new THREE.Vector3();
   const vertex = new THREE.Vector3();
   const normalVec = new THREE.Vector3();

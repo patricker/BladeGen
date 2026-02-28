@@ -1,13 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import * as THREE from 'three';
 import { defaultSwordParams, SwordGenerator } from '../SwordGenerator';
 import {
   partBounds,
   vertexCount,
-  totalVertices,
   groupDescendantsCount,
   greater,
-  less,
 } from './helpers/metrics';
 
 function makeWithPommel(

@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { describe, it, expect } from 'vitest';
 import { SwordGenerator, defaultSwordParams } from '../../three/SwordGenerator';
 

@@ -233,7 +233,7 @@ export function buildGuard(
     group.add(meshR, meshL);
     const hb = new THREE.Box3().setFromObject(group);
     if (isFinite(hb.min.y) && isFinite(hb.max.y)) {
-      const H = hb.max.y - hb.min.y;
+      const _H = hb.max.y - hb.min.y;
       const desiredTopY = targetTopY;
       const baseY = hb.max.y;
       const dy = desiredTopY - baseY;

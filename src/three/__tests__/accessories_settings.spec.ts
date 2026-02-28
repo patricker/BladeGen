@@ -6,7 +6,6 @@ import {
   greater,
   groupDescendantsCount,
   findChildByName,
-  boundsOf,
 } from './helpers/metrics';
 
 function makeSword(mutator: (p: ReturnType<typeof defaultSwordParams>) => void): SwordGenerator {

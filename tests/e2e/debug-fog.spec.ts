@@ -12,7 +12,7 @@ test('fog status before/after preset', async ({ page }) => {
   });
   console.log('fog before', fogBefore);
 
-  const presetSelect = page.locator('select:has(option[value="katana"])');
+  const presetSelect = page.locator('#preset-selector');
   await presetSelect.selectOption('katana');
   await page.waitForTimeout(500);
 

@@ -16,7 +16,7 @@ test.describe('Editor sanity flow', () => {
     );
     expect(initialLength).not.toBeNull();
 
-    const presetSelect = page.locator('select:has(option[value="arming"])');
+    const presetSelect = page.locator('#preset-selector');
     await presetSelect.selectOption('arming');
 
     await expect

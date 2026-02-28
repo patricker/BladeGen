@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "capture": "playwright test tests/e2e/capture-presets.spec.ts --project=chromium",
     "help:build": "node scripts/build-help-docs.mjs && node scripts/build-help-index.mjs",
     "help:lint": "node scripts/lint-help-docs.mjs",
     "lint": "eslint \"src/**/*.ts\" --max-warnings=0",

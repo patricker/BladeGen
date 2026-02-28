@@ -29,6 +29,12 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Lint (ESLint --max-warnings=0)
+        run: npm run lint
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
       - name: Build
         # Custom domain (bladegen.net) serves at root, so use default base '/'
         run: npm run build

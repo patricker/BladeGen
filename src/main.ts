@@ -1,7 +1,8 @@
 import { setupScene } from './three/setupScene';
 import { createSidebar } from './components/controls';
-import { presetShowcaseArming } from './components/presets';
-import { defaultSwordParams } from './three/SwordGenerator';
+import { presetShowcaseArming, swordPresets } from './components/presets';
+import { shouldShowGallery, createGallery } from './components/gallery';
+import { shouldUseLowQuality } from './components/mobileDetect';
 
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
 if (!canvas) {
@@ -12,7 +13,7 @@ const {
   renderer,
   camera,
   controls,
-  scene,
+  scene: _scene,
   composer,
   dispose,
   updateFXAA,
@@ -48,7 +49,7 @@ onResize();
 let last = 0;
 function animate(t: number) {
   if (disposed) return;
-  const dt = (t - last) / 1000;
+  const _dt = (t - last) / 1000;
   last = t;
   controls.update();
   pipeline.render();
@@ -68,12 +69,87 @@ requestAnimationFrame(animate);
 
 // Build UI controls
 const sidebar = document.getElementById('sidebar');
-if (sidebar && sword) {
-  // Start with the Showcase Arming hero default and apply its overrides
-  createSidebar(sidebar, sword, presetShowcaseArming(), renderHooks, {
-    initialPresetId: 'showcase-arming',
+
+// Mobile drawer infrastructure
+const header = document.querySelector('header');
+const hamburger = document.createElement('button');
+hamburger.className = 'hamburger';
+hamburger.setAttribute('aria-label', 'Toggle sidebar');
+hamburger.textContent = '\u2630';
+
+const overlay = document.createElement('div');
+overlay.className = 'sidebar-overlay';
+document.getElementById('app')!.appendChild(overlay);
+
+if (header) {
+  header.querySelector('.brand')!.prepend(hamburger);
+}
+
+const toggleSidebar = (open?: boolean) => {
+  if (!sidebar) return;
+  const isOpen = open ?? !sidebar.classList.contains('open');
+  sidebar.classList.toggle('open', isOpen);
+  overlay.classList.toggle('visible', isOpen);
+};
+
+hamburger.addEventListener('click', () => toggleSidebar());
+overlay.addEventListener('click', () => toggleSidebar(false));
+
+function startEditor(presetId?: string) {
+  if (!sidebar || !sword) return;
+  const id = presetId || 'showcase-arming';
+  const entry = swordPresets.find(p => p.id === id);
+  const params = entry ? entry.build() : presetShowcaseArming();
+  createSidebar(sidebar, sword, params, renderHooks, {
+    initialPresetId: id,
+    initialQualityPreset: shouldUseLowQuality() ? 'Low' : undefined,
   });
 }
+
+if (shouldShowGallery()) {
+  if (sidebar) sidebar.style.display = 'none';
+  const app = document.getElementById('app');
+  if (app) {
+    const galleryEl = createGallery(app, {
+      onSelectPreset: (presetId) => {
+        galleryEl.remove();
+        if (sidebar) sidebar.style.display = '';
+        startEditor(presetId);
+      },
+      onDismiss: () => {
+        galleryEl.remove();
+        if (sidebar) sidebar.style.display = '';
+        startEditor();
+      },
+    });
+  }
+} else {
+  startEditor();
+}
+
+// Listen for "Browse All" from toolbar
+window.addEventListener('bladegen:open-gallery', () => {
+  if (!sidebar) return;
+  sidebar.style.display = 'none';
+  const app = document.getElementById('app');
+  if (app) {
+    const galleryEl = createGallery(app, {
+      onSelectPreset: (presetId) => {
+        galleryEl.remove();
+        sidebar.style.display = '';
+        const presetSel = document.getElementById('preset-selector') as HTMLSelectElement;
+        if (presetSel) {
+          presetSel.value = presetId;
+          presetSel.dispatchEvent(new Event('change'));
+        }
+      },
+      onDismiss: () => {
+        galleryEl.remove();
+        sidebar.style.display = '';
+      },
+    });
+  }
+});
 
 // Header Help button (opens Help Panel)
 try {
@@ -123,11 +199,9 @@ function applyTheme(key: string) {
   renderHooks.setBackgroundColor(t.base);
   (renderHooks as any).setBackgroundTargetColor?.(t.target);
   renderHooks.setBackgroundBrightness(t.brightness);
-  // Ground tint will auto-sync to background via setupScene
 }
 
 if (themeSel) {
   themeSel.addEventListener('change', () => applyTheme(themeSel.value));
-  // Initialize
   applyTheme(themeSel.value || 'midnight');
 }

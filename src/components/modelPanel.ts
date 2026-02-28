@@ -160,6 +160,7 @@ export function attachModelPanel(opts: {
   );
   // Serrations
   const bSerr = addGroup(sections.Blade, 'Serrations');
+  bSerr.dataset.advanced = 'true';
   select(
     bSerr,
     'Serration Pattern',
@@ -187,6 +188,7 @@ export function attachModelPanel(opts: {
 
   // Fullers (and per-side layout)
   const bFuller = addGroup(sections.Blade, 'Fullers');
+  bFuller.dataset.advanced = 'true';
   select(
     bFuller,
     'Fuller Mode',
@@ -313,6 +315,7 @@ export function attachModelPanel(opts: {
 
   // Cross-section & Thickness
   const bXsec = addGroup(sections.Blade, 'Cross-section & Thickness');
+  bXsec.dataset.advanced = 'true';
   select(
     bXsec,
     'Cross-section',
@@ -368,6 +371,7 @@ export function attachModelPanel(opts: {
 
   // Hollow grind
   const bHollow = addGroup(sections.Blade, 'Hollow Grind');
+  bHollow.dataset.advanced = 'true';
   checkbox(
     bHollow,
     'Enable Hollow',
@@ -422,6 +426,7 @@ export function attachModelPanel(opts: {
 
   // Ricasso & False Edge
   const bEdge = addGroup(sections.Blade, 'Ricasso & False Edge');
+  bEdge.dataset.advanced = 'true';
   slider(
     bEdge,
     'Ricasso Length',
@@ -457,6 +462,7 @@ export function attachModelPanel(opts: {
 
   // Curvature & Tip
   const bCurv = addGroup(sections.Blade, 'Curvature & Tip');
+  // Basic controls: Curvature and Tip Shape
   slider(
     bCurv,
     'Curvature',
@@ -469,6 +475,19 @@ export function attachModelPanel(opts: {
   );
   select(
     bCurv,
+    'Tip Shape',
+    ['pointed', 'rounded', 'leaf', 'clip', 'tanto', 'spear', 'sheepsfoot'],
+    (state.blade.tipShape ?? 'pointed') as string,
+    (v) => (state.blade.tipShape = v as any),
+    rerender,
+    'High-level tip shaping.'
+  );
+  // Advanced controls within Curvature & Tip
+  const bCurvAdv = document.createElement('div');
+  bCurvAdv.dataset.advanced = 'true';
+  bCurv.appendChild(bCurvAdv);
+  select(
+    bCurvAdv,
     'Sori Profile',
     ['torii', 'koshi', 'saki'],
     (state.blade.soriProfile ?? 'torii') as string,
@@ -477,7 +496,7 @@ export function attachModelPanel(opts: {
     'Curvature distribution along the blade.'
   );
   slider(
-    bCurv,
+    bCurvAdv,
     'Sori Bias',
     0.3,
     3.0,
@@ -487,7 +506,7 @@ export function attachModelPanel(opts: {
     rerender
   );
   slider(
-    bCurv,
+    bCurvAdv,
     'Kissaki Length',
     0,
     0.35,
@@ -497,7 +516,7 @@ export function attachModelPanel(opts: {
     rerender
   );
   slider(
-    bCurv,
+    bCurvAdv,
     'Kissaki Round',
     0,
     1,
@@ -507,7 +526,7 @@ export function attachModelPanel(opts: {
     rerender
   );
   slider(
-    bCurv,
+    bCurvAdv,
     'Tip Ramp %',
     0,
     95,
@@ -518,17 +537,8 @@ export function attachModelPanel(opts: {
     },
     rerender
   );
-  select(
-    bCurv,
-    'Tip Shape',
-    ['pointed', 'rounded', 'leaf', 'clip', 'tanto', 'spear', 'sheepsfoot'],
-    (state.blade.tipShape ?? 'pointed') as string,
-    (v) => (state.blade.tipShape = v as any),
-    rerender,
-    'High-level tip shaping.'
-  );
   slider(
-    bCurv,
+    bCurvAdv,
     'Tip Bulge',
     0,
     1,
@@ -539,7 +549,7 @@ export function attachModelPanel(opts: {
     "Extra mid-blade bulge for 'leaf' tips."
   );
   slider(
-    bCurv,
+    bCurvAdv,
     'Base Angle',
     -0.35,
     0.35,
@@ -550,7 +560,7 @@ export function attachModelPanel(opts: {
     'Initial tangent angle at base (radians).'
   );
   slider(
-    bCurv,
+    bCurvAdv,
     'Twist Angle',
     -37.6991,
     37.6991,
@@ -561,7 +571,7 @@ export function attachModelPanel(opts: {
     'Total twist around +Y in radians (±12π).'
   );
   select(
-    bCurv,
+    bCurvAdv,
     'Edge Type',
     ['double', 'single'],
     (state.blade.edgeType ?? 'double') as string,
@@ -571,6 +581,7 @@ export function attachModelPanel(opts: {
 
   // Hamon
   const bHamon = addGroup(sections.Blade, 'Hamon');
+  bHamon.dataset.advanced = 'true';
   checkbox(
     bHamon,
     'Hamon Enabled',
@@ -617,9 +628,12 @@ export function attachModelPanel(opts: {
     rerender
   );
 
-  // End blade: asymmetry/chaos
+  // End blade: asymmetry/chaos (advanced)
+  const bChaos = document.createElement('div');
+  bChaos.dataset.advanced = 'true';
+  sections.Blade.appendChild(bChaos);
   slider(
-    sections.Blade,
+    bChaos,
     'Asymmetry',
     -1,
     1,
@@ -629,7 +643,7 @@ export function attachModelPanel(opts: {
     rerender
   );
   slider(
-    sections.Blade,
+    bChaos,
     'Chaos',
     0,
     1,
@@ -641,6 +655,7 @@ export function attachModelPanel(opts: {
 
   // Family presets & advanced waves
   const bFamily = addGroup(sections.Blade, 'Family');
+  bFamily.dataset.advanced = 'true';
   select(
     bFamily,
     'Blade Family',
@@ -842,6 +857,7 @@ export function attachGuardControls(opts: {
 
   // Fillet
   const gFillet = addGroup(sections.Guard, 'Fillet');
+  gFillet.dataset.advanced = 'true';
   slider(
     gFillet,
     'Blend Fillet',
@@ -867,6 +883,7 @@ export function attachGuardControls(opts: {
 
   // Shell guard controls (cup/cavalry shell)
   const gShell = addGroup(sections.Guard, 'Shell Guard');
+  gShell.dataset.advanced = 'true';
   slider(
     gShell,
     'Shell Coverage',
@@ -903,6 +920,7 @@ export function attachGuardControls(opts: {
 
   // Langets hugging the blade flats
   const gLangets = addGroup(sections.Guard, 'Langets');
+  gLangets.dataset.advanced = 'true';
   const ensureLangets = () => {
     const g: any = state.guard as any;
     if (!g.langets) g.langets = {};
@@ -959,6 +977,7 @@ export function attachGuardControls(opts: {
 
   // Pas d'âne rings
   const gPas = addGroup(sections.Guard, "Pas d'âne");
+  gPas.dataset.advanced = 'true';
   slider(
     gPas,
     "Pas d'âne Count",
@@ -1000,9 +1019,12 @@ export function attachGuardControls(opts: {
     rerender
   );
 
-  // Finger guard
+  // Finger guard (advanced)
+  const gFingerWrap = document.createElement('div');
+  gFingerWrap.dataset.advanced = 'true';
+  sections.Guard.appendChild(gFingerWrap);
   checkbox(
-    sections.Guard,
+    gFingerWrap,
     'Finger Guard',
     hasGuardExtra('fingerGuard'),
     (v) => {
@@ -1017,6 +1039,7 @@ export function attachGuardControls(opts: {
 
   // Side rings
   const gRings = addGroup(sections.Guard, 'Side Rings');
+  gRings.dataset.advanced = 'true';
   checkbox(
     gRings,
     'Side Rings',
@@ -1081,6 +1104,7 @@ export function attachGuardControls(opts: {
 
   // Loops
   const gLoops = addGroup(sections.Guard, 'Loops');
+  gLoops.dataset.advanced = 'true';
   checkbox(
     gLoops,
     'Loops',
@@ -1143,9 +1167,12 @@ export function attachGuardControls(opts: {
     'Loop vertical offset.'
   );
 
-  // Misc guard settings
+  // Misc guard settings (advanced)
+  const gMisc = document.createElement('div');
+  gMisc.dataset.advanced = 'true';
+  sections.Guard.appendChild(gMisc);
   checkbox(
-    sections.Guard,
+    gMisc,
     'Asymmetric Arms',
     (state.guard as any).asymmetricArms ?? false,
     (v) => ((state.guard as any).asymmetricArms = v),
@@ -1153,7 +1180,7 @@ export function attachGuardControls(opts: {
     'Scale left/right guard arms differently.'
   );
   slider(
-    sections.Guard,
+    gMisc,
     'Arm Asymmetry',
     -1,
     1,
@@ -1164,7 +1191,7 @@ export function attachGuardControls(opts: {
     'Negative enlarges left; positive enlarges right.'
   );
   slider(
-    sections.Guard,
+    gMisc,
     'Guard Detail',
     3,
     64,
@@ -1175,7 +1202,7 @@ export function attachGuardControls(opts: {
     'Detail for guard curves.'
   );
   checkbox(
-    sections.Guard,
+    gMisc,
     'Habaki',
     (state.guard as any).habakiEnabled ?? false,
     (v) => ((state.guard as any).habakiEnabled = v),
@@ -1183,7 +1210,7 @@ export function attachGuardControls(opts: {
     'Blade collar above the guard.'
   );
   slider(
-    sections.Guard,
+    gMisc,
     'Habaki Height',
     0.02,
     0.2,
@@ -1194,7 +1221,7 @@ export function attachGuardControls(opts: {
     'Height of the habaki collar.'
   );
   slider(
-    sections.Guard,
+    gMisc,
     'Habaki Margin',
     0.002,
     0.08,
@@ -1205,7 +1232,7 @@ export function attachGuardControls(opts: {
     'Clearance added to blade width/thickness.'
   );
   slider(
-    sections.Guard,
+    gMisc,
     'Guard Height',
     -0.15,
     0.15,
@@ -1217,6 +1244,7 @@ export function attachGuardControls(opts: {
   );
 
   const gQuillon = addGroup(sections.Guard, 'Quillons');
+  gQuillon.dataset.advanced = 'true';
   slider(
     gQuillon,
     'Quillon Count',
@@ -1263,6 +1291,7 @@ export function attachGuardControls(opts: {
   );
 
   const gDisk = addGroup(sections.Guard, 'Disk Cutouts');
+  gDisk.dataset.advanced = 'true';
   slider(
     gDisk,
     'Cutouts',
@@ -1287,6 +1316,7 @@ export function attachGuardControls(opts: {
   );
 
   const gBasket = addGroup(sections.Guard, 'Basket Guard');
+  gBasket.dataset.advanced = 'true';
   slider(
     gBasket,
     'Basket Rods',
@@ -1373,8 +1403,12 @@ export function attachHandleControls(opts: {
     (v) => (state.handle.length = v),
     rerender
   );
+  // Advanced handle controls: radius, ridges, etc.
+  const hAdvLoose = document.createElement('div');
+  hAdvLoose.dataset.advanced = 'true';
+  sections.Handle.appendChild(hAdvLoose);
   slider(
-    sections.Handle,
+    hAdvLoose,
     'Radius Top',
     0.05,
     0.3,
@@ -1384,7 +1418,7 @@ export function attachHandleControls(opts: {
     rerender
   );
   slider(
-    sections.Handle,
+    hAdvLoose,
     'Radius Bottom',
     0.05,
     0.3,
@@ -1394,7 +1428,7 @@ export function attachHandleControls(opts: {
     rerender
   );
   checkbox(
-    sections.Handle,
+    hAdvLoose,
     'Ridges',
     state.handle.segmentation,
     (v) => (state.handle.segmentation = v),
@@ -1402,7 +1436,7 @@ export function attachHandleControls(opts: {
     'Adds axial ridges along the grip.'
   );
   slider(
-    sections.Handle,
+    hAdvLoose,
     'Ridge Count',
     0,
     64,
@@ -1414,6 +1448,7 @@ export function attachHandleControls(opts: {
   );
 
   const hWrap = addGroup(sections.Handle, 'Handle Wrap');
+  // Basic: Wrap Enabled toggle
   checkbox(
     hWrap,
     'Wrap Enabled',
@@ -1422,8 +1457,12 @@ export function attachHandleControls(opts: {
     rerender,
     'Enable helical wrap deformation for the grip.'
   );
+  // Advanced: wrap details
+  const hWrapAdv = document.createElement('div');
+  hWrapAdv.dataset.advanced = 'true';
+  hWrap.appendChild(hWrapAdv);
   slider(
-    hWrap,
+    hWrapAdv,
     'Wrap Turns',
     0,
     20,
@@ -1434,7 +1473,7 @@ export function attachHandleControls(opts: {
     'Number of helical cycles along the grip.'
   );
   slider(
-    hWrap,
+    hWrapAdv,
     'Wrap Depth',
     0,
     0.05,
@@ -1444,8 +1483,9 @@ export function attachHandleControls(opts: {
     rerender,
     'Radial amplitude of the wrap pattern.'
   );
+  // Handle Sides goes to the loose advanced container
   slider(
-    sections.Handle,
+    hAdvLoose,
     'Handle Sides',
     8,
     128,
@@ -1456,7 +1496,7 @@ export function attachHandleControls(opts: {
     'Radial tessellation (higher is smoother).'
   );
   checkbox(
-    hWrap,
+    hWrapAdv,
     'Wrap Texture',
     state.handle.wrapTexture ?? false,
     (v) => (state.handle.wrapTexture = v),
@@ -1464,7 +1504,7 @@ export function attachHandleControls(opts: {
     'Procedural diagonal stripe texture on grip.'
   );
   slider(
-    hWrap,
+    hWrapAdv,
     'Wrap Tex Scale',
     1,
     32,
@@ -1475,7 +1515,7 @@ export function attachHandleControls(opts: {
     'Texture repeat scale.'
   );
   slider(
-    hWrap,
+    hWrapAdv,
     'Wrap Tex Angle',
     -90,
     90,
@@ -1486,7 +1526,7 @@ export function attachHandleControls(opts: {
     'Stripe angle (degrees).'
   );
   select(
-    hWrap,
+    hWrapAdv,
     'Wrap Style',
     ['none', 'crisscross', 'hineri', 'katate', 'wire'],
     state.handle.wrapStyle ?? 'none',
@@ -1499,6 +1539,7 @@ export function attachHandleControls(opts: {
 
   // Rayskin overlay
   const hRayskin = addGroup(sections.Handle, 'Rayskin');
+  hRayskin.dataset.advanced = 'true';
   const ensureRayskin = () => {
     if (!state.handle.rayskin) state.handle.rayskin = {} as any;
     return state.handle.rayskin as any;
@@ -1583,10 +1624,16 @@ export function attachHandleControls(opts: {
   makeWrapButton('Katate-maki', 'katate');
   makeWrapButton('Wire Wrap', 'wire');
   wrapPresetRow.appendChild(wrapPresetButtons);
+  // Wrap presets row is advanced
+  wrapPresetRow.dataset.advanced = 'true';
   sections.Handle.appendChild(wrapPresetRow);
 
+  // Advanced handle shape controls
+  const hShapeAdv = document.createElement('div');
+  hShapeAdv.dataset.advanced = 'true';
+  sections.Handle.appendChild(hShapeAdv);
   slider(
-    sections.Handle,
+    hShapeAdv,
     'Oval Ratio',
     1,
     1.8,
@@ -1597,7 +1644,7 @@ export function attachHandleControls(opts: {
     'Wider X vs Z for an oval tsuka.'
   );
   slider(
-    sections.Handle,
+    hShapeAdv,
     'Flare',
     0,
     0.2,
@@ -1608,7 +1655,7 @@ export function attachHandleControls(opts: {
     'Extra radius near the pommel.'
   );
   slider(
-    sections.Handle,
+    hShapeAdv,
     'Handle Curvature',
     -0.2,
     0.2,
@@ -1620,6 +1667,7 @@ export function attachHandleControls(opts: {
   );
 
   const hTang = addGroup(sections.Handle, 'Tang');
+  hTang.dataset.advanced = 'true';
   checkbox(
     hTang,
     'Tang Visible',
@@ -1651,8 +1699,12 @@ export function attachHandleControls(opts: {
     'Visible tang thickness.'
   );
 
+  // Advanced: crisscross wrap layer controls
+  const hCrisscrossAdv = document.createElement('div');
+  hCrisscrossAdv.dataset.advanced = 'true';
+  sections.Handle.appendChild(hCrisscrossAdv);
   checkbox(
-    sections.Handle,
+    hCrisscrossAdv,
     'Crisscross Wrap Layer',
     !!crisscrossLayer(),
     (v) => {
@@ -1674,7 +1726,7 @@ export function attachHandleControls(opts: {
     'Adds two intertwined helices around the grip.'
   );
   slider(
-    sections.Handle,
+    hCrisscrossAdv,
     'Wrap Turns L',
     1,
     20,
@@ -1690,7 +1742,7 @@ export function attachHandleControls(opts: {
     'Number of crisscross turns.'
   );
   slider(
-    sections.Handle,
+    hCrisscrossAdv,
     'Wrap Depth',
     0.001,
     0.05,
@@ -1707,7 +1759,7 @@ export function attachHandleControls(opts: {
     'handle.layer-wrap-depth'
   );
   slider(
-    sections.Handle,
+    hCrisscrossAdv,
     'Wrap Y0 %',
     0,
     100,
@@ -1723,7 +1775,7 @@ export function attachHandleControls(opts: {
     'Start position of wrap (percent of handle length).'
   );
   slider(
-    sections.Handle,
+    hCrisscrossAdv,
     'Wrap Len %',
     1,
     100,
@@ -1742,6 +1794,7 @@ export function attachHandleControls(opts: {
   );
 
   const hRings = addGroup(sections.Handle, 'Handle Rings');
+  hRings.dataset.advanced = 'true';
   checkbox(
     hRings,
     'Handle Ring',
@@ -1814,6 +1867,7 @@ export function attachHandleControls(opts: {
   );
 
   const hOrn = addGroup(sections.Handle, 'Ornaments');
+  hOrn.dataset.advanced = 'true';
   select(
     hOrn,
     'Menuki Preset',
@@ -1896,6 +1950,7 @@ export function attachPommelControls(opts: {
   const { sections, state, helpers, rerender } = opts;
   const { slider, select } = helpers;
 
+  // Basic: Style and Size
   select(
     sections.Pommel,
     'Style',
@@ -1914,8 +1969,12 @@ export function attachPommelControls(opts: {
     (v) => (state.pommel.size = v),
     rerender
   );
+  // Advanced pommel controls
+  const pAdv = document.createElement('div');
+  pAdv.dataset.advanced = 'true';
+  sections.Pommel.appendChild(pAdv);
   slider(
-    sections.Pommel,
+    pAdv,
     'Elongation',
     0.5,
     2.0,
@@ -1925,7 +1984,7 @@ export function attachPommelControls(opts: {
     rerender
   );
   slider(
-    sections.Pommel,
+    pAdv,
     'Morph',
     0,
     1,
@@ -1935,7 +1994,7 @@ export function attachPommelControls(opts: {
     rerender
   );
   slider(
-    sections.Pommel,
+    pAdv,
     'Offset X',
     -0.3,
     0.3,
@@ -1946,7 +2005,7 @@ export function attachPommelControls(opts: {
     'Offset pommel sideways.'
   );
   slider(
-    sections.Pommel,
+    pAdv,
     'Offset Y',
     -0.3,
     0.3,
@@ -1957,7 +2016,7 @@ export function attachPommelControls(opts: {
     'Offset pommel up/down.'
   );
   slider(
-    sections.Pommel,
+    pAdv,
     'Facet Count',
     6,
     64,
@@ -1968,7 +2027,7 @@ export function attachPommelControls(opts: {
     'Radial facets (lower is more gem-like).'
   );
   slider(
-    sections.Pommel,
+    pAdv,
     'Wheel Face Bevel',
     0,
     1,
@@ -1979,7 +2038,7 @@ export function attachPommelControls(opts: {
     'Visual bevel for wheel-style pommel.'
   );
   slider(
-    sections.Pommel,
+    pAdv,
     'Spike Length',
     0.5,
     2.0,
@@ -1990,7 +2049,7 @@ export function attachPommelControls(opts: {
     'Spike length for spike style.'
   );
   slider(
-    sections.Pommel,
+    pAdv,
     'Balance',
     0,
     1,
@@ -2001,7 +2060,7 @@ export function attachPommelControls(opts: {
     'Interpolate pommel size toward blade-balanced target.'
   );
   slider(
-    sections.Pommel,
+    pAdv,
     'Ring Inner R',
     0.01,
     0.6,
@@ -2012,7 +2071,7 @@ export function attachPommelControls(opts: {
     'Inner radius for ring style.'
   );
   slider(
-    sections.Pommel,
+    pAdv,
     'Crown Spikes',
     5,
     24,
@@ -2023,7 +2082,7 @@ export function attachPommelControls(opts: {
     'Number of spikes for crown style.'
   );
   slider(
-    sections.Pommel,
+    pAdv,
     'Crown Sharp',
     0,
     1,
@@ -2035,7 +2094,7 @@ export function attachPommelControls(opts: {
   );
   // Peen
   checkbox(
-    sections.Pommel,
+    pAdv,
     'Peen Visible',
     (state.pommel as any).peenVisible ?? false,
     (v) => ((state.pommel as any).peenVisible = v),
@@ -2043,7 +2102,7 @@ export function attachPommelControls(opts: {
     'Show hammer peen or peen block.'
   );
   slider(
-    sections.Pommel,
+    pAdv,
     'Peen Size',
     0.005,
     0.1,
@@ -2053,7 +2112,7 @@ export function attachPommelControls(opts: {
     rerender
   );
   select(
-    sections.Pommel,
+    pAdv,
     'Peen Shape',
     ['dome', 'block'],
     ((state.pommel as any).peenShape ?? 'dome') as string,
@@ -2091,6 +2150,7 @@ export function attachAccessoryControls(opts: {
   const tassel = getTassel();
 
   const accScab = addGroup(sections.Accessories, 'Scabbard');
+  accScab.dataset.advanced = 'true';
   checkbox(
     accScab,
     'Scabbard Enabled',
@@ -2285,6 +2345,7 @@ export function attachAccessoryControls(opts: {
   );
 
   const accTassel = addGroup(sections.Accessories, 'Tassel');
+  accTassel.dataset.advanced = 'true';
   checkbox(
     accTassel,
     'Tassel Enabled',

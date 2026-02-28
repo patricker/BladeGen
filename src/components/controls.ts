@@ -3421,6 +3421,18 @@ export function createSidebar(
     goalSliderSync = gs.syncFromState;
   } catch {}
 
+  // Task-guided tours: listen for custom events from help panel
+  try {
+    window.addEventListener('bladegen:start-task-tour', ((e: CustomEvent) => {
+      const tourId = e.detail?.id;
+      if (!tourId) return;
+      import('./help/taskTours').then((mod) => {
+        const tour = mod.taskTours.find((t) => t.id === tourId);
+        if (tour) tour.start({ state, rerender, syncUi });
+      }).catch(() => {});
+    }) as EventListener);
+  } catch {}
+
   // Progressive disclosure: advanced toggles on model sections
   {
     const advancedToggles: HTMLInputElement[] = [];

@@ -132,28 +132,23 @@ function renderDoc(doc: HelpDoc) {
       } catch {}
     });
     actions.appendChild(btnTask);
-    const btnLeaf = document.createElement('button');
-    btnLeaf.className = 'smk-chip';
-    btnLeaf.textContent = 'Guide: Make a Leaf Blade';
-    btnLeaf.addEventListener('click', async () => {
-      try {
-        const mod = await import('./HelpTourDriver');
-        (mod as any).startLeafBladeTourDriver?.();
-        return;
-      } catch {}
-    });
-    actions.appendChild(btnLeaf);
-    const btnStl = document.createElement('button');
-    btnStl.className = 'smk-chip';
-    btnStl.textContent = 'Guide: Export to STL';
-    btnStl.addEventListener('click', async () => {
-      try {
-        const mod = await import('./HelpTourDriver');
-        (mod as any).startExportStlTourDriver?.();
-        return;
-      } catch {}
-    });
-    actions.appendChild(btnStl);
+    // Task-guided tours (apply parameter changes interactively)
+    const taskTourIds = [
+      { id: 'leaf-blade', label: 'Guide: Make a Leaf Blade' },
+      { id: 'export-stl', label: 'Guide: Export to STL' },
+    ];
+    for (const tour of taskTourIds) {
+      const btn = document.createElement('button');
+      btn.className = 'smk-chip';
+      btn.textContent = tour.label;
+      btn.addEventListener('click', () => {
+        closePanel();
+        window.dispatchEvent(
+          new CustomEvent('bladegen:start-task-tour', { detail: { id: tour.id } })
+        );
+      });
+      actions.appendChild(btn);
+    }
     body.appendChild(actions);
     renderIndex(body);
     const container = document.createElement('div');

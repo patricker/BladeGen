@@ -681,6 +681,12 @@ export function setupScene(canvas: HTMLCanvasElement): SceneSetupResult {
       getEnabled: getAutoSpinEnabled,
     },
   });
+  // Ground shadow visibility
+  (renderHooks as any).setGroundShadow = (visible: boolean) => {
+    ground.visible = visible;
+  };
+  (renderHooks as any).getGroundShadow = () => ground.visible;
+
   // Augment render hooks with Explain Mode controls (optional for UI)
   (renderHooks as any).setExplainEnabled = setExplainEnabled;
   (renderHooks as any).getExplainEnabled = getExplainEnabled;

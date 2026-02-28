@@ -3,6 +3,7 @@ import { createSidebar } from './components/controls';
 import { presetShowcaseArming, swordPresets } from './components/presets';
 import { shouldShowGallery, createGallery } from './components/gallery';
 import { shouldUseLowQuality } from './components/mobileDetect';
+import { readShareFromUrl } from './components/shareUrl';
 
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
 if (!canvas) {
@@ -95,18 +96,22 @@ const toggleSidebar = (open?: boolean) => {
 hamburger.addEventListener('click', () => toggleSidebar());
 overlay.addEventListener('click', () => toggleSidebar(false));
 
-function startEditor(presetId?: string) {
+function startEditor(presetId?: string, sharedParams?: import('./three/SwordGenerator').SwordParams) {
   if (!sidebar || !sword) return;
   const id = presetId || 'showcase-arming';
   const entry = swordPresets.find(p => p.id === id);
-  const params = entry ? entry.build() : presetShowcaseArming();
+  const params = sharedParams ?? (entry ? entry.build() : presetShowcaseArming());
   createSidebar(sidebar, sword, params, renderHooks, {
-    initialPresetId: id,
+    initialPresetId: sharedParams ? undefined : id,
     initialQualityPreset: shouldUseLowQuality() ? 'Low' : undefined,
   });
 }
 
-if (shouldShowGallery()) {
+// Check for shared URL first — skip gallery if a share link is present
+const sharedState = readShareFromUrl();
+if (sharedState) {
+  startEditor(undefined, sharedState);
+} else if (shouldShowGallery()) {
   if (sidebar) sidebar.style.display = 'none';
   const app = document.getElementById('app');
   if (app) {

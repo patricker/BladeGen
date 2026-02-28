@@ -36,6 +36,7 @@ import { exportGLB, exportOBJ, exportSTL, exportSVG, exportJSON } from './export
 import { isMobileViewport } from './mobileDetect';
 import { attachAdvancedToggle } from './advancedToggle';
 import { attachGoalSliders } from './goalSliders';
+import { writeShareToUrl } from './shareUrl';
 
 type Category =
   | 'Character'
@@ -1160,6 +1161,21 @@ export function createSidebar(
   fileJSON.style.display = 'none';
   el.appendChild(fileJSON);
 
+  // Share button
+  const btnShare = document.createElement('button');
+  btnShare.textContent = 'Share';
+  btnShare.title = 'Copy shareable URL to clipboard';
+  btnShare.addEventListener('click', async () => {
+    try {
+      await writeShareToUrl(state);
+      btnShare.textContent = 'Copied!';
+      setTimeout(() => { btnShare.textContent = 'Share'; }, 2000);
+    } catch {
+      btnShare.textContent = 'Share';
+    }
+  });
+  toolbar.appendChild(btnShare);
+
   // Sections
   const sections: Record<Category, HTMLElement> = {
     Character: addSection(el, 'Character'),
@@ -1265,9 +1281,7 @@ export function createSidebar(
   warningsBox.style.marginTop = '4px';
   sections.Other.appendChild(warningsBox);
   const dynamicsBox = document.createElement('div');
-  dynamicsBox.style.fontSize = '12px';
-  dynamicsBox.style.color = '#93c5fd';
-  dynamicsBox.style.marginTop = '6px';
+  dynamicsBox.className = 'dynamics-readout';
   sections.Other.appendChild(dynamicsBox);
   const fxSyncBox = document.createElement('div');
   fxSyncBox.style.fontSize = '12px';
@@ -2434,6 +2448,7 @@ export function createSidebar(
       rstate: rstate as any,
       colorPicker,
       slider,
+      checkbox,
       rerender,
     });
 
@@ -4387,26 +4402,21 @@ export function createSidebar(
   const updateDynamics = () => {
     const d = (sword as any)?.getDerived?.();
     if (!d) {
-      dynamicsBox.textContent = '';
+      dynamicsBox.innerHTML = '';
       return;
     }
     const L = state.blade.length || 1;
     const fmt = (x: number) => (Math.round(x * 100) / 100).toFixed(2);
     const pct = (x: number) => Math.round((x / L) * 100);
-    const text =
-      'Dynamics: PoB ' +
-      fmt(d.cmY) +
-      ' (' +
-      pct(d.cmY) +
-      '%), CoP ' +
-      fmt(d.copY) +
-      ' (' +
-      pct(d.copY) +
-      '%), Ibase ' +
-      fmt(d.Ibase) +
-      ', Icm ' +
-      fmt(d.Icm);
-    dynamicsBox.textContent = text;
+    const row = (label: string, value: string, hint: string) =>
+      `<div class="dyn-row"><span class="dyn-label" title="${hint}">${label}</span><span class="dyn-value">${value}</span></div>`;
+    dynamicsBox.innerHTML =
+      '<div class="dyn-title">Dynamics</div>' +
+      row('Point of Balance', `${fmt(d.cmY)} (${pct(d.cmY)}%)`, 'Center of mass along blade length') +
+      row('Center of Perc.', `${fmt(d.copY)} (${pct(d.copY)}%)`, 'Sweet spot for impact') +
+      row('Mass (relative)', fmt(d.mass), 'Relative mass proxy') +
+      row('Inertia (base)', fmt(d.Ibase), 'Moment of inertia at guard') +
+      row('Inertia (CM)', fmt(d.Icm), 'Moment of inertia at center of mass');
   };
 
   syncUi();

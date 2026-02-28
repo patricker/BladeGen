@@ -3,6 +3,8 @@ import { hexToInt } from '../utils/color';
 type RenderHooks = {
   setBackgroundColor: (hex: number) => void;
   setBackgroundBrightness: (v: number) => void;
+  setGroundShadow?: (visible: boolean) => void;
+  getGroundShadow?: () => boolean;
 };
 
 type RenderState = {
@@ -33,15 +35,26 @@ type ColorPicker = (
   fieldOverride?: string
 ) => unknown;
 
+type Checkbox = (
+  parent: HTMLElement,
+  label: string,
+  value: boolean,
+  onChange: (v: boolean) => void,
+  rerender: () => void,
+  tooltip?: string,
+  fieldOverride?: string
+) => unknown;
+
 export function attachRenderBackgroundPanel(opts: {
   section: HTMLElement;
   render: RenderHooks;
   rstate: RenderState;
   colorPicker: ColorPicker;
   slider: Slider;
+  checkbox: Checkbox;
   rerender: () => void;
 }) {
-  const { section: rBg, render, rstate, colorPicker, slider } = opts;
+  const { section: rBg, render, rstate, colorPicker, slider, checkbox } = opts;
   colorPicker(
     rBg,
     'Background Color',
@@ -67,4 +80,14 @@ export function attachRenderBackgroundPanel(opts: {
     () => {},
     'Lighten/darken the background.'
   );
+  if (render.setGroundShadow) {
+    checkbox(
+      rBg,
+      'Ground Shadow',
+      render.getGroundShadow?.() ?? true,
+      (v) => render.setGroundShadow!(v),
+      () => {},
+      'Show shadow-receiving ground plane beneath the sword.'
+    );
+  }
 }

@@ -1,6 +1,6 @@
 # BladeGen Roadmap (Phase 8+)
 
-Reference specs: see `VISION.md` (goals), `uxplan.md` (in‑app help), and `KNOBS.md` (controls/parameters).
+Reference specs: see `KNOBS.md` (controls/parameters).
 
 ## Near‑Term Priorities
 
@@ -87,7 +87,7 @@ Reference specs: see `VISION.md` (goals), `uxplan.md` (in‑app help), and `KNOB
 
 ## UX — In‑App Help & Docs
 
-Context: implement contextual help as described in uxplan.md. Ship in phases with minimal UI disruption and clear a11y.
+Context: implement contextual help system. Ship in phases with minimal UI disruption and clear a11y.
 
 ### Decisions (pick before Phase 1)
 
@@ -177,7 +177,7 @@ Context: implement contextual help as described in uxplan.md. Ship in phases wit
 
 ## Schema & Versioning
 
-- [ ] Schema v2 bump; add new fields as optional with safe defaults and clamps.
+- [ ] Schema v5 bump; add new fields as optional with safe defaults and clamps.
 - [ ] Extend Ajv tests to cover new fields and defaulting; keep `SwordParams` and `schema/sword.schema.json` in sync.
 
 ## QA, Demos & Docs

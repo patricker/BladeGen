@@ -44,11 +44,11 @@ Parametric sword generator and renderer for the web.
 | **Arming Sword** | Classic cruciform proportions, fuller and scent-stopper pommel with “Tournament Bright” / “Battleworn” material variants. |
 | **Gladius**      | Leaf-shaped Roman short sword with “Legion Standard” and “Arena Ember” looks.                                             |
 | **Jian**         | Straight double-edged blade with mirrored polish and “Scholar’s River” / “Imperial Sunset” looks.                         |
-| **Claymore**     | Two-handed greatsword with flared guard, leather grip, and bronze/dark runic variants that showcase emissive accents.     |
-| **Rapier**       | Swept/claw guard with high anisotropy and polished or blackened variant looks.                                            |
+| **Claymore**     | Two-handed greatsword with winged guard, leather grip, and “Highland Dawn” / “Night Watch” variants.                      |
+| **Rapier**       | Claw guard with high anisotropy and “Court Gala” / “Duelist’s Shadow” variant looks.                                      |
+| **Demon Blade**  | Aggressive serrations, emissive arcane base material plus “Molten Edge” and “Voidglass” variants.                         |
+| **Lightsaber**   | Energy blade using transmission + emissive glow with auto-bloom tuning.                                                   |
 | **Sabre**        | Curved single-edge cavalry blade featuring “Cavalry Shine” and “Officer’s Dress” variants.                                |
-| **Demon Blade**  | Aggressive serrations, emissive arcane base material plus molten and voidglass variants.                                  |
-| **Lightsaber**   | Energy blade using transmission + emissive glow, auto-bloom tuning, and cyan/green/red/purple crystal variants.           |
 
 ### FX modules
 

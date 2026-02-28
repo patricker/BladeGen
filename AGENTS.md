@@ -12,7 +12,7 @@
 
 ## Build, Test, and Development Commands
 
-- Requires Node 18+ and npm (or pnpm).
+- Requires Node 24+ and npm (or pnpm).
 - Common scripts (if missing, add via Vite setup):
   - `npm i` – install dependencies.
   - `npm run dev` – start local dev server (Vite) at `http://localhost:5173`.
@@ -44,7 +44,7 @@
   - Clear description and linked issue.
   - Screenshots/GIFs for UI/visual changes.
   - Notes on performance impact (FPS, bundle size) and affected parameters/presets.
-  - Updated docs when behavior changes (`VISION.md`, `TODO.md`).
+  - Updated docs when behavior changes (`TODO.md`).
 
 ## Security & Assets
 

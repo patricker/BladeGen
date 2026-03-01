@@ -68,6 +68,14 @@ function animate(t: number) {
 }
 requestAnimationFrame(animate);
 
+// Expose camera and controls on debug object for E2E/tooling
+if (typeof window !== 'undefined') {
+  const dbg = (window as any).__swordDebug ?? {};
+  dbg.camera = camera;
+  dbg.controls = controls;
+  (window as any).__swordDebug = dbg;
+}
+
 // Build UI controls
 const sidebar = document.getElementById('sidebar');
 

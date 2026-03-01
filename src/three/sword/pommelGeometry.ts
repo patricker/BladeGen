@@ -117,7 +117,14 @@ export function buildPommel(
     mesh.scale.y *= THREE.MathUtils.clamp(p.elongation, 0.5, 2);
   }
   mesh.geometry.computeBoundingBox();
-  const geoTop = mesh.geometry.boundingBox?.max.y ?? sizeEff;
+  // For ring (torus rotated PI/2 on X), the geometry bbox Y doesn't reflect the
+  // rotated visual bounds — use the tube radius as the actual visual height.
+  let geoTop: number;
+  if (p.style === 'ring') {
+    geoTop = Math.max(0.004, sizeEff * 0.12); // tube radius
+  } else {
+    geoTop = mesh.geometry.boundingBox?.max.y ?? sizeEff;
+  }
   // Place just below handle bottom
   let y = -1.0;
   if (ctx.handleMesh) {
@@ -125,7 +132,13 @@ export function buildPommel(
     const box = new THREE.Box3().setFromObject(ctx.handleMesh);
     if (isFinite(box.min.y)) y = box.min.y;
   }
-  mesh.position.y = y - sizeEff * 0.3 * p.elongation + (p.offsetY ?? 0);
+  // For thin/flat styles (ring, disk, wheel), overlap the handle bottom slightly
+  // to avoid a visible seam between the two meshes (co-planar surfaces create
+  // rendering artifacts from z-fighting / anti-aliasing).
+  const isFlat = p.style === 'ring' || p.style === 'disk' || p.style === 'wheel';
+  mesh.position.y = isFlat
+    ? y - geoTop * 0.5 + (p.offsetY ?? 0)
+    : y - sizeEff * 0.3 * p.elongation + (p.offsetY ?? 0);
   mesh.position.x = p.offsetX ?? 0;
   mesh.castShadow = true;
 

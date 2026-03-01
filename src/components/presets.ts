@@ -620,9 +620,9 @@ export function presetJianScholar(): SwordParams {
       chapeLength: 0.4,
       chapeScale: 0.75,
       bodyRoundness: 0.9,
-      offsetX: 0.02,
-      offsetZ: 0.0,
-      hangAngle: -0.06,
+      offsetX: 0.24,
+      offsetZ: -0.02,
+      hangAngle: -0.18,
     },
     tassel: {
       enabled: true,

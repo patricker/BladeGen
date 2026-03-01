@@ -65,13 +65,22 @@ describe('sword accessories', () => {
     const tassel = params.accessories!.tassel!;
     const anchorData = (sword as any).resolveTasselAnchor(tassel, params.blade) as {
       anchor: THREE.Vector3;
+      tangent?: THREE.Vector3;
     } | null;
 
     expect(anchorData).not.toBeNull();
     const guardSource = (sword.guardMesh ?? (sword as any).guardGroup) as THREE.Object3D;
     const guardBounds = new THREE.Box3().setFromObject(guardSource);
 
-    expect(anchorData!.anchor.x).toBeGreaterThanOrEqual(guardBounds.max.x - 1e-4);
+    // Anchor should be at the guard edge (positive sway → max.x)
+    expect(anchorData!.anchor.x).toBeCloseTo(guardBounds.max.x, 3);
+    // Anchor should be within the guard's Y bounds
     expect(anchorData!.anchor.y).toBeLessThanOrEqual(guardBounds.max.y + 1e-4);
+    expect(anchorData!.anchor.y).toBeGreaterThanOrEqual(guardBounds.min.y - 1e-4);
+    // Tangent should point outward-and-down (positive X, negative Y)
+    expect(anchorData!.tangent).toBeDefined();
+    expect(anchorData!.tangent!.x).toBeGreaterThan(0);
+    expect(anchorData!.tangent!.y).toBeLessThan(0);
+    expect(anchorData!.tangent!.length()).toBeCloseTo(1, 5);
   });
 });

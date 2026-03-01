@@ -589,19 +589,23 @@ export class SwordGenerator {
     const sideSign = tassel.sway >= 0 ? 1 : -1;
     const fallback = new THREE.Vector3();
     const guardObj = this.guardMesh ?? this.guardGroup;
-    const offset = Math.max(0.02, (this.lastParams?.blade.baseWidth ?? 0.2) * 0.05);
     if (guardObj) {
       const bbox = new THREE.Box3().setFromObject(guardObj);
-      const x = sideSign >= 0 ? bbox.max.x : bbox.min.x;
-      const y = bbox.max.y - offset;
+      const edgeX = sideSign >= 0 ? bbox.max.x : bbox.min.x;
+      // Anchor at the guard edge so rope visually emerges from the guard
+      const x = edgeX;
+      // Vertically center on the guard
+      const y = (bbox.min.y + bbox.max.y) * 0.5;
       const z = (bbox.min.z + bbox.max.z) * 0.5;
-      fallback.set(x + sideSign * offset, y, z);
+      fallback.set(x, y, z);
+      // Tangent points outward-and-down so rope emerges from guard then droops
+      return { anchor: fallback, tangent: new THREE.Vector3(sideSign, -0.5, 0).normalize() };
     } else if (this.handleMesh) {
       const bbox = new THREE.Box3().setFromObject(this.handleMesh);
-      const x = sideSign >= 0 ? bbox.max.x : bbox.min.x;
-      const y = bbox.max.y - offset;
+      const x = (bbox.min.x + bbox.max.x) * 0.5;
+      const y = bbox.max.y;
       const z = (bbox.min.z + bbox.max.z) * 0.5;
-      fallback.set(x + sideSign * offset, y, z);
+      fallback.set(x, y, z);
     } else {
       fallback.set(
         sideSign * (this.lastParams?.blade.baseWidth ?? 0.2) * 0.4,

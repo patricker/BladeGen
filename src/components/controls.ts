@@ -5141,34 +5141,22 @@ function refreshInputs(registry: ControlRegistry, params: SwordParams) {
 }
 
 function assignParams(dst: SwordParams, src: SwordParams) {
-  dst.blade = { ...dst.blade, ...src.blade };
-  dst.guard = { ...dst.guard, ...src.guard } as any;
-  dst.handle = { ...dst.handle, ...src.handle } as any;
-  dst.pommel = { ...dst.pommel, ...src.pommel } as any;
-  if (src.hiltEnabled !== undefined) dst.hiltEnabled = src.hiltEnabled;
-  if (src.guardEnabled !== undefined) dst.guardEnabled = src.guardEnabled;
-  if (src.useRatios !== undefined) dst.useRatios = src.useRatios;
-  if (src.ratios) dst.ratios = { ...(dst.ratios ?? {}), ...src.ratios };
-  if (src.accessories) {
-    const defaults = defaultSwordParams().accessories;
-    if (!dst.accessories) {
-      dst.accessories = JSON.parse(JSON.stringify(defaults));
-    }
-    if (src.accessories.scabbard) {
-      dst.accessories!.scabbard = {
-        ...defaults.scabbard,
-        ...(dst.accessories?.scabbard ?? {}),
-        ...src.accessories.scabbard,
-      };
-    }
-    if (src.accessories.tassel) {
-      dst.accessories!.tassel = {
-        ...defaults.tassel,
-        ...(dst.accessories?.tassel ?? {}),
-        ...src.accessories.tassel,
-      };
-    }
-  }
+  // Full replacement: avoid leaking optional keys (e.g. waviness) from previous presets
+  dst.blade = { ...src.blade };
+  dst.guard = { ...src.guard } as any;
+  dst.handle = { ...src.handle } as any;
+  dst.pommel = { ...src.pommel } as any;
+  dst.hiltEnabled = src.hiltEnabled ?? true;
+  dst.guardEnabled = src.guardEnabled ?? true;
+  dst.useRatios = src.useRatios ?? false;
+  dst.ratios = src.ratios ? { ...src.ratios } : undefined as any;
+  const defaults = defaultSwordParams().accessories;
+  dst.accessories = src.accessories
+    ? {
+        scabbard: { ...defaults.scabbard, ...src.accessories.scabbard },
+        tassel: { ...defaults.tassel, ...src.accessories.tassel },
+      }
+    : JSON.parse(JSON.stringify(defaults));
 }
 
 function clamp(v: number, lo: number, hi: number) {

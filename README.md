@@ -13,6 +13,12 @@ Parametric sword generator and renderer for the web.
 - Tests: `npm test`
 - E2E tests: `npm run test:e2e` (run `npx playwright install` once to grab browsers)
 
+## Headless CLI
+
+Generate swords without a browser (Node, no DOM): `npm run bladegen -- gen --seed 42 --monument --out sword.glb --params-out sword.json`.
+It also covers the seeded "monument" randomizer, the exportable glow channel (`blade.glow`), the giant preset and conformance fixtures for ports (`npm run fixtures`).
+See [docs/HEADLESS.md](docs/HEADLESS.md).
+
 ## Features
 
 - Fully parametric blade/guard/handle/pommel with presets and randomizer

@@ -29,8 +29,8 @@ export function buildHandle(
   const handleMesh = new THREE.Mesh(lathe, mat);
   handleMesh.castShadow = true;
 
-  // Optional wrap texture
-  if (h.wrapEnabled && (h.wrapTexture ?? false)) {
+  // Optional wrap texture (canvas-backed, so skipped when there is no DOM, e.g. headless Node)
+  if (h.wrapEnabled && (h.wrapTexture ?? false) && typeof document !== 'undefined') {
     const scale = Math.max(1, h.wrapTexScale ?? 10);
     const ang = h.wrapTexAngle ?? Math.PI / 4;
     const tex = makeWrapTexture(scale, ang);

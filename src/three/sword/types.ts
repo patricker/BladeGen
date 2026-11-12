@@ -220,6 +220,51 @@ export type BladeParams = {
   fullers?: Array<FullerSlot>;
   /** Alternative per-face fuller configuration (mapped to fullers internally). */
   fullerFaces?: FullerFaceConfig;
+  /**
+   * Optional exportable glow channel (edges, core line, runes). Absent or
+   * `enabled: false` leaves the blade geometry exactly as before.
+   */
+  glow?: BladeGlow;
+};
+
+/**
+ * Exportable glow channel for the blade.
+ *
+ * When enabled the blade geometry gains a grid UV set (u across the width, v
+ * along the length) and a COLOR_0 attribute whose RGB is 1 and whose alpha is
+ * the glow mask (edge band + core band). A separate emissive "glow" mesh holds
+ * edge strips and procedural rune strokes laid on the blade faces, so viewers
+ * without custom shaders still show the glow through glTF emissive.
+ */
+export type BladeGlow = {
+  enabled?: boolean;
+  /** Glow colour as #rrggbb (sRGB). */
+  color?: string;
+  /** Emissive strength for the glow mesh (KHR_materials_emissive_strength). */
+  intensity?: number;
+  /** Edge band width as a fraction of the blade width (0..0.25). 0 disables edge strips. */
+  edgeWidth?: number;
+  /** Edge contribution to the blade's vertex mask (0..1). */
+  edgeMask?: number;
+  /** Core (centre line) band half-width as a fraction of the blade width (0..0.5). */
+  coreWidth?: number;
+  /** Core contribution to the blade's vertex mask (0..1). */
+  coreMask?: number;
+  /** Number of rune glyphs along the centre line (0..24). */
+  runeCount?: number;
+  /** Seed for rune glyph shapes (0..2^32-1). */
+  runeSeed?: number;
+  /** Normalized start/end of the rune column along the blade (0..1). */
+  runeStart?: number;
+  runeEnd?: number;
+  /** Glyph width as a fraction of the local blade width (0.1..0.9). */
+  runeScale?: number;
+  /** Stroke width as a fraction of the glyph width (0.04..0.4). */
+  runeStroke?: number;
+  /** Which faces carry runes. */
+  runeFaces?: 'both' | 'front' | 'back';
+  /** Suggested pulse rate in Hz for consumers (metadata only; no geometry effect). */
+  pulseHz?: number;
 };
 
 export type GuardStyle =

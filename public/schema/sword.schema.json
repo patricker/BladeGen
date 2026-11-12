@@ -811,9 +811,36 @@
             },
             "required": ["width"]
           }
+        },
+        "glow": {
+          "$ref": "#/$defs/BladeGlow",
+          "description": "Optional exportable glow channel (edge strips, core band, procedural runes). Absent or disabled leaves the blade unchanged."
         }
       },
       "required": ["length", "baseWidth", "tipWidth", "thickness", "curvature"]
+    },
+    "BladeGlow": {
+      "type": "object",
+      "title": "Blade Glow",
+      "description": "Exportable glow channel. When enabled the blade mesh gains grid UVs and a COLOR_0 attribute (RGB 1, alpha = glow mask), and an emissive 'glow' mesh carries edge strips and rune strokes on the blade faces.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Turn the glow channel on (default true when the block is present)." },
+        "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$", "description": "Glow colour (sRGB hex)." },
+        "intensity": { "type": "number", "minimum": 0, "maximum": 100, "description": "Emissive strength of the glow mesh." },
+        "edgeWidth": { "type": "number", "minimum": 0, "maximum": 0.25, "description": "Edge band width as a fraction of the blade width; 0 disables edge strips." },
+        "edgeMask": { "type": "number", "minimum": 0, "maximum": 1, "description": "Edge contribution to the blade's vertex glow mask." },
+        "coreWidth": { "type": "number", "minimum": 0, "maximum": 0.5, "description": "Core band half-width as a fraction of the blade width." },
+        "coreMask": { "type": "number", "minimum": 0, "maximum": 1, "description": "Core contribution to the blade's vertex glow mask." },
+        "runeCount": { "type": "integer", "minimum": 0, "maximum": 24, "description": "Number of rune glyphs along the centre line." },
+        "runeSeed": { "type": "integer", "minimum": 0, "maximum": 4294967295, "description": "Seed for the rune glyph shapes." },
+        "runeStart": { "type": "number", "minimum": 0, "maximum": 0.95, "description": "Normalized start of the rune column along the blade." },
+        "runeEnd": { "type": "number", "minimum": 0.05, "maximum": 1, "description": "Normalized end of the rune column along the blade." },
+        "runeScale": { "type": "number", "minimum": 0.1, "maximum": 0.9, "description": "Glyph width as a fraction of the local blade width." },
+        "runeStroke": { "type": "number", "minimum": 0.04, "maximum": 0.4, "description": "Stroke width as a fraction of the glyph width." },
+        "runeFaces": { "type": "string", "enum": ["both", "front", "back"], "description": "Which blade faces carry runes." },
+        "pulseHz": { "type": "number", "minimum": 0, "maximum": 10, "description": "Suggested glow pulse rate for consumers (metadata only)." }
+      }
     },
     "GuardParams": {
       "type": "object",

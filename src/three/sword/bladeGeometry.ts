@@ -7,6 +7,7 @@ import {
   serrationWave,
   wavinessAt,
 } from './math';
+import { BLADE_GRID_COLS, applyBladeGlowAttributes } from './glow';
 
 type ResolvedFuller = {
   side: 'left' | 'right';
@@ -116,7 +117,7 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   const baseW = Math.max(0.002, b.baseWidth);
   const tipW = Math.max(0, b.tipWidth);
   const segs = Math.max(16, Math.min(512, Math.round(b.sweepSegments ?? 128)));
-  const cols = 12;
+  const cols = BLADE_GRID_COLS;
   const serrAmp = b.serrationAmplitude ?? 0;
   const serrAmpL = b.serrationAmplitudeLeft ?? serrAmp;
   const serrAmpR = b.serrationAmplitudeRight ?? serrAmp;
@@ -362,6 +363,18 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geo.setIndex(indices);
   geo.computeVertexNormals();
+  computeBladeTangents(geo);
+  // Optional glow channel: grid UVs plus a COLOR_0 mask (absent by default).
+  if (b.glow && b.glow.enabled !== false) applyBladeGlowAttributes(geo, b);
+  geo.computeBoundingBox();
+  return geo;
+}
+
+/**
+ * Per-vertex tangents for the blade: +Y projected onto each vertex's tangent
+ * plane (falls back to +X), w = 1. Requires normals. Stored as `tangent`.
+ */
+export function computeBladeTangents(geo: THREE.BufferGeometry): void {
   // Provide a stable tangent frame for anisotropy without requiring UVs.
   // Build per-vertex tangents by projecting the +Y axis onto the local tangent plane
   // defined by the vertex normal. This yields a consistent along-blade direction.
@@ -408,8 +421,34 @@ export function buildBladeGeometry(b: BladeParams): THREE.BufferGeometry {
       geo.setAttribute('tangent', new THREE.BufferAttribute(tangents, 4));
     }
   } catch {}
-  geo.computeBoundingBox();
-  return geo;
+}
+
+/**
+ * Make the swept blade's winding consistent and outward-facing.
+ *
+ * `buildBladeGeometry` winds the two broad faces inward while the side strips
+ * and end caps wind outward (harmless with the blade's double-sided material,
+ * but vertex normals along the edges average the two). This reverses the broad
+ * face triangles - in each of the `segs` row blocks of `cols * 4 + 4` triangles,
+ * the first `cols * 4` - then recomputes normals and tangents. Used by the
+ * headless exporter; the website keeps the original geometry.
+ */
+export function fixBladeWinding(geo: THREE.BufferGeometry, segs: number, cols = BLADE_GRID_COLS) {
+  const index = geo.index;
+  if (!index) return;
+  const a = index.array as Uint16Array | Uint32Array;
+  const rowTris = cols * 4 + 4;
+  for (let i = 0; i < segs; i++) {
+    for (let t = 0; t < cols * 4; t++) {
+      const k = (i * rowTris + t) * 3;
+      const tmp = a[k + 1];
+      a[k + 1] = a[k + 2];
+      a[k + 2] = tmp;
+    }
+  }
+  index.needsUpdate = true;
+  geo.computeVertexNormals();
+  computeBladeTangents(geo);
 }
 
 /**

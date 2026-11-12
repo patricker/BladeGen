@@ -23,6 +23,7 @@ import { computeBladeDynamics } from './sword/dynamics';
 export type {
   AccessoriesParams,
   BladeParams,
+  BladeGlow,
   GuardStyle,
   GuardParams,
   HandleParams,
@@ -52,6 +53,7 @@ import {
   setHighlight as applyMaterialHighlight,
 } from './render/materialMutators';
 import { buildScabbard, buildTassel, type ScabbardBuildResult } from './sword/accessories';
+import { buildBladeGlowGeometry, createGlowMaterial } from './sword/glow';
 // Re-export selected helpers for existing consumers
 export { buildBladeOutlinePoints, bladeOutlineToSVG } from './sword/bladeGeometry';
 
@@ -68,6 +70,8 @@ export class SwordGenerator {
   public pommelMesh: THREE.Mesh | null = null;
   public scabbardGroup: THREE.Group | null = null;
   public tasselGroup: THREE.Group | null = null;
+  /** Emissive glow strips and runes (only when `blade.glow` is enabled). */
+  public glowMesh: THREE.Mesh | null = null;
   // Sub-part anchors (Explain Mode labels)
   public anchorBladeEdge: THREE.Object3D | null = null;
   public anchorBladeEdgeL: THREE.Object3D | null = null;
@@ -378,6 +382,23 @@ export class SwordGenerator {
       this.hamonGroup.position.copy(this.bladeMesh.position);
       this.group.add(this.hamonGroup);
     }
+
+    // Exportable glow channel: emissive edge strips and runes on the blade faces
+    if (this.glowMesh) {
+      this.group.remove(this.glowMesh);
+      disposeObject3D(this.glowMesh);
+      this.glowMesh = null;
+    }
+    if (b.glow && b.glow.enabled !== false) {
+      const glowGeo = buildBladeGlowGeometry(b, geo);
+      if (glowGeo) {
+        this.glowMesh = new THREE.Mesh(glowGeo, createGlowMaterial(b.glow));
+        this.glowMesh.name = 'glow';
+        this.glowMesh.position.copy(this.bladeMesh.position);
+        this.glowMesh.renderOrder = 201;
+        this.group.add(this.glowMesh);
+      }
+    }
     this.updateAnchors();
   }
 
@@ -561,6 +582,7 @@ export class SwordGenerator {
       handle: this.handleMesh ?? this.handleGroup,
       pommel: this.pommelMesh,
       'blade.fuller': this.fullerGroup,
+      'blade.glow': this.glowMesh,
       'blade.edge': this.anchorBladeEdge,
       'blade.edge-left': this.anchorBladeEdgeL,
       'blade.edge-right': this.anchorBladeEdgeR,

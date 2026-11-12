@@ -1,5 +1,6 @@
 import type {
   BladeParams,
+  BladeGlow,
   GuardParams,
   GuardStyle,
   HandleParams,
@@ -215,6 +216,37 @@ const buildLegacyFullers = (blade: BladeParams): Array<FullerSlot> | undefined =
   return fullers.length ? fullers : undefined;
 };
 
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * Normalize the optional blade glow block. Returns undefined when absent or
+ * disabled so that blades without glow validate exactly as before.
+ */
+export const sanitizeGlow = (raw: any): BladeGlow | undefined => {
+  if (!raw || typeof raw !== 'object' || raw.enabled === false) return undefined;
+  const num = (v: any, d: number, lo: number, hi: number) =>
+    clamp(typeof v === 'number' && Number.isFinite(v) ? v : d, lo, hi);
+  const runeStart = num(raw.runeStart, 0.12, 0, 0.95);
+  const runeEnd = Math.max(runeStart + 0.05, num(raw.runeEnd, 0.7, 0.05, 1));
+  return {
+    enabled: true,
+    color: typeof raw.color === 'string' && HEX_COLOR.test(raw.color) ? raw.color : '#7fd8ff',
+    intensity: num(raw.intensity, 4, 0, 100),
+    edgeWidth: num(raw.edgeWidth, 0.06, 0, 0.25),
+    edgeMask: num(raw.edgeMask, 1, 0, 1),
+    coreWidth: num(raw.coreWidth, 0.12, 0, 0.5),
+    coreMask: num(raw.coreMask, 0.35, 0, 1),
+    runeCount: Math.round(num(raw.runeCount, 7, 0, 24)),
+    runeSeed: Math.floor(num(raw.runeSeed, 1, 0, 4294967295)),
+    runeStart,
+    runeEnd: Math.min(1, runeEnd),
+    runeScale: num(raw.runeScale, 0.5, 0.1, 0.9),
+    runeStroke: num(raw.runeStroke, 0.14, 0.04, 0.4),
+    runeFaces: raw.runeFaces === 'front' || raw.runeFaces === 'back' ? raw.runeFaces : 'both',
+    pulseHz: num(raw.pulseHz, 0, 0, 10),
+  };
+};
+
 /**
  * Validate and normalize a SwordParams object.
  * - Clamps numeric ranges to sane bounds to keep geometry stable.
@@ -357,6 +389,8 @@ export function validateSwordParams(params: SwordParams): SwordParams {
   }
   const hollow = sanitizeHollowGrind((b as any).hollowGrind);
   if (hollow) blade.hollowGrind = hollow;
+  const glow = sanitizeGlow((b as any).glow);
+  if (glow) blade.glow = glow;
   const faceFullers = sanitizeFullerFaces((b as any).fullerFaces, blade);
   if (faceFullers) {
     blade.fullerFaces = faceFullers.faces;

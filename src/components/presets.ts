@@ -1537,3 +1537,87 @@ export const swordPresets: PresetEntry[] = [
 ];
 
 // Consumers may compose their own preset arrays using the builders above.
+
+// --- Giant / monument presets ---
+// Kept out of `swordPresets` so the site's gallery and preset list are unchanged.
+// Headless tools (`npm run bladegen -- gen --preset monument`) see both lists.
+
+/**
+ * Monument greatsword: proportions and glow tuned to read as a silhouette when
+ * the sword is scaled to 12-20 m and planted tip-down (see docs/headless.md).
+ * Broad diamond blade with a carved fuller, a wide winged cross,
+ * a long two-hand grip, a heavy wheel pommel and a glow channel (edges + runes).
+ */
+export function presetMonument(): SwordParams {
+  const p = defaultSwordParams();
+  p.blade.length = 3.6;
+  p.blade.baseWidth = 0.5;
+  p.blade.tipWidth = 0.04;
+  p.blade.tipRampStart = 0.68;
+  p.blade.kissakiLength = 0.2;
+  p.blade.kissakiRoundness = 0.35;
+  p.blade.ricassoLength = 0.07;
+  p.blade.thickness = 0.13;
+  p.blade.thicknessLeft = 0.13;
+  p.blade.thicknessRight = 0.13;
+  p.blade.crossSection = 'diamond';
+  p.blade.bevel = 0.6;
+  p.blade.fullerEnabled = true;
+  p.blade.fullerMode = 'carve';
+  p.blade.fullerCount = 1;
+  p.blade.fullerProfile = 'u';
+  p.blade.fullerWidth = 0.11;
+  p.blade.fullerInset = 0.03;
+  p.blade.fullerDepth = 0; // carve only (a non-zero depth adds overlay ribbons)
+  p.blade.fullerLength = 0.7;
+  p.blade.glow = {
+    enabled: true,
+    color: '#7fd8ff',
+    intensity: 4.5,
+    edgeWidth: 0.06,
+    edgeMask: 1,
+    coreWidth: 0.12,
+    coreMask: 0.35,
+    runeCount: 7,
+    runeSeed: 1066,
+    runeStart: 0.14,
+    runeEnd: 0.68,
+    runeScale: 0.5,
+    runeStroke: 0.15,
+    runeFaces: 'both',
+    pulseHz: 0.4,
+  };
+  p.guard.style = 'winged';
+  p.guard.width = 2.2;
+  p.guard.thickness = 0.24;
+  p.guard.curve = 0.35;
+  p.guard.tipSharpness = 0.7;
+  p.guard.ornamentation = 0.4;
+  p.guard.quillonCount = 0; // decorateGuard's quillons only meet bar guards
+  p.handle.length = 1.0;
+  p.handle.radiusTop = 0.13;
+  p.handle.radiusBottom = 0.12;
+  p.handle.segmentation = true;
+  p.handle.wrapStyle = 'crisscross';
+  p.handle.wrapTurns = 7;
+  p.pommel.style = 'wheel';
+  p.pommel.size = 0.3;
+  p.pommel.elongation = 1.1;
+  p.pommel.shapeMorph = 0.3;
+  return p;
+}
+
+export const giantPresets: PresetEntry[] = [
+  {
+    id: 'monument',
+    label: 'Monument (Giant)',
+    build: presetMonument,
+    materials: {
+      blade: { color: '#c9d3e6', metalness: 0.9, roughness: 0.28 },
+      guard: { color: '#c9a54a', metalness: 0.9, roughness: 0.3 },
+      pommel: { color: '#c9a54a', metalness: 0.9, roughness: 0.3 },
+      handle: { color: '#2b1d14', metalness: 0.05, roughness: 0.75 },
+    },
+    render: { bloomEnabled: true, bloomStrength: 0.9, bloomThreshold: 0.7, bloomRadius: 0.4 },
+  },
+];

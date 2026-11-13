@@ -215,6 +215,9 @@ builders -> `prepareExport` -> dump/GLB. Each stage is a checkpoint (`params.jso
      `(cos, sin)` toward `/ (|cos| + |sin|)` (diamond) or `/ max(|cos|, |sin|)` (square);
      rings run left tip, centre, right tip with `radial + 1` vertices each. The mesh sits at
      `(0, guardLine - halfHeight, 0)` with `rotation.z = tilt`;
+   - guards `recurve`, `crescent`, `halo`, `wings`, `talon`, `ziggurat` and pommels `gem`,
+     `sunwheel`, `horned`, `tiered` (SW10): no Three primitive; built from the monument
+     stroke kernel (see "Monument families" below);
    - handle: `LatheGeometry` (33 profile points, 64 segments; its normals come from the
      profile, and a few are zero-length, so GLTFExporter warns and normalizes them in the
      GLB). The `crisscross` wrap is `TubeGeometry` (160 x 12) along a custom helix. Its
@@ -235,3 +238,93 @@ Transcendental functions: V8's `Math.sin/cos/tan/atan2/exp/log` are fdlibm ports
 `ieee754` namespace). The Rust `libm` crate is also fdlibm-derived and is the best starting
 point. Check against the fixtures, and transcribe V8's code wherever a hash differs.
 `sqrt`, `floor`, `+ - * /` are exact everywhere.
+
+## Monument families (SW10)
+
+A planet sword picks a **blade family**, a **guard**, a **pommel** and a **grip** from a tuning
+table, by planet traits, and reshapes a base sword (the engine's own design) with that
+family's recipe. Everything lives in `src/three/sword/monument/`:
+
+| File | What |
+|---|---|
+| `catalogue.json` | the owner's tuning table: trait ramps, and per entry a base weight, trait affinities and pairings |
+| `design.ts` | `PlanetTraits`, `monumentSeed`, `traitStrengths`, `entryWeights`, `pickMonument`, the recipes, `designMonument` |
+| `strokes.ts` | the geometry kernel: swept strokes, rings, mirroring, merging |
+| `guards.ts` | guard styles `recurve`, `crescent`, `halo`, `wings`, `talon`, `ziggurat` (`guard.monument` block) |
+| `pommels.ts` | pommel styles `gem`, `sunwheel`, `horned`, `tiered` |
+
+Catalogue entries: blades `classic` (the base blade, untouched), `greatsword`, `leaf`,
+`flamberge`, `falchion`, `cleaver`, `stepped`, `shard`, `serpent`; guards `forged` (the base's
+forged cross, untouched) and the six styles above; pommels `native` (the base pommel) and the
+four styles above; grips `native`, `ridged`, `smooth`, `wound`, `banded`.
+
+### Selection (port contract)
+
+1. **Seed:** `monumentSeed(systemSeed, planetId)` = `hashSeed("sword-family|" + systemSeed + "|" +
+   planetId)` (FNV-1a over UTF-16 units, as `rng.ts`), with the system seed as its u64 decimal
+   string.
+2. **Strengths:** for each catalogue trait in order: `ramp` = `min(1, max(0, (x - from) / (to -
+   from)))`; `flag` = 1 when the input is true (or non-zero); `archetype` = 1 when listed; then 0
+   when its `gate` input is false. Booleans read as 1/0, missing numbers as 0.
+3. **Weights:** `w = weight`; for each `[trait, m]` of `affinity` in order `w = w * (1 + (m - 1) *
+   s)`; for each `[id, m]` of `pairs` in order, `w = w * m` when `id` was picked earlier.
+4. **Picks:** one PRNG `createRng(seed)`; blade, guard, pommel, grip in that order, one `next()`
+   each: `total` = the sum of the weights in order, `r = next() * total`; if `total` is not > 0
+   the first entry; else the first entry with `r < w` (`r -= w` after each), else the last entry
+   with `w > 0`.
+5. **Recipes:** each stage draws from its own PRNG `createRng("<seed>|blade")`, `|guard`,
+   `|pommel`, `|grip` (the u32 seed in decimal, so the string is hashed), in statement order,
+   and every drawn continuous value goes through `q3`. The blade recipe first "straightens" the
+   base (family `straight`, no waviness, curvature 0, double edge, symmetric thickness); for any
+   family but `classic` the glow's `runeStart` becomes `q3(ricassoLength + 0.06)`. The guard
+   span scales by the blade's new/old base width and then (monument styles) by a drawn factor;
+   `forged` with an unchanged base width keeps the base guard byte for byte. Picks forced by the
+   caller (`designMonument(..., force)`) replace the picks after the draws.
+6. **Identity:** a sword that picks `classic` / `forged` / `native` / `native` is the base sword.
+
+### Monument strokes (port contract)
+
+Every monument guard and pommel is a list of parts merged in order into one indexed
+`BufferGeometry` (position, uv), with one `computeVertexNormals` at the end. A part is:
+
+- **Stroke** (`strokePart`): a closed tube along a planar centre line in XY. Stations along
+  length `L` (`u = s / L`), section scale `f(u)`: `taper` law `mix(1, taper, belly ? u*u : u)`;
+  `gem` law `u < waist ? mix(top, 1, u / waist) : mix(1, taper, (u - waist) / (1 - waist))`.
+  - tips `flat` / `point`: `S + 1` rings at `s = L * i / S`;
+  - tip `knob`: `rTip = max(hy, hz) * f(1)`, `rk = min(rTip * (1 + knob), 0.45 * L)`,
+    `tk = L - rk`, `t0 = tk - rk`; `S + 1` rings at `s = t0 * i / S`, then 9 rings at
+    `s = tk - rk * cos(pi * j / 10)`, `j = 1..9`, sized `max(h * f(s / L), rk * sin)` for
+    `2j <= 10`, then `max(h * f(tk / L), rk) * sin`;
+  - the end apex at `s = L` (flat), `tk + rk` (knob) or `L + 3 * max(hy, hz) * f(1)` (point);
+  - the centre line `theta(s) = heading + turn * u + bend * u * u`, integrated from `(x, y)`
+    over every station and the apex with 4 midpoint sub-steps per interval
+    (`x = x + cos(th) * sub; y = y + sin(th) * sub`);
+  - ring vertex `k`: `n = (-sin theta, cos theta)`, `a = hy_i * secA[k]`,
+    `(cx + n.x * a, cy + n.y * a, z + hz_i * secB[k])`, `radial + 1` per ring, uv
+    `(ring / (rings - 1), k / radial)`; the apexes have uv `(0, 0.5)` and `(1, 0.5)`;
+  - vertex order: start apex, rings, end apex; triangles: start fan `(r0[k+1], r0[k], apex0)`,
+    tube `(a, c, b), (b, c, d)` as the forged cross, end fan `(rN[k], rN[k+1], apexN)`.
+- **Ring** (`ringPart`): `segments + 1` rings at angle `2 pi (r mod segments) / segments` around
+  `(cx, cy)`, in-plane normal `(-cos, -sin)`, constant section; tube triangles only.
+- **Mirror** (`mirrorPart`): `x = -x`, triangles `(i, j, k) -> (i, k, j)`. Each right-hand
+  stroke is followed by its mirror.
+- **Section** (`sectionOutline`): as the forged cross (`section` -1 square .. 0 round .. 1 diamond).
+
+Each style's parts, sizes and order are listed at the top of `guards.ts` and `pommels.ts`
+(e.g. `halo`: block; ring of radius `max(ring * half, 1.3 * bl)`; bars; `count` rays per side at
+`1.05 * (2 (i + 0.5) / count - 1)` radians). Guards sit like the forged cross (`(0, guardLine -
+hy0, 0)`, `rotation.z = tilt`); monument pommels at `(offsetX, gripBottom + 0.04 * se + offsetY,
+0)`, where `gripBottom` is the grip's `Box3.setFromObject` minimum and `se` the usual pommel
+`sizeEff`.
+
+### Corpus
+
+```sh
+npm run monument-corpus -- --out <dir> [--designs <designs.json>] [--seeds 48] [--glb]
+```
+
+`picks.json` holds the pick table (12 trait profiles x `--seeds` seeds on the giant `monument`
+preset: strengths, every stage's weights, picks and the designed params); each mesh case
+(every guard twice, every pommel twice, every blade family, every grip, plus `--designs`)
+has `<id>.case.json` (inputs and the designed params), `<id>.validated.json` and the SW1 mesh
+dump. A port matches the pick table by JSON equality and the meshes as the SW1 fixtures.

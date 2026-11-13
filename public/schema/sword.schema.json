@@ -874,8 +874,8 @@
         },
         "style": {
           "type": "string",
-          "enum": ["bar", "winged", "claw", "disk", "basket", "knucklebow", "swept", "shell", "forged"],
-          "description": "Guard style preset: rectangular bar, curved wing, pointy claw, circular disk (tsuba), basket shell, knuckle bow, swept hilt, cup/shell guard, or forged cross (a swept, tapered cross sized from the blade; see 'forged')."
+          "enum": ["bar", "winged", "claw", "disk", "basket", "knucklebow", "swept", "shell", "forged", "recurve", "crescent", "halo", "wings", "talon", "ziggurat"],
+          "description": "Guard style preset: rectangular bar, curved wing, pointy claw, circular disk (tsuba), basket shell, knuckle bow, swept hilt, cup/shell guard, or forged cross (a swept, tapered cross sized from the blade; see 'forged'). Monument styles sized from the blade (see 'monument'): recurve (S-swept arms with counter-quillons), crescent (horns), halo (a ring with rays), wings (a fan of feathers), talon (hooked claws), ziggurat (stepped tiers with obelisks)."
         },
         "curveSegments": {
           "type": "integer",
@@ -1098,6 +1098,10 @@
         "forged": {
           "$ref": "#/$defs/GuardForged",
           "description": "For style='forged': the cross's proportions, relative to the blade."
+        },
+        "monument": {
+          "$ref": "#/$defs/GuardMonument",
+          "description": "For the monument styles (recurve, crescent, halo, wings, talon, ziggurat): proportions relative to the blade and the style's shape knobs."
         }
       },
       "required": ["width", "thickness", "curve", "tilt", "style"]
@@ -1117,6 +1121,27 @@
         "finial": { "type": "number", "minimum": 0, "maximum": 2, "description": "Knob at each tip: radius = tip section x (1 + finial); 0 is a plain rounded end." },
         "section": { "type": "number", "minimum": -1, "maximum": 1, "description": "Cross-section: -1 square flats, 0 round, 1 diamond with a ridge along the arm." },
         "segments": { "type": "integer", "minimum": 4, "maximum": 96, "description": "Rings along each arm before the finial." },
+        "radial": { "type": "integer", "minimum": 8, "maximum": 64, "multipleOf": 4, "description": "Points around the cross-section." }
+      }
+    },
+    "GuardMonument": {
+      "type": "object",
+      "title": "Monument Guard",
+      "description": "Monument guard styles: closed swept strokes sized from the blade (base width, thickness); only guard.width (the span) is absolute.",
+      "additionalProperties": false,
+      "properties": {
+        "height": { "type": "number", "minimum": 0.05, "maximum": 2, "description": "Centre block height along the blade, x the blade's base width." },
+        "depth": { "type": "number", "minimum": 0.5, "maximum": 8, "description": "Depth across the flats, x the blade's thickness." },
+        "block": { "type": "number", "minimum": 0.1, "maximum": 2, "description": "Half-length of the centre block along X, x the blade's base width." },
+        "swell": { "type": "number", "minimum": 1, "maximum": 2.5, "description": "Block section relative to the arm roots (1 = no swell)." },
+        "taper": { "type": "number", "minimum": 0.05, "maximum": 1, "description": "Arm (or obelisk) section at the tip as a fraction of the root." },
+        "sweep": { "type": "number", "minimum": -3, "maximum": 3, "description": "The style's main turn in radians, positive toward the blade (wings: positive fans toward the grip)." },
+        "count": { "type": "integer", "minimum": 1, "maximum": 8, "description": "Rays per side (halo), feathers per side (wings), talons per side (talon), tiers (ziggurat)." },
+        "spike": { "type": "number", "minimum": 0, "maximum": 3, "description": "Ray length x the ring radius (halo); obelisk height (ziggurat)." },
+        "ring": { "type": "number", "minimum": 0.2, "maximum": 1.2, "description": "Halo ring radius as a fraction of the half span." },
+        "knob": { "type": "number", "minimum": 0, "maximum": 2, "description": "Knob at the arm tips (recurve, crescent); 0 is a point." },
+        "section": { "type": "number", "minimum": -1, "maximum": 1, "description": "Cross-section: -1 square flats, 0 round, 1 diamond ridge." },
+        "segments": { "type": "integer", "minimum": 4, "maximum": 96, "description": "Rings along each arm." },
         "radial": { "type": "integer", "minimum": 8, "maximum": 64, "multipleOf": 4, "description": "Points around the cross-section." }
       }
     },
@@ -1350,7 +1375,7 @@
         },
         "style": {
           "type": "string",
-          "enum": ["orb", "disk", "spike", "wheel", "scentStopper", "ring", "crown", "fishtail"],
+          "enum": ["orb", "disk", "spike", "wheel", "scentStopper", "ring", "crown", "fishtail", "gem", "sunwheel", "horned", "tiered"],
           "description": "Pommel style: spherical orb, flat disk coin, tapered spike, wheel, scent-stopper, lanyard ring, crown, or fishtail with flared wings."
         },
         "shapeMorph": {

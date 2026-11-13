@@ -18,7 +18,8 @@
     "lint": "eslint \"src/**/*.ts\" --max-warnings=0",
     "format": "prettier --write .",
     "bladegen": "vite-node src/headless/cli.ts --",
-    "fixtures": "vite-node src/headless/fixtures.ts --"
+    "fixtures": "vite-node src/headless/fixtures.ts --",
+    "monument-corpus": "vite-node src/headless/monumentCorpus.ts --"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.8.1",

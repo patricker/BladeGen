@@ -3,6 +3,7 @@ import type {
   BladeGlow,
   GuardParams,
   GuardForgedParams,
+  GuardMonumentParams,
   GuardStyle,
   HandleParams,
   PommelParams,
@@ -17,6 +18,7 @@ import type {
   TasselParams,
 } from './types';
 import { FORGED_DEFAULTS } from './guardForged';
+import { MONUMENT_GUARD_DEFAULTS, isMonumentGuardStyle } from './monument/guards';
 
 /**
  * Clamp helper to bound numeric values.
@@ -487,6 +489,29 @@ export function validateSwordParams(params: SwordParams): SwordParams {
     };
   } else if (guard.forged) {
     delete guard.forged;
+  }
+
+  // Monument styles (SW10): the shared block, written back in full from the style's defaults (those styles only)
+  if (isMonumentGuardStyle(guard.style)) {
+    const mr = ((g as any).monument ?? {}) as GuardMonumentParams;
+    const d = MONUMENT_GUARD_DEFAULTS[guard.style];
+    guard.monument = {
+      height: clamp(mr.height ?? d.height, 0.05, 2),
+      depth: clamp(mr.depth ?? d.depth, 0.5, 8),
+      block: clamp(mr.block ?? d.block, 0.1, 2),
+      swell: clamp(mr.swell ?? d.swell, 1, 2.5),
+      taper: clamp(mr.taper ?? d.taper, 0.05, 1),
+      sweep: clamp(mr.sweep ?? d.sweep, -3, 3),
+      count: Math.round(clamp(mr.count ?? d.count, 1, 8)),
+      spike: clamp(mr.spike ?? d.spike, 0, 3),
+      ring: clamp(mr.ring ?? d.ring, 0.2, 1.2),
+      knob: clamp(mr.knob ?? d.knob, 0, 2),
+      section: clamp(mr.section ?? d.section, -1, 1),
+      segments: Math.round(clamp(mr.segments ?? d.segments, 4, 96)),
+      radial: Math.round(clamp(mr.radial ?? d.radial, 8, 64) / 4) * 4,
+    };
+  } else if ((guard as any).monument) {
+    delete (guard as any).monument;
   }
 
   const h = params.handle;

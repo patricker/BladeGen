@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { PommelParams, BladeParams } from './types';
+import { buildMonumentPommelGeometry, isMonumentPommelStyle } from './monument/pommels';
 
 /**
  * Build the pommel mesh given params and an optional handle mesh for placement.
@@ -24,6 +25,20 @@ export function buildPommel(
     : 1.0;
   const sizeAuto = Math.cbrt(Math.max(1e-6, mass)) * 0.35;
   const sizeEff = THREE.MathUtils.clamp(THREE.MathUtils.lerp(p.size, sizeAuto, bal), 0.05, 1.0);
+
+  if (isMonumentPommelStyle(p.style)) {
+    // SW10 monument pommels: stroke geometry hanging from the grip's end (monument/pommels.ts)
+    const mm = new THREE.Mesh(buildMonumentPommelGeometry(p, sizeEff), mat);
+    let yb = -1.0;
+    if (ctx.handleMesh) {
+      ctx.handleMesh.updateMatrixWorld();
+      const box = new THREE.Box3().setFromObject(ctx.handleMesh);
+      if (isFinite(box.min.y)) yb = box.min.y;
+    }
+    mm.position.set(p.offsetX ?? 0, yb + 0.04 * sizeEff + (p.offsetY ?? 0), 0);
+    mm.castShadow = true;
+    return mm;
+  }
 
   if (p.style === 'disk') {
     const heightY = Math.max(0.02, sizeEff * 0.15);

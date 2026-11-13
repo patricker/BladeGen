@@ -276,7 +276,13 @@ export type GuardStyle =
   | 'knucklebow'
   | 'swept'
   | 'shell'
-  | 'forged';
+  | 'forged'
+  | 'recurve'
+  | 'crescent'
+  | 'halo'
+  | 'wings'
+  | 'talon'
+  | 'ziggurat';
 
 /**
  * Forged cross guard (style 'forged'): one closed, swept tube from quillon tip to quillon tip through a
@@ -301,6 +307,42 @@ export type GuardForgedParams = {
   /** Cross-section: -1 square (flats), 0 round, 1 diamond (a ridge along the arm). */
   section?: number;
   /** Rings along each arm, before the finial. */
+  segments?: number;
+  /** Points around the cross-section (a multiple of 4). */
+  radial?: number;
+};
+
+/**
+ * Monument guard styles (SW10: recurve, crescent, halo, wings, talon, ziggurat): proportions relative to the blade
+ * like the forged cross, plus each style's own shape knobs. See monument/guards.ts.
+ */
+export type GuardMonumentParams = {
+  /** Centre block height along the blade, x the blade's base width. */
+  height?: number;
+  /** Depth across the blade's flats, x the blade's thickness. */
+  depth?: number;
+  /** Half-length of the centre block along X, x the blade's base width. */
+  block?: number;
+  /** Block section / arm root section (1 = no swell). */
+  swell?: number;
+  /** Arm (or obelisk) section at the tip as a fraction of the root. */
+  taper?: number;
+  /**
+   * The style's main turn in radians, positive toward the blade: the recurve's S, the crescent's horns, the wings'
+   * fan (positive fans toward the grip), the talons' hook, the halo rays' swirl.
+   */
+  sweep?: number;
+  /** Rays per side (halo), feathers per side (wings), talons per side (talon), tiers (ziggurat). */
+  count?: number;
+  /** Ray length x the ring radius (halo); obelisk height (ziggurat). */
+  spike?: number;
+  /** Halo ring radius as a fraction of the half span. */
+  ring?: number;
+  /** Knob finial at the arm tips (recurve, crescent); 0 gives a point. */
+  knob?: number;
+  /** Cross-section: -1 square flats, 0 round, 1 diamond ridge. */
+  section?: number;
+  /** Rings along each arm. */
   segments?: number;
   /** Points around the cross-section (a multiple of 4). */
   radial?: number;
@@ -380,6 +422,8 @@ export type GuardParams = {
   };
   /** Style 'forged': the shaped cross's proportions, relative to the blade. */
   forged?: GuardForgedParams;
+  /** Monument styles (SW10): the guard's proportions and shape knobs, relative to the blade. */
+  monument?: GuardMonumentParams;
 };
 
 export type HandleParams = {
@@ -435,7 +479,11 @@ export type PommelStyle =
   | 'scentStopper'
   | 'ring'
   | 'crown'
-  | 'fishtail';
+  | 'fishtail'
+  | 'gem'
+  | 'sunwheel'
+  | 'horned'
+  | 'tiered';
 
 export type PommelParams = {
   /** Base size controlling radius/extent of the pommel. */

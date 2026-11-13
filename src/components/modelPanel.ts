@@ -849,7 +849,23 @@ export function attachGuardControls(opts: {
   select(
     sections.Guard,
     'Style',
-    ['bar', 'winged', 'claw', 'disk', 'basket', 'knucklebow', 'swept', 'shell', 'forged'],
+    [
+      'bar',
+      'winged',
+      'claw',
+      'disk',
+      'basket',
+      'knucklebow',
+      'swept',
+      'shell',
+      'forged',
+      'recurve',
+      'crescent',
+      'halo',
+      'wings',
+      'talon',
+      'ziggurat',
+    ],
     state.guard.style as any,
     (v) => (state.guard.style = v as any),
     rerender
@@ -945,6 +961,41 @@ export function attachGuardControls(opts: {
       step,
       (state.guard as any).forged?.[key] ?? def,
       (v) => (ensureForged()[key] = v),
+      rerender,
+      help
+    );
+  }
+
+  // Monument guards (recurve, crescent, halo, wings, talon, ziggurat): proportions relative to the blade
+  const gMonument = addGroup(sections.Guard, 'Monument Guard');
+  gMonument.dataset.advanced = 'true';
+  const ensureMonument = () => {
+    const g: any = state.guard as any;
+    if (!g.monument) g.monument = {};
+    return g.monument as any;
+  };
+  const monumentSliders: Array<[string, string, number, number, number, number, string]> = [
+    ['Monument Height', 'height', 0.05, 2, 0.01, 0.42, 'Centre block height, x the blade base width.'],
+    ['Monument Depth', 'depth', 0.5, 8, 0.05, 2.4, 'Depth across the flats, x the blade thickness.'],
+    ['Monument Block', 'block', 0.1, 2, 0.01, 0.55, 'Centre block half-length, x the blade base width.'],
+    ['Monument Swell', 'swell', 1, 2.5, 0.01, 1.25, 'Block section relative to the arm roots.'],
+    ['Monument Taper', 'taper', 0.05, 1, 0.01, 0.3, 'Arm (or obelisk) tip section relative to the root.'],
+    ['Monument Sweep', 'sweep', -3, 3, 0.01, 0, "The style's main turn in radians (horns, hooks, fan, S)."],
+    ['Monument Count', 'count', 1, 8, 1, 3, 'Rays, feathers or talons per side; tiers.'],
+    ['Monument Spike', 'spike', 0, 3, 0.01, 0.7, 'Halo ray length; ziggurat obelisk height.'],
+    ['Monument Ring', 'ring', 0.2, 1.2, 0.01, 0.65, 'Halo ring radius, x the half span.'],
+    ['Monument Knob', 'knob', 0, 2, 0.01, 0, 'Knob at the arm tips (0: a point).'],
+    ['Monument Section', 'section', -1, 1, 0.01, 0.5, 'Cross-section: -1 square, 0 round, 1 diamond ridge.'],
+  ];
+  for (const [label, key, min, max, step, def, help] of monumentSliders) {
+    slider(
+      gMonument,
+      label,
+      min,
+      max,
+      step,
+      (state.guard as any).monument?.[key] ?? def,
+      (v) => (ensureMonument()[key] = v),
       rerender,
       help
     );
@@ -1986,7 +2037,20 @@ export function attachPommelControls(opts: {
   select(
     sections.Pommel,
     'Style',
-    ['orb', 'disk', 'spike', 'wheel', 'scentStopper', 'ring', 'crown', 'fishtail'],
+    [
+      'orb',
+      'disk',
+      'spike',
+      'wheel',
+      'scentStopper',
+      'ring',
+      'crown',
+      'fishtail',
+      'gem',
+      'sunwheel',
+      'horned',
+      'tiered',
+    ],
     state.pommel.style,
     (v) => (state.pommel.style = v as typeof state.pommel.style),
     rerender

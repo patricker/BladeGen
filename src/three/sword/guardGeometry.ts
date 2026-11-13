@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { BladeParams, GuardParams } from './types';
 import { buildGuardHalfShape } from './guardShapes';
 import { buildForgedGuardGeometry } from './guardForged';
+import { buildMonumentGuardGeometry, isMonumentGuardStyle } from './monument/guards';
 
 /**
  * Build guard geometry based on style. Returns either a single mesh (guardMesh)
@@ -40,6 +41,14 @@ export function buildGuard(
   } else if (g.style === 'forged') {
     // a shaped cross sized from the blade; the block's top sits at the guard line
     const { geometry, halfHeight } = buildForgedGuardGeometry(g, ctx.bladeParams);
+    const guardMesh = new THREE.Mesh(geometry, ctx.makeMaterial('guard'));
+    guardMesh.castShadow = true;
+    guardMesh.position.set(0, targetTopY - halfHeight, 0);
+    guardMesh.rotation.z = g.tilt ?? 0;
+    return { guardMesh };
+  } else if (isMonumentGuardStyle(g.style)) {
+    // SW10 monument styles: built like the forged cross (block top on the guard line, tilt about Z)
+    const { geometry, halfHeight } = buildMonumentGuardGeometry(g, ctx.bladeParams);
     const guardMesh = new THREE.Mesh(geometry, ctx.makeMaterial('guard'));
     guardMesh.castShadow = true;
     guardMesh.position.set(0, targetTopY - halfHeight, 0);

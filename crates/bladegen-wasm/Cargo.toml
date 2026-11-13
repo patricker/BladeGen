@@ -1,0 +1,17 @@
+[package]
+name = "bladegen-wasm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+description = "bladegen-core for the web app: a wasm32 module with a small C ABI (JSON in, mesh buffers out)"
+
+[dependencies]
+bladegen-core = { path = "../bladegen-core" }
+serde = "1"
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+
+[lib]
+name = "bladegen_wasm"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]

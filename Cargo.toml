@@ -1,0 +1,17 @@
+# bladegen's Rust: the sword geometry (crates/bladegen-core) and its wasm build for the web app (crates/bladegen-wasm).
+# The galaxy kit depends on bladegen-core by path (vtuber-stack\deps\bladegen). Build the wasm: scripts/build-wasm.sh.
+[workspace]
+resolver = "2"
+members = ["crates/bladegen-core", "crates/bladegen-wasm"]
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "thin"
+debug = false
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

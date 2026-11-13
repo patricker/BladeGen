@@ -1,0 +1,19 @@
+[package]
+name = "bladegen-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+description = "bladegen's sword geometry (blade, glow, hilt, monument guards and pommels, catalogue families)"
+
+# The tuning table is bladegen's src/three/sword/monument/catalogue.json (include_str! in families.rs), so this crate
+# is built from a bladegen checkout (a path dependency), not from a registry.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+libm = "0.2.16"
+anyhow = "1"
+
+[lib]
+name = "bladegen_core"
+path = "src/lib.rs"

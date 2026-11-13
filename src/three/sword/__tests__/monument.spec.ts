@@ -360,6 +360,8 @@ describe('monument design (catalogue)', () => {
         expect(a).toEqual(b);
         const v = validateSwordParams(a.params);
         if (a.params.guard.monument) {
+          // the block is written in full: the design's params are what validation writes back
+          expect(v.guard.monument).toEqual(a.params.guard.monument);
           for (const [k, x] of Object.entries(a.params.guard.monument))
             expect([name, s, k, (v.guard.monument as any)[k]]).toEqual([name, s, k, x]);
         }

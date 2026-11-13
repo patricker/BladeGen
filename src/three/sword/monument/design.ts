@@ -1,6 +1,7 @@
 import type { BladeParams, GuardParams, HandleParams, PommelParams, SwordParams } from '../types';
 import { createRng, hashSeed, normalizeSeed, q3, type Rng } from '../rng';
 import { FORGED_DEFAULTS } from '../guardForged';
+import { MONUMENT_GUARD_DEFAULTS, type MonumentGuardStyle } from './guards';
 import catalogueJson from './catalogue.json';
 
 /**
@@ -400,7 +401,8 @@ function shapeGuard(id: string, g: GuardParams, t: PlanetTraits, rng: Rng, width
   }
   g.style = id as GuardParams['style'];
   delete g.forged;
-  g.monument = m;
+  // written in full, in the defaults' key order, as validation writes it back (the engine stores it so)
+  g.monument = { ...MONUMENT_GUARD_DEFAULTS[id as MonumentGuardStyle], ...m };
   g.quillonCount = 0;
 }
 

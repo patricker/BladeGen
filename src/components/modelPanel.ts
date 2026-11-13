@@ -849,7 +849,7 @@ export function attachGuardControls(opts: {
   select(
     sections.Guard,
     'Style',
-    ['bar', 'winged', 'claw', 'disk', 'basket', 'knucklebow', 'swept', 'shell'],
+    ['bar', 'winged', 'claw', 'disk', 'basket', 'knucklebow', 'swept', 'shell', 'forged'],
     state.guard.style as any,
     (v) => (state.guard.style = v as any),
     rerender
@@ -917,6 +917,38 @@ export function attachGuardControls(opts: {
     rerender,
     'Stretch shell along Z (elongation).'
   );
+
+  // Forged cross (style 'forged'): proportions relative to the blade
+  const gForged = addGroup(sections.Guard, 'Forged Cross');
+  gForged.dataset.advanced = 'true';
+  const ensureForged = () => {
+    const g: any = state.guard as any;
+    if (!g.forged) g.forged = {};
+    return g.forged as any;
+  };
+  const forgedSliders: Array<[string, string, number, number, number, number, string]> = [
+    ['Forged Height', 'height', 0.05, 2, 0.01, 0.42, 'Centre block height, x the blade base width.'],
+    ['Forged Depth', 'depth', 0.5, 8, 0.05, 2.4, 'Centre block depth, x the blade thickness.'],
+    ['Forged Block', 'block', 0, 2, 0.01, 0.6, 'Centre block half-length, x the blade base width.'],
+    ['Forged Swell', 'swell', 1, 2.5, 0.01, 1.25, 'Block section relative to the arm root.'],
+    ['Forged Taper', 'taper', 0.1, 1, 0.01, 0.5, 'Arm tip section relative to the arm root.'],
+    ['Forged Curl', 'curl', -2.5, 2.5, 0.01, 0.5, 'Radians the arm tips turn toward the blade (negative: toward the grip).'],
+    ['Forged Finial', 'finial', 0, 2, 0.01, 0.6, 'Knob at each tip (0: a plain rounded end).'],
+    ['Forged Section', 'section', -1, 1, 0.01, 0.5, 'Cross-section: -1 square, 0 round, 1 diamond ridge.'],
+  ];
+  for (const [label, key, min, max, step, def, help] of forgedSliders) {
+    slider(
+      gForged,
+      label,
+      min,
+      max,
+      step,
+      (state.guard as any).forged?.[key] ?? def,
+      (v) => (ensureForged()[key] = v),
+      rerender,
+      help
+    );
+  }
 
   // Langets hugging the blade flats
   const gLangets = addGroup(sections.Guard, 'Langets');

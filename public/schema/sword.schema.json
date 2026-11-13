@@ -874,8 +874,8 @@
         },
         "style": {
           "type": "string",
-          "enum": ["bar", "winged", "claw", "disk", "basket", "knucklebow", "swept", "shell"],
-          "description": "Guard style preset: rectangular bar, curved wing, pointy claw, circular disk (tsuba), basket shell, knuckle bow, swept hilt, or cup/shell guard."
+          "enum": ["bar", "winged", "claw", "disk", "basket", "knucklebow", "swept", "shell", "forged"],
+          "description": "Guard style preset: rectangular bar, curved wing, pointy claw, circular disk (tsuba), basket shell, knuckle bow, swept hilt, cup/shell guard, or forged cross (a swept, tapered cross sized from the blade; see 'forged')."
         },
         "curveSegments": {
           "type": "integer",
@@ -1094,9 +1094,31 @@
           "type": "string",
           "enum": ["box", "smooth"],
           "description": "Fillet style for guard↔blade bridge: 'box' = rectangular block; 'smooth' = rounded collar (elliptical cylinder)."
+        },
+        "forged": {
+          "$ref": "#/$defs/GuardForged",
+          "description": "For style='forged': the cross's proportions, relative to the blade."
         }
       },
       "required": ["width", "thickness", "curve", "tilt", "style"]
+    },
+    "GuardForged": {
+      "type": "object",
+      "title": "Forged Cross",
+      "description": "A closed tube swept from quillon tip to quillon tip through a centre block. Sizes are relative to the blade (base width, thickness), so the guard keeps its shape at any scale; only guard.width (the span) is absolute.",
+      "additionalProperties": false,
+      "properties": {
+        "height": { "type": "number", "minimum": 0.05, "maximum": 2, "description": "Centre block height along the blade, as a multiple of the blade's base width." },
+        "depth": { "type": "number", "minimum": 0.5, "maximum": 8, "description": "Centre block depth across the flats, as a multiple of the blade's thickness." },
+        "block": { "type": "number", "minimum": 0, "maximum": 2, "description": "Half-length of the centre block along X, as a multiple of the blade's base width." },
+        "swell": { "type": "number", "minimum": 1, "maximum": 2.5, "description": "Block section relative to the arm root (1 = no swell)." },
+        "taper": { "type": "number", "minimum": 0.1, "maximum": 1, "description": "Arm section at the tip as a fraction of the arm root (1 = no taper)." },
+        "curl": { "type": "number", "minimum": -2.5, "maximum": 2.5, "description": "Angle in radians the arm tips turn toward the blade (+Y); negative turns them toward the grip." },
+        "finial": { "type": "number", "minimum": 0, "maximum": 2, "description": "Knob at each tip: radius = tip section x (1 + finial); 0 is a plain rounded end." },
+        "section": { "type": "number", "minimum": -1, "maximum": 1, "description": "Cross-section: -1 square flats, 0 round, 1 diamond with a ridge along the arm." },
+        "segments": { "type": "integer", "minimum": 4, "maximum": 96, "description": "Rings along each arm before the finial." },
+        "radial": { "type": "integer", "minimum": 8, "maximum": 64, "multipleOf": 4, "description": "Points around the cross-section." }
+      }
     },
     "HandleParams": {
       "type": "object",

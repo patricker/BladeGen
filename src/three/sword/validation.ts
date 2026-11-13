@@ -2,6 +2,7 @@ import type {
   BladeParams,
   BladeGlow,
   GuardParams,
+  GuardForgedParams,
   GuardStyle,
   HandleParams,
   PommelParams,
@@ -15,6 +16,7 @@ import type {
   ScabbardParams,
   TasselParams,
 } from './types';
+import { FORGED_DEFAULTS } from './guardForged';
 
 /**
  * Clamp helper to bound numeric values.
@@ -465,6 +467,26 @@ export function validateSwordParams(params: SwordParams): SwordParams {
     };
   } else if (guard.langets) {
     delete guard.langets;
+  }
+
+  // Forged cross: proportions relative to the blade, written back in full (only for that style)
+  if (guard.style === 'forged') {
+    const fr = ((g as any).forged ?? {}) as GuardForgedParams;
+    const d = FORGED_DEFAULTS;
+    guard.forged = {
+      height: clamp(fr.height ?? d.height, 0.05, 2),
+      depth: clamp(fr.depth ?? d.depth, 0.5, 8),
+      block: clamp(fr.block ?? d.block, 0, 2),
+      swell: clamp(fr.swell ?? d.swell, 1, 2.5),
+      taper: clamp(fr.taper ?? d.taper, 0.1, 1),
+      curl: clamp(fr.curl ?? d.curl, -2.5, 2.5),
+      finial: clamp(fr.finial ?? d.finial, 0, 2),
+      section: clamp(fr.section ?? d.section, -1, 1),
+      segments: Math.round(clamp(fr.segments ?? d.segments, 4, 96)),
+      radial: Math.round(clamp(fr.radial ?? d.radial, 8, 64) / 4) * 4,
+    };
+  } else if (guard.forged) {
+    delete guard.forged;
   }
 
   const h = params.handle;

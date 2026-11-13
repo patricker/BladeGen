@@ -421,6 +421,7 @@ export class SwordGenerator {
     const built = buildGuard(g, {
       bladeMesh: this.bladeMesh,
       handleMesh: this.handleMesh,
+      bladeParams: this.lastParams?.blade ?? null,
       makeMaterial: (p) => this.makeMaterial(p),
     });
     if (built.guardMesh) {

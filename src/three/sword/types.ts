@@ -275,7 +275,36 @@ export type GuardStyle =
   | 'basket'
   | 'knucklebow'
   | 'swept'
-  | 'shell';
+  | 'shell'
+  | 'forged';
+
+/**
+ * Forged cross guard (style 'forged'): one closed, swept tube from quillon tip to quillon tip through a
+ * centre block. Every size is relative to the blade (its base width and thickness), so the guard keeps
+ * its proportions at any scale, including 30-42 m monuments. See guardForged.ts.
+ */
+export type GuardForgedParams = {
+  /** Centre block height along the blade, as a multiple of the blade's base width. */
+  height?: number;
+  /** Centre block depth across the blade's flats, as a multiple of the blade's thickness. */
+  depth?: number;
+  /** Half-length of the centre block along X, as a multiple of the blade's base width. */
+  block?: number;
+  /** How much larger the block's section is than the arm root (1 = no swell). */
+  swell?: number;
+  /** Arm section at the tip as a fraction of the arm root (1 = no taper). */
+  taper?: number;
+  /** Angle (radians) the arm tips turn toward the blade (+Y); negative turns them toward the grip. */
+  curl?: number;
+  /** Finial knob at each tip: radius = tip section x (1 + finial); 0 gives a plain rounded end. */
+  finial?: number;
+  /** Cross-section: -1 square (flats), 0 round, 1 diamond (a ridge along the arm). */
+  section?: number;
+  /** Rings along each arm, before the finial. */
+  segments?: number;
+  /** Points around the cross-section (a multiple of 4). */
+  radial?: number;
+};
 
 export type GuardParams = {
   /** Span across X. */
@@ -349,6 +378,8 @@ export type GuardParams = {
     thickness?: number;
     chamfer?: number;
   };
+  /** Style 'forged': the shaped cross's proportions, relative to the blade. */
+  forged?: GuardForgedParams;
 };
 
 export type HandleParams = {

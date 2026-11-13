@@ -65,6 +65,15 @@ the sword in a root node named `sword`:
 So the GLB is in metres, +Y up, origin at the point where the blade meets the ground. Lean
 and yaw are left to the consumer. The root node's `extras.bladegen` repeats the convention.
 
+**Guards at monument scale.** The `bar` guard is a box of fixed height (`GUARD_HEIGHT`
+0.08 units), so on a broad monument blade it reads as a thin plate. The `forged` guard
+style (the `monument` preset's) is sized from the blade instead: block height
+`forged.height` x the blade's base width, depth `forged.depth` x its thickness, block
+half-length `forged.block` x the base width, then arms that taper (`taper`), turn toward
+the blade (`curl`, radians; negative toward the grip) and end in knobs (`finial`), with a
+square, round or diamond-ridged section (`section` -1..1). Only `guard.width`, the span,
+is absolute. Validation writes the whole `forged` block back for that style only.
+
 ## Glow channel (`blade.glow`)
 
 ```json
@@ -195,6 +204,17 @@ builders -> `prepareExport` -> dump/GLB. Each stage is a checkpoint (`params.jso
      `clone()` with `scale.x = -1`, so its node matrix has a negative determinant;
    - guard `disk`: `Shape.absarc` + holes, `ExtrudeGeometry`, then `center()`;
    - quillons: `CylinderGeometry` + `ConeGeometry` (bar guards only);
+   - guard `forged` (the monument preset's): no Three primitive; `buildForgedGuardGeometry`
+     (`guardForged.ts`) writes its own indexed `BufferGeometry` (position, uv) and calls
+     `computeVertexNormals`. A port follows that file's operation order in f64: the
+     section scale `mix(1, root * mix(1, taper, tu), smooth(uBlock, uBlock + 0.12, u))`;
+     `segments + 1` arm stations at `t = t0 * i / segments`, then 10 finial stations at
+     `t = tk - rk * cos(pi * j / 10)` (knob `max(arm, rk * sin)` up to `j = 5`, then
+     `hk * sin`); the centre line turns by `curl * u * u` and is integrated from the centre
+     with 4 midpoint sub-steps per interval (`x = x + cos(th) * sub`); sections mix
+     `(cos, sin)` toward `/ (|cos| + |sin|)` (diamond) or `/ max(|cos|, |sin|)` (square);
+     rings run left tip, centre, right tip with `radial + 1` vertices each. The mesh sits at
+     `(0, guardLine - halfHeight, 0)` with `rotation.z = tilt`;
    - handle: `LatheGeometry` (33 profile points, 64 segments; its normals come from the
      profile, and a few are zero-length, so GLTFExporter warns and normalizes them in the
      GLB). The `crisscross` wrap is `TubeGeometry` (160 x 12) along a custom helix. Its

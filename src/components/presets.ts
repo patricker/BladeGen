@@ -1544,29 +1544,31 @@ export const swordPresets: PresetEntry[] = [
 
 /**
  * Monument greatsword: proportions and glow tuned to read as a silhouette when
- * the sword is scaled to 12-20 m and planted tip-down (see docs/headless.md).
- * Broad diamond blade with a carved fuller, a wide winged cross,
- * a long two-hand grip, a heavy wheel pommel and a glow channel (edges + runes).
+ * the sword is scaled to a 12-42 m monument and planted tip-down (see docs/HEADLESS.md).
+ * Broad diamond blade (0.6 wide, 1.2x the first monument's, so it reads as a monument
+ * without a consumer stretching it) with a carved fuller, a forged cross sized from the
+ * blade (block, tapered arms that turn toward the blade, knob finials), a long two-hand
+ * grip, a heavy wheel pommel and a glow channel (edges + runes).
  */
 export function presetMonument(): SwordParams {
   const p = defaultSwordParams();
   p.blade.length = 3.6;
-  p.blade.baseWidth = 0.5;
+  p.blade.baseWidth = 0.6;
   p.blade.tipWidth = 0.04;
   p.blade.tipRampStart = 0.68;
   p.blade.kissakiLength = 0.2;
   p.blade.kissakiRoundness = 0.35;
   p.blade.ricassoLength = 0.07;
-  p.blade.thickness = 0.13;
-  p.blade.thicknessLeft = 0.13;
-  p.blade.thicknessRight = 0.13;
+  p.blade.thickness = 0.156;
+  p.blade.thicknessLeft = 0.156;
+  p.blade.thicknessRight = 0.156;
   p.blade.crossSection = 'diamond';
   p.blade.bevel = 0.6;
   p.blade.fullerEnabled = true;
   p.blade.fullerMode = 'carve';
   p.blade.fullerCount = 1;
   p.blade.fullerProfile = 'u';
-  p.blade.fullerWidth = 0.11;
+  p.blade.fullerWidth = 0.13;
   p.blade.fullerInset = 0.03;
   p.blade.fullerDepth = 0; // carve only (a non-zero depth adds overlay ribbons)
   p.blade.fullerLength = 0.7;
@@ -1587,13 +1589,25 @@ export function presetMonument(): SwordParams {
     runeFaces: 'both',
     pulseHz: 0.4,
   };
-  p.guard.style = 'winged';
-  p.guard.width = 2.2;
+  p.guard.style = 'forged';
+  p.guard.width = 2.4;
   p.guard.thickness = 0.24;
   p.guard.curve = 0.35;
   p.guard.tipSharpness = 0.7;
   p.guard.ornamentation = 0.4;
-  p.guard.quillonCount = 0; // decorateGuard's quillons only meet bar guards
+  p.guard.quillonCount = 0; // the forged arms are the quillons
+  p.guard.forged = {
+    height: 0.45,
+    depth: 2.4,
+    block: 0.6,
+    swell: 1.3,
+    taper: 0.45,
+    curl: 0.55,
+    finial: 0.7,
+    section: 0.6,
+    segments: 24,
+    radial: 16,
+  };
   p.handle.length = 1.0;
   p.handle.radiusTop = 0.13;
   p.handle.radiusBottom = 0.12;

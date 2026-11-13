@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import type { GuardParams } from './types';
+import type { BladeParams, GuardParams } from './types';
 import { buildGuardHalfShape } from './guardShapes';
+import { buildForgedGuardGeometry } from './guardForged';
 
 /**
  * Build guard geometry based on style. Returns either a single mesh (guardMesh)
@@ -15,6 +16,8 @@ export function buildGuard(
   ctx: {
     bladeMesh?: THREE.Mesh | null;
     handleMesh?: THREE.Mesh | null;
+    /** The blade's params: the 'forged' style sizes itself from the blade. */
+    bladeParams?: BladeParams | null;
     makeMaterial: (part: 'guard') => THREE.Material;
   }
 ): { guardMesh?: THREE.Mesh; guardGroup?: THREE.Group } {
@@ -33,6 +36,14 @@ export function buildGuard(
     const guardMesh = new THREE.Mesh(geo, gmat);
     guardMesh.castShadow = true;
     guardMesh.position.set(0, targetTopY - GUARD_HEIGHT * 0.5, 0);
+    return { guardMesh };
+  } else if (g.style === 'forged') {
+    // a shaped cross sized from the blade; the block's top sits at the guard line
+    const { geometry, halfHeight } = buildForgedGuardGeometry(g, ctx.bladeParams);
+    const guardMesh = new THREE.Mesh(geometry, ctx.makeMaterial('guard'));
+    guardMesh.castShadow = true;
+    guardMesh.position.set(0, targetTopY - halfHeight, 0);
+    guardMesh.rotation.z = g.tilt ?? 0;
     return { guardMesh };
   } else if (g.style === 'disk') {
     const radius = Math.max(0.05, g.width * 0.5);

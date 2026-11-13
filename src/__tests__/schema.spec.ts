@@ -575,6 +575,7 @@ describe('JSON Schema validation', () => {
       'knucklebow',
       'swept',
       'shell',
+      'forged',
     ];
     const wrapStyles = ['none', 'crisscross', 'hineri', 'katate', 'wire'] as const;
     const pommelStyles: PommelStyle[] = [

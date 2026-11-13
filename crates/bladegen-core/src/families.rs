@@ -361,6 +361,7 @@ fn stage_rng(seed: u32, stage: &str) -> Rng32 {
 fn straighten(b: &mut Blade) {
     b.family = Some("straight".into());
     b.waviness = None;
+    b.kris_wave_count = None;
     b.curvature = Some(0.0);
     b.base_angle = Some(0.0);
     b.edge_type = Some("double".into());

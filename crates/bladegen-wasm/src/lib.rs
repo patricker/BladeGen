@@ -112,6 +112,11 @@ fn run(op: &str, input: &[u8], meshes: &mut Meshes) -> Result<Value, String> {
             }
             Ok(json!({ "skipped": skipped }))
         }
+        // model::digests: the exported model's fingerprint (core.spec.ts checks the module against the goldens)
+        "digests" => {
+            let s: Sword = parse(field(&v, "sword")?, "sword")?;
+            Ok(Value::Array(model::digests(&s).into_iter().map(|(n, c, d)| json!([n, c, d])).collect()))
+        }
         "monument_transform" => {
             let b: Blade = parse(field(&v, "blade")?, "blade")?;
             let h = field(&v, "heightM")?.as_f64().ok_or("heightM: not a number")?;
@@ -130,16 +135,9 @@ fn run(op: &str, input: &[u8], meshes: &mut Meshes) -> Result<Value, String> {
             let t = PlanetTraits::from_json(field(&v, "traits")?);
             Ok(pairs_obj(&families::trait_strengths(&t, &cat)))
         }
+        // entryWeights(entries, strengths, picked): `entries` is a stage list (a catalogue's `blades`, ...)
         "entry_weights" => {
-            let cat = catalogue_of(&v)?;
-            let stage = field(&v, "stage")?.as_str().ok_or("stage: not a string")?;
-            let list = match stage {
-                "blades" => &cat.blades,
-                "guards" => &cat.guards,
-                "pommels" => &cat.pommels,
-                "grips" => &cat.grips,
-                s => return Err(format!("unknown stage {s}")),
-            };
+            let list: Vec<families::Entry> = parse(field(&v, "entries")?, "entries")?;
             let strengths: Vec<(String, f64)> = field(&v, "strengths")?
                 .as_object()
                 .ok_or("strengths: not an object")?
@@ -148,7 +146,7 @@ fn run(op: &str, input: &[u8], meshes: &mut Meshes) -> Result<Value, String> {
                 .collect();
             let picked: Vec<String> = parse(field(&v, "picked")?, "picked")?;
             let picked: Vec<&str> = picked.iter().map(String::as_str).collect();
-            let ws = families::entry_weights(list, &strengths, &picked);
+            let ws = families::entry_weights(&list, &strengths, &picked);
             Ok(Value::Array(ws.into_iter().map(|(id, w)| json!([id, w])).collect()))
         }
         "pick_monument" => {

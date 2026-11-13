@@ -1,15 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { buildBladeGeometry, fixBladeWinding } from '../bladeGeometry';
-import {
-  BLADE_GRID_COLS,
-  bladeGridSegments,
-  bladeGridUVs,
-  buildBladeGlowGeometry,
-  glowMaskAt,
-  runeGlyph,
-} from '../glow';
-import { createRng } from '../rng';
+import { bladeExportGeometry, buildBladeGeometry } from '../bladeGeometry';
+import { BLADE_GRID_COLS, bladeGridSegments, buildBladeGlowGeometry } from '../glow';
 import { validateSwordParams } from '../validation';
 import { SwordGenerator, defaultSwordParams } from '../../SwordGenerator';
 import { presetMonument } from '../../../components/presets';
@@ -57,15 +49,26 @@ describe('blade glow channel', () => {
     const col = geo.getAttribute('color') as THREE.BufferAttribute;
     expect(uv.count).toBe(geo.getAttribute('position').count);
     expect(col.itemSize).toBe(4);
-    expect(Array.from(uv.array as Float32Array)).toEqual(Array.from(bladeGridUVs(segs)));
+    // grid UVs: u = j / cols across, v = i / segs along, two vertices (sides) per grid point
     const stride = (BLADE_GRID_COLS + 1) * 2;
+    for (const [i, j] of [
+      [0, 0],
+      [5, 3],
+      [segs, BLADE_GRID_COLS],
+    ]) {
+      for (const side of [0, 1]) {
+        expect(uv.getX(i * stride + j * 2 + side)).toBe(Math.fround(j / BLADE_GRID_COLS));
+        expect(uv.getY(i * stride + j * 2 + side)).toBe(Math.fround(i / segs));
+      }
+    }
     // Edge vertex (j = 0) is fully lit; a mid-face column is dimmer than the core.
     expect(col.getW(0)).toBe(1);
     expect(col.getX(0)).toBe(1);
     const mid = 3 * 2;
     const core = (BLADE_GRID_COLS / 2) * 2;
     expect(col.getW(stride * 10 + mid)).toBeLessThan(col.getW(stride * 10 + core));
-    expect(glowMaskAt(b.glow!, 0.5)).toBeCloseTo(b.glow!.coreMask!, 6);
+    // the centre column carries the core mask (edge band 0 there)
+    expect(col.getW(stride * 10 + core)).toBeCloseTo(b.glow!.coreMask!, 6);
   });
 
   it('builds an outward-facing glow mesh just off the blade surface', () => {
@@ -98,14 +101,15 @@ describe('blade glow channel', () => {
     expect(outside / pos.count).toBeGreaterThan(0.95);
   });
 
-  it('rune glyphs are deterministic grid strokes', () => {
-    const a = runeGlyph(createRng(11));
-    expect(runeGlyph(createRng(11))).toEqual(a);
-    for (const [x0, y0, x1, y1] of a) {
-      for (const g of [x0, x1]) expect([0, 1, 2]).toContain(g);
-      for (const g of [y0, y1]) expect([0, 1, 2, 3]).toContain(g);
-    }
-    expect(a.length).toBeGreaterThanOrEqual(2);
+  it('the glow mesh is deterministic and follows the rune seed', () => {
+    const p = validateSwordParams(glowParams());
+    const a = buildBladeGlowGeometry(p.blade)!;
+    const b = buildBladeGlowGeometry(p.blade)!;
+    expect(Array.from(b.getAttribute('position').array)).toEqual(Array.from(a.getAttribute('position').array));
+    const q = validateSwordParams(glowParams());
+    q.blade.glow!.runeSeed = 4;
+    const c = buildBladeGlowGeometry(q.blade)!;
+    expect(Array.from(c.getAttribute('position').array)).not.toEqual(Array.from(a.getAttribute('position').array));
   });
 
   it('SwordGenerator adds a named glow mesh with an emissive material', () => {
@@ -116,16 +120,16 @@ describe('blade glow channel', () => {
     expect(mat.emissive.getHex()).toBe(new THREE.Color('#7fd8ff').getHex());
   });
 
-  it('fixBladeWinding makes the closed blade outward-facing', () => {
+  it('the export preparation makes the closed blade outward-facing', () => {
     for (const p of [defaultSwordParams(), presetMonument()]) {
       const b = validateSwordParams(p).blade;
-      const geo = buildBladeGeometry(b);
-      const before = signedVolume(geo);
-      fixBladeWinding(geo, bladeGridSegments(b));
+      const before = signedVolume(buildBladeGeometry(b));
+      const geo = bladeExportGeometry(b);
       const after = signedVolume(geo);
       expect(after).toBeGreaterThan(0);
       expect(after).toBeGreaterThan(Math.abs(before));
       expect(geo.getAttribute('tangent')).toBeTruthy();
+      expect(geo.getAttribute('uv').count).toBe(geo.getAttribute('position').count);
     }
   });
 });

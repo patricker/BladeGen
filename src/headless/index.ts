@@ -17,8 +17,8 @@ import { SwordGenerator } from '../three/SwordGenerator';
 import type { SwordParams } from '../three/sword/types';
 import { validateSwordParams } from '../three/sword/validation';
 import { bendOffsetX, wavinessAt } from '../three/sword/math';
-import { fixBladeWinding } from '../three/sword/bladeGeometry';
-import { BLADE_GRID_COLS, bladeGridSegments, bladeGridUVs } from '../three/sword/glow';
+import { bladeExportGeometry } from '../three/sword/bladeGeometry';
+import { BLADE_GRID_COLS, bladeGridSegments } from '../three/sword/glow';
 import { listMeshes } from './parts';
 
 export { listMeshes, type MeshEntry } from './parts';
@@ -101,6 +101,9 @@ export function buildSword(params: SwordParams, materials?: MaterialMap): SwordG
  * Returned as glTF-style TRS (quaternion x, y, z, w).
  */
 export function monumentTransform(params: SwordParams, opts: MonumentOptions) {
+  // Kept in TypeScript (BG1): bladegen-core's `model::monument` is the same formula, but V8's Math.pow/tan and libm
+  // can differ in the last f64 bit of the ground point's bend offset, and this root TRS is written to the GLB as
+  // f64; the f32 mesh data never sees the difference.
   const b = validateSwordParams(params).blade;
   const L = Math.max(0.01, b.length);
   const sink = Math.min(0.6, Math.max(0, opts.sink));
@@ -130,15 +133,23 @@ export function prepareExport(
   for (const { mesh, name } of listMeshes(sword)) mesh.name = name;
   if (sword.bladeMesh) {
     const geo = sword.bladeMesh.geometry as THREE.BufferGeometry;
-    const segs = bladeGridSegments(validateSwordParams(params).blade);
+    const vb = validateSwordParams(params).blade;
+    const segs = bladeGridSegments(vb);
     // Only the swept grid blade has this layout (engraving bakes replace it).
     const isGrid = geo.getAttribute('position').count === (segs + 1) * (BLADE_GRID_COLS + 1) * 2;
-    if (isGrid && opts.uvs !== false && !geo.getAttribute('uv')) {
-      geo.setAttribute('uv', new THREE.BufferAttribute(bladeGridUVs(segs), 2));
-    }
-    if (isGrid && opts.fixWinding !== false && !geo.userData.windingFixed) {
-      fixBladeWinding(geo, segs);
-      geo.userData.windingFixed = true;
+    const addUvs = isGrid && opts.uvs !== false && !geo.getAttribute('uv');
+    const fix = isGrid && opts.fixWinding !== false && !geo.userData.windingFixed;
+    if (addUvs || fix) {
+      // bladegen-core's export preparation of the same blade: grid UVs, the broad faces' winding reversed,
+      // normals and tangents recomputed (`blade::prepare_export`)
+      const fixed = bladeExportGeometry(vb);
+      if (addUvs) geo.setAttribute('uv', fixed.getAttribute('uv'));
+      if (fix) {
+        geo.setIndex(fixed.index);
+        geo.setAttribute('normal', fixed.getAttribute('normal'));
+        geo.setAttribute('tangent', fixed.getAttribute('tangent'));
+        geo.userData.windingFixed = true;
+      }
     }
   }
   if (!opts.monument) return sword.group;

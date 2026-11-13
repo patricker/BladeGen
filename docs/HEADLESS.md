@@ -8,6 +8,34 @@ Node: the scripts run through `vite-node` (already a dev dependency through Vite
 they work on any Node the test suite runs on (checked on Node 20.15; the site still asks
 for Node 24).
 
+## Rust core (BG1)
+
+Since BG1 the sword geometry below the "Algorithm boundaries" line, the monument families and the stroke kernel are
+implemented once, in Rust: `crates/bladegen-core` (a 1:1 port of this repo's TypeScript made for the galaxy kit,
+SW2/SW7/SW11, bit-exact on every corpus here). The web app and these headless tools call it through
+`crates/bladegen-wasm` (a wasm32 module with a small C ABI: `bg_alloc`, `bg_free`, `bg_call(op, json)`,
+`bg_result_len`; no wasm-bindgen) and `src/three/sword/core/wasm.ts`, which loads it once with top-level await and
+turns its mesh buffers into `THREE.BufferGeometry` with the attribute order and index type the TypeScript builders
+produced. The ops: `blade`, `blade_export`, `glow`, `guard_forged`, `guard_monument`, `pommel_monument`,
+`build_parts`, `digests`, `monument_transform`, `monument_seed`, `trait_strengths`, `entry_weights`, `pick_monument`,
+`design_monument` (its params come back as a patch on the base, so fields the core does not model stay the
+caller's), `guard_defaults`, `forged_defaults`, `version`.
+
+Retired TypeScript (the Rust is the implementation): `buildBladeGeometry`'s body, `computeBladeTangents`,
+`fixBladeWinding` (now `bladeExportGeometry`), the glow mask/UV/rune/glow-mesh code in `glow.ts`, the forged cross
+in `guardForged.ts`, `monument/strokes.ts`, the builders in `monument/guards.ts` and `monument/pommels.ts`, and the
+selection and recipes in `monument/design.ts`. Kept in TypeScript because nothing duplicates them: `math.ts` (the
+blade's scalar profile helpers, used by the fuller and hamon overlays, the outline, engravings, accessories, dynamics
+and `monumentTransform`), `rng.ts` (the randomizer), and the hilt parts built from three's primitives in
+`guardGeometry.ts`, `handleGeometry.ts`, `pommelGeometry.ts` and `guardDecor.ts` (the core has its own port of those
+for the kit; see "Not switched" in BG1's report).
+
+The conformance corpora below are now the core's reference: `crates/bladegen-core/tests/conformance.rs` matches the
+SW1/SW2/SW7/SW10 corpora when they are present (`BLADEGEN_SW1`, `BLADEGEN_FIXTURES`, `BLADEGEN_SW7`,
+`BLADEGEN_SW10`), and `tests/goldens.rs` checks committed digests of the same meshes without them. Regenerating a
+corpus with the tools below now runs the core (through the wasm module); before BG1 it ran the TypeScript, and the
+outputs are byte-identical (BG1: SW1's 20 fixtures with their GLBs, SW10's corpus and GI11's end-to-end corpus).
+
 ## CLI
 
 ```sh
@@ -248,10 +276,12 @@ family's recipe. Everything lives in `src/three/sword/monument/`:
 | File | What |
 |---|---|
 | `catalogue.json` | the owner's tuning table: trait ramps, and per entry a base weight, trait affinities and pairings |
-| `design.ts` | `PlanetTraits`, `monumentSeed`, `traitStrengths`, `entryWeights`, `pickMonument`, the recipes, `designMonument` |
-| `strokes.ts` | the geometry kernel: swept strokes, rings, mirroring, merging |
-| `guards.ts` | guard styles `recurve`, `crescent`, `halo`, `wings`, `talon`, `ziggurat` (`guard.monument` block) |
-| `pommels.ts` | pommel styles `gem`, `sunwheel`, `horned`, `tiered` |
+| `design.ts` | `PlanetTraits`, `monumentSeed`, `traitStrengths`, `entryWeights`, `pickMonument`, `designMonument` (wrappers over bladegen-core `families.rs`, where the recipes are) |
+| `guards.ts` | guard styles `recurve`, `crescent`, `halo`, `wings`, `talon`, `ziggurat` (`guard.monument` block; geometry: bladegen-core `monument.rs`) |
+| `pommels.ts` | pommel styles `gem`, `sunwheel`, `horned`, `tiered` (geometry: bladegen-core `monument.rs`) |
+
+The stroke kernel (swept strokes, rings, mirroring, merging; `strokes.ts` before BG1) is bladegen-core's
+`monument.rs`.
 
 Catalogue entries: blades `classic` (the base blade, untouched), `greatsword`, `leaf`,
 `flamberge`, `falchion`, `cleaver`, `stepped`, `shard`, `serpent`; guards `forged` (the base's

@@ -17,3 +17,7 @@ anyhow = "1"
 [lib]
 name = "bladegen_core"
 path = "src/lib.rs"
+
+# The tests read corpus params written by JavaScript: parse them correctly rounded.
+[dev-dependencies]
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }

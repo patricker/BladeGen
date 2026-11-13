@@ -148,6 +148,10 @@ pub struct Blade {
     pub kissaki_roundness: Option<f64>,
     #[serde(default)]
     pub waviness: Option<Waviness>,
+    /// Not read by the geometry (validation turns it into `waviness` on kris blades); kept so the monument
+    /// recipes drop it as bladegen's TypeScript did (`straighten`).
+    #[serde(default)]
+    pub kris_wave_count: Option<f64>,
     #[serde(default)]
     pub twist_angle: Option<f64>,
     #[serde(default)]

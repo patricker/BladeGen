@@ -19,6 +19,23 @@ Generate swords without a browser (Node, no DOM): `npm run bladegen -- gen --see
 It also covers the seeded "monument" randomizer, the exportable glow channel (`blade.glow`), the giant preset and conformance fixtures for ports (`npm run fixtures`).
 See [docs/HEADLESS.md](docs/HEADLESS.md).
 
+## Rust core (sword geometry)
+
+The geometry the planet swords use (blade, glow channel, bar / forged / monument guards, quillons, the lathe grip and
+wire wrap, the orb..ring and monument pommels, the catalogue families) is one Rust crate,
+[`crates/bladegen-core`](crates/bladegen-core): the galaxy kit's world engine links it, and this web app runs the
+same code compiled to WebAssembly (`crates/bladegen-wasm` -> `src/three/sword/core/bladegen_core.wasm`, loaded by
+`src/three/sword/core/wasm.ts`). The TypeScript builders it replaced keep their names and signatures and return the
+same `THREE.BufferGeometry`, value for value. Everything else (other guard styles, wraps, overlays, engravings,
+accessories, the randomizer, validation, materials, the editor and rendering) is TypeScript.
+
+- `cargo test` (repo root): the crate's tests, including `tests/goldens.rs` (the recorded conformance corpora).
+- `scripts/build-wasm.sh`: rebuilds the wasm module after a Rust change (needs the `wasm32-unknown-unknown` target,
+  no wasm-bindgen); commit the module with the change. `npm test` checks that it reproduces the goldens.
+- The tuning table for planet-sword families is `src/three/sword/monument/catalogue.json`; the crate compiles it in.
+
+See [docs/HEADLESS.md](docs/HEADLESS.md#rust-core-bg1).
+
 ## Features
 
 - Fully parametric blade/guard/handle/pommel with presets and randomizer

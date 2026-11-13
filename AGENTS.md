@@ -53,3 +53,14 @@
 ## Agent-Specific Tips
 
 - Make minimal, focused diffs; avoid broad renames. Respect structure above. When adding parameters, update defaults/presets and tests in the same PR.
+
+## Rust core (sword geometry)
+
+The sword geometry the planet swords use (blade, glow, forged/monument guards, monument pommels, catalogue families,
+and the kit's hilt port) is the Rust crate `crates/bladegen-core`; the web app calls it as WebAssembly
+(`src/three/sword/core/bladegen_core.wasm` via `src/three/sword/core/wasm.ts`); the galaxy kit links it by path. Change
+that geometry in Rust only, then:
+- `cargo test` (repo root) — includes `tests/goldens.rs`; with the vtuber-stack corpora set (`BLADEGEN_SW1`,
+  `BLADEGEN_FIXTURES`, `BLADEGEN_SW7`, `BLADEGEN_SW10`) also `tests/conformance.rs`. A deliberate change re-records
+  the goldens (`BLADEGEN_RECORD_GOLDENS=1`).
+- `scripts/build-wasm.sh` — rebuild and commit the wasm module (`npm test`'s `core.spec.ts` fails on a stale one).

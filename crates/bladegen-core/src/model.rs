@@ -92,6 +92,44 @@ pub fn model_y_extent(s: &params::Sword) -> (f64, f64) {
     (lo, hi)
 }
 
+/// A fingerprint of the exported model: for each mesh [`build_parts`] builds (`export` = true), its `<part>#<k>`
+/// name, vertex count and an FNV-1a 64 digest (hex) over its f32 attributes (position, normal, uv, color, tangent,
+/// each prefixed by its length, little-endian), its u32 indices and its f64 matrix. `tests/goldens.rs` and the web
+/// app's wasm test compare these with the recorded corpora.
+pub fn digests(s: &params::Sword) -> Vec<(String, usize, String)> {
+    fn fnv(h: &mut u64, bytes: &[u8]) {
+        for b in bytes {
+            *h ^= *b as u64;
+            *h = h.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    }
+    let (parts, _) = build_parts(s, true);
+    let mut k_of = std::collections::BTreeMap::<&str, usize>::new();
+    parts
+        .iter()
+        .map(|p| {
+            let k = k_of.entry(p.name).or_insert(0);
+            let name = format!("{}#{}", p.name, k);
+            *k += 1;
+            let mut h = 0xcbf2_9ce4_8422_2325u64;
+            for xs in [&p.mesh.pos, &p.mesh.nrm, &p.mesh.uv, &p.mesh.color, &p.mesh.tangent] {
+                fnv(&mut h, &(xs.len() as u64).to_le_bytes());
+                for x in xs.iter() {
+                    fnv(&mut h, &x.to_le_bytes());
+                }
+            }
+            fnv(&mut h, &(p.mesh.idx.len() as u64).to_le_bytes());
+            for i in &p.mesh.idx {
+                fnv(&mut h, &i.to_le_bytes());
+            }
+            for m in &p.matrix {
+                fnv(&mut h, &m.to_le_bytes());
+            }
+            (name, p.mesh.vertex_count(), format!("{h:016x}"))
+        })
+        .collect()
+}
+
 /// SW1's monument transform (`monumentTransform`): turn pi about +Z (tip down), scale so the blade is `height_m`
 /// long, and move the blade's centre line at `y = L (1 - sink)` to the origin. (scale, translation).
 pub fn monument(b: &params::Blade, height_m: f64, sink: f64) -> (f64, [f64; 3]) {

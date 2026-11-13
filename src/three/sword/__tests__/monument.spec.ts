@@ -3,15 +3,6 @@ import { SwordGenerator } from '../../SwordGenerator';
 import { defaultSwordParams } from '../defaults';
 import { validateSwordParams } from '../validation';
 import {
-  mergeParts,
-  mirrorPart,
-  ringPart,
-  sectionOutline,
-  strokePart,
-  type Part,
-  type Stroke,
-} from '../monument/strokes';
-import {
   MONUMENT_GUARD_DEFAULTS,
   MONUMENT_GUARD_STYLES,
   buildMonumentGuardGeometry,
@@ -95,26 +86,6 @@ const TRAITS: Record<string, PlanetTraits> = {
 };
 
 /** Welded closed check: every undirected edge (by position) used exactly twice, in opposite directions. */
-function closedAndConsistent(p: Part): boolean {
-  // welded at 1e-7 (the seam copy at phi = 2 pi differs from phi = 0 in the last bits, as in three's primitives)
-  const q = (x: number) => Math.round(x * 1e7) + 0;
-  const key = (i: number) => `${q(p.pos[3 * i])},${q(p.pos[3 * i + 1])},${q(p.pos[3 * i + 2])}`;
-  const directed = new Map<string, number>();
-  for (let t = 0; t < p.idx.length; t += 3) {
-    const v = [key(p.idx[t]), key(p.idx[t + 1]), key(p.idx[t + 2])];
-    if (v[0] === v[1] || v[1] === v[2] || v[0] === v[2]) continue; // degenerate seam slivers
-    for (let e = 0; e < 3; e++) {
-      const k = `${v[e]}|${v[(e + 1) % 3]}`;
-      directed.set(k, (directed.get(k) ?? 0) + 1);
-    }
-  }
-  for (const [k, n] of directed) {
-    const [a, b] = k.split('|');
-    if (n !== 1 || directed.get(`${b}|${a}`) !== 1) return false;
-  }
-  return true;
-}
-
 function signedVolume(g: THREE.BufferGeometry): number {
   const pos = g.getAttribute('position');
   const idx = g.getIndex()!;
@@ -139,44 +110,8 @@ function finite(g: THREE.BufferGeometry) {
   return true;
 }
 
-describe('monument strokes', () => {
-  const sec = sectionOutline(0.5, 16);
-  const base: Stroke = {
-    x: 0.1,
-    y: 0,
-    heading: 0.2,
-    length: 1,
-    bend: 0.8,
-    hy: 0.08,
-    hz: 0.06,
-    size: { kind: 'taper', taper: 0.4 },
-    tip: 'point',
-    segments: 12,
-  };
-  it.each(['flat', 'point', 'knob'] as const)(
-    'a %s-tipped stroke is a closed tube wound outward',
-    (tip) => {
-      const p = strokePart({ ...base, tip, knob: 0.5 }, sec);
-      expect(closedAndConsistent(p)).toBe(true);
-      expect(signedVolume(mergeParts([p]))).toBeGreaterThan(0);
-    }
-  );
-  it('a ring is closed and wound outward; a mirrored part stays outward', () => {
-    const r = ringPart({ cx: 0, cy: 0.2, radius: 0.5, hy: 0.04, hz: 0.05, segments: 40 }, sec);
-    expect(closedAndConsistent(r)).toBe(true);
-    expect(signedVolume(mergeParts([r]))).toBeGreaterThan(0);
-    const m = mirrorPart(strokePart(base, sec));
-    expect(closedAndConsistent(m)).toBe(true);
-    expect(signedVolume(mergeParts([m]))).toBeGreaterThan(0);
-  });
-  it('the centre line turns by turn and bend (a stroke turning toward +Y ends above its start)', () => {
-    const up = strokePart({ ...base, heading: 0, bend: 1.2 }, sec);
-    const down = strokePart({ ...base, heading: 0, bend: -1.2 }, sec);
-    const n = up.pos.length / 3 - 1;
-    expect(up.pos[3 * n + 1]).toBeGreaterThan(0.2);
-    expect(down.pos[3 * n + 1]).toBeLessThan(-0.2);
-  });
-});
+// The stroke kernel's own tests (closed tubes, rings, mirrors, turning) are bladegen-core's
+// (crates/bladegen-core/tests/strokes.rs) since the TypeScript kernel was retired (BG1).
 
 describe('monument guards', () => {
   const blade = monumentBase().blade;

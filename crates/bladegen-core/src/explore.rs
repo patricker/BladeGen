@@ -1,0 +1,219 @@
+//! Opt-in planet-sword experiments. Legacy params, recipes and operation order remain untouched.
+//! Coordinates follow `model`: +Y toward the tip. Geometry is Rust-only; preview tools consume buffers.
+use crate::{
+    geom::{self, Mesh},
+    glow::hash_seed,
+    model,
+    params::Sword,
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Resonance {
+    pub count: u32,
+    /// Node radius in base blade widths.
+    pub radius: f64,
+}
+impl Default for Resonance {
+    fn default() -> Self {
+        Self {
+            count: 5,
+            radius: 0.055,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Features {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resonance: Option<Resonance>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Anchor {
+    pub id: String,
+    pub parent: String,
+    pub position: [f64; 3],
+    pub normal: [f64; 3],
+    pub role: String,
+    pub vocabulary: u32,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Component {
+    pub id: String,
+    pub mesh: Mesh,
+    pub matrix: geom::Mat4,
+    pub role: String,
+    pub color: [f64; 3],
+    pub strength: f64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Assembly {
+    pub components: Vec<Component>,
+    pub anchors: Vec<Anchor>,
+}
+
+fn valid(x: f64, lo: f64, hi: f64, name: &str) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        x.is_finite() && x >= lo && x <= hi,
+        "{name} must be finite in {lo}..={hi}"
+    );
+    Ok(())
+}
+
+/// Front-face ray intersection with the actual exported triangles; works independently of grid topology.
+pub fn surface(mesh: &Mesh, x: f64, y: f64) -> Option<([f64; 3], [f64; 3])> {
+    let mut hit: Option<([f64; 3], [f64; 3])> = None;
+    for t in mesh.idx.chunks_exact(3) {
+        let p = |i: u32| {
+            let k = i as usize * 3;
+            [
+                mesh.pos[k] as f64,
+                mesh.pos[k + 1] as f64,
+                mesh.pos[k + 2] as f64,
+            ]
+        };
+        let (a, b, c) = (p(t[0]), p(t[1]), p(t[2]));
+        let d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+        if d.abs() < 1e-15 {
+            continue;
+        }
+        let u = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / d;
+        let v = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / d;
+        if u < -1e-8 || v < -1e-8 || u + v > 1.0 + 1e-8 {
+            continue;
+        }
+        let z = u * a[2] + v * b[2] + (1.0 - u - v) * c[2];
+        let ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        let ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        let (nx, ny, nz) = geom::normalize3(
+            ab[1] * ac[2] - ab[2] * ac[1],
+            ab[2] * ac[0] - ab[0] * ac[2],
+            d,
+        );
+        if hit.as_ref().is_none_or(|h| z > h.0[2]) {
+            hit = Some(([x, y, z], [nx, ny, nz]));
+        }
+    }
+    hit
+}
+
+/// Closed, outward octahedron. Shared indices permit exact topological edge tests.
+pub fn node_mesh(p: [f64; 3], r: f64) -> Mesh {
+    let mut m = Mesh::default();
+    for d in [
+        [r, 0., 0.],
+        [-r, 0., 0.],
+        [0., r, 0.],
+        [0., -r, 0.],
+        [0., 0., r],
+        [0., 0., -r],
+    ] {
+        m.pos.extend((0..3).map(|k| (p[k] + d[k]) as f32));
+    }
+    m.idx = vec![
+        0, 2, 4, 2, 1, 4, 1, 3, 4, 3, 0, 4, 2, 0, 5, 1, 2, 5, 3, 1, 5, 0, 3, 5,
+    ];
+    m.compute_vertex_normals();
+    m
+}
+
+pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
+    valid(s.blade.length, 0.01, 1000., "blade length")?;
+    valid(s.blade.base_width, 0.002, 100., "blade width")?;
+    let mut counts = std::collections::BTreeMap::new();
+    let components = model::build_model(s)?
+        .into_iter()
+        .map(|p| {
+            let k = counts.entry(p.name).or_insert(0);
+            let id = format!("{}#{k}", p.name);
+            *k += 1;
+            Component {
+                id,
+                mesh: p.mesh,
+                matrix: p.matrix,
+                role: "metal".into(),
+                color: [0.14, 0.17, 0.21],
+                strength: 0.,
+            }
+        })
+        .collect();
+    let mut a = Assembly {
+        components,
+        anchors: vec![],
+    };
+    if let Some(r) = &f.resonance {
+        anyhow::ensure!((3..=9).contains(&r.count), "resonance count must be 3..=9");
+        valid(r.radius, 0.03, 0.08, "resonance radius")?;
+        for i in 0..r.count {
+            let t = 0.12 + 0.60 * i as f64 / (r.count - 1) as f64;
+            let y = t * s.blade.length;
+            let x = crate::blade::bend_offset_x(&s.blade, y, s.blade.length)
+                + crate::blade::waviness_at(&s.blade, t).0;
+            let (p, n) = surface(&a.components[0].mesh, x, y)
+                .ok_or_else(|| anyhow::anyhow!("node outside blade"))?;
+            let id = format!(
+                "resonance/{:08x}/{i}",
+                hash_seed(&format!("{seed}|resonance"))
+            );
+            a.anchors.push(Anchor {
+                id: id.clone(),
+                parent: "blade#0".into(),
+                position: p,
+                normal: n,
+                role: ["source", "conduction", "containment"][i as usize % 3].into(),
+                vocabulary: 1,
+            });
+            a.components.push(Component {
+                id,
+                mesh: node_mesh(p, r.radius * s.blade.base_width),
+                matrix: geom::IDENTITY,
+                role: "node".into(),
+                color: [0.8, 0.95, 1.],
+                strength: 7.,
+            });
+        }
+    }
+    Ok(a)
+}
+
+/// A deliberately broad, severe reference blank, with a 36 m blade in previews.
+pub fn reference() -> Sword {
+    use crate::params::*;
+    Sword {
+        blade: Blade {
+            length: 6.,
+            base_width: 1.,
+            tip_width: 0.02,
+            thickness: Some(0.16),
+            tip_ramp_start: Some(0.8),
+            cross_section: Some("diamond".into()),
+            ..Blade::default()
+        },
+        guard: Guard {
+            style: Some("forged".into()),
+            width: 3.2,
+            thickness: 0.3,
+            forged: Some(crate::families::forged_defaults()),
+            ..Guard::default()
+        },
+        handle: Handle {
+            length: 1.4,
+            radius_top: 0.18,
+            radius_bottom: 0.18,
+            ..Handle::default()
+        },
+        pommel: Pommel {
+            style: Some("gem".into()),
+            size: 0.42,
+            elongation: 1.,
+            ..Pommel::default()
+        },
+        ..Sword::default()
+    }
+}

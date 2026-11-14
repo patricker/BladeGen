@@ -27,6 +27,8 @@ pub mod hilt;
 pub mod model;
 pub mod monument;
 pub mod params;
+/// Opt-in CX2 experiments. Never called by the shipped builders or catalogue.
+pub mod explore;
 
 /// The crate's version, for consumers that record what built their geometry.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

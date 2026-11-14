@@ -17,3 +17,4 @@ Thumbs.db
 *.swp
 coverage
 /target
+/explore/out/

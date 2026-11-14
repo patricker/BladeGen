@@ -2,6 +2,8 @@
 
 Reference specs: see `KNOBS.md` (controls/parameters).
 
+CX2 opt-in Rust sword experiments and preview commands: [explore/LOG.md](explore/LOG.md).
+
 ## Near‑Term Priorities
 
 - Distal taper + dynamics readouts: thicknessProfile along blade; compute PoB, CoP, inertia; show in UI/export.

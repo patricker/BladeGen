@@ -32,6 +32,7 @@ fn main() -> anyhow::Result<()> {
         "19-electrodes" => Features {electrodes:Some(Electrodes::default()),..Features::default()},
         "22-dedup" => Features {aperture:Some(Aperture::default()),..Features::default()},
         "23-explorer" => Features {aperture:Some(Aperture::default()),..Features::default()},
+        "24-lod" => Features {aperture:Some(Aperture::default()),..Features::default()},
         _ => anyhow::bail!("unknown experiment {id}"),
     };
     let s = explore::reference();
@@ -42,6 +43,19 @@ fn main() -> anyhow::Result<()> {
         "normal":c.mesh.nrm,"index":c.mesh.idx,"matrix":c.matrix.to_vec(),"role":c.role,"color":c.color,"strength":c.strength})).collect();
     let dir = std::path::Path::new("explore/out").join(&id);
     std::fs::create_dir_all(&dir)?;
+    if id=="24-lod" {
+        let mut counts=vec![];
+        for (level,a) in explore::authoring::lods(&s,42,&features)?.into_iter().enumerate() {
+            let folder=dir.join(format!("lod-{level}"));std::fs::create_dir_all(&folder)?;
+            let cs:Vec<_>=a.components.iter().map(|c|json!({"id":c.id,"position":c.mesh.pos,"normal":c.mesh.nrm,"index":c.mesh.idx,
+                "matrix":c.matrix.to_vec(),"role":c.role,"color":c.color,"strength":c.strength})).collect();
+            counts.push(json!({"level":level,"vertices":a.components.iter().map(|c|c.mesh.vertex_count()).sum::<usize>(),
+                "triangles":a.components.iter().map(|c|c.mesh.idx.len()/3).sum::<usize>()}));
+            std::fs::write(folder.join("mesh.json"),serde_json::to_vec(&json!({"format":"bladegen-explore/1","idea":id,"seed":42,"features":features,
+                "bladeLength":s.blade.length,"heightM":36,"sink":0.12,"anchors":a.anchors,"components":cs}))?)?;
+        }
+        std::fs::write(dir.join("lods.json"),serde_json::to_vec_pretty(&counts)?)?;
+    }
     if id=="23-explorer" {
         let mut cells=vec![];
         for (name,traits) in [("magnetic",json!({"hasDynamo":true,"dipoleIndex":0.9})),("volcanic",json!({"volcanismIndex":0.9}))] {

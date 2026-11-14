@@ -29,3 +29,16 @@ pub fn candidates(base:&Sword,traits:&PlanetTraits,start:u32,count:u32,lock:Opti
         out.push(Candidate {seed,traits:traits.to_json(),base:design.params,features,reason});
     }Ok(out)
 }
+
+/// Design first, tessellation second. All explicit aperture/scar/fracture hardware is retained verbatim.
+/// LOD0 is the exact requested design; only continuous legacy surfaces get fewer samples below it.
+pub fn lods(s:&Sword,seed:u32,f:&Features)->anyhow::Result<Vec<Assembly>> {
+    let mut out=vec![build(s,seed,f)?];
+    for (sweep,radial,segments) in [(64.,32.,12.),(32.,16.,8.)] {
+        let mut low=s.clone();low.blade.sweep_segments=Some(sweep);low.handle.phi_segments=Some(radial);
+        low.pommel.facet_count=Some(radial*0.5);
+        if let Some(g)=&mut low.guard.forged {g.segments=Some(segments);g.radial=Some(radial*0.5);}
+        if let Some(g)=&mut low.guard.monument {g.segments=Some(segments);g.radial=Some(radial*0.5);}
+        out.push(build(&low,seed,f)?);
+    } Ok(out)
+}

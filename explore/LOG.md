@@ -293,3 +293,15 @@ base params, seed and feature parameters per cell; no runtime catalogue weights 
 Tests: exact repeated candidate records, trait-conditioned selection, resolved lock surviving trait
 changes, finite generated geometry. Verdict **keep** as offline authoring tool. Static gallery rather
 than a live editor; owner can compare real metre-scale exports without six simultaneous WebGL scenes.
+
+## 24 — Monument detail hierarchy
+
+Built three explicit LODs from one resolved design. LOD0 preserves it exactly; lower levels reduce
+legacy blade sweeps, grip radial tessellation, guard sweep/radial samples and pommel facets.
+All aperture/scar/fracture structural boundaries and component IDs persist. No camera-dependent
+random generation. Continuous levels use blade sweeps 64/32 and grip radials 32/16.
+[GLB](out/24-lod/sword.glb), [mast](out/24-lod/mast.png), [drone](out/24-lod/drone.png),
+[counts](out/24-lod/lods.json); complete subexports under `lod-0/`, `lod-1/`, `lod-2/`.
+Tests: exact LOD0, strictly decreasing vertex counts, stable IDs, byte-identical window hardware,
+closed retained topology and mast silhouette IoU ≥0.98. Verdict **keep**, conservative first pass.
+Consumer selects LOD; no triangle decimation of critical voids or seeded ornament re-rolls.

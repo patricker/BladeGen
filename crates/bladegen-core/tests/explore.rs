@@ -392,6 +392,23 @@ fn explorer_traits_change_features_and_locks_preserve_resolved_choices() {
     for c in a.iter().chain(&b).chain(&locked) {let scene=build(&c.base,c.seed,&c.features).unwrap();assert!(scene.components.iter().all(|c|c.mesh.pos.iter().all(|v|v.is_finite())));}
 }
 
+#[test]
+fn lods_keep_aperture_identity_while_reducing_continuous_hilt_meshes() {
+    use bladegen_core::explore::{authoring::lods,raster::{render,View},audit::compare};
+    let f=Features {aperture:Some(Aperture::default()),..Features::default()};let s=reference();
+    let ls=lods(&s,42,&f).unwrap();assert_eq!(ls,lods(&s,42,&f).unwrap());assert_eq!(ls[0],build(&s,42,&f).unwrap());
+    let count=|a:&Assembly|a.components.iter().map(|c|c.mesh.vertex_count()).sum::<usize>();
+    assert!(count(&ls[0])>count(&ls[1]) && count(&ls[1])>count(&ls[2]));
+    for low in &ls[1..] {
+        assert_eq!(low.components.iter().map(|c|&c.id).collect::<Vec<_>>(),ls[0].components.iter().map(|c|&c.id).collect::<Vec<_>>());
+        for c in low.components.iter().filter(|c|c.id.starts_with("window/")) {
+            assert_eq!(c,ls[0].components.iter().find(|p|p.id==c.id).unwrap());closed_outward(&c.mesh);
+        }
+        let a=render(&ls[0],6.,36.,0.12,View::Mast,128).unwrap();let b=render(low,6.,36.,0.12,View::Mast,128).unwrap();
+        assert!(compare(&a,&b).unwrap().iou_milli>=980);
+    }
+}
+
 fn weld(m:&mut Mesh) {
     let mut ids=BTreeMap::new();let mut remap=vec![];let mut pos=vec![];
     for p in m.pos.chunks_exact(3) {

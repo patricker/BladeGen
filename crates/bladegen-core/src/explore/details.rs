@@ -46,6 +46,11 @@ impl Default for Terminator {fn default()->Self {Self {bias:0.5}}}
 pub struct Circuit {pub branches:u32,pub width:f64}
 impl Default for Circuit {fn default()->Self {Self {branches:3,width:0.055}}}
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Electrodes {pub count:u32,pub reach:f64,pub sink:f64}
+impl Default for Electrodes {fn default()->Self {Self {count:3,reach:1.4,sink:0.12}}}
+
 fn route(mesh:&Mesh,start:[f64;2],end:[f64;2],width:f64,lift:f64)->anyhow::Result<Mesh> {
     let dx=end[0]-start[0];let dy=end[1]-start[1];let length=geom::v8_hypot(&[dx,dy]);
     let n=[dy/length,-dx/length];let mut rings=vec![];
@@ -83,6 +88,19 @@ fn block(id:&str,center:[f64;3],size:[f64;3])->Component {
 }
 
 pub(super) fn apply(a:&mut Assembly,s:&Sword,seed:u32,f:&Features)->anyhow::Result<()> {
+    if let Some(e)=&f.electrodes {
+        anyhow::ensure!((2..=6).contains(&e.count),"electrodes count must be 2..=6");valid(e.reach,0.8,1.8,"electrode reach")?;valid(e.sink,0.,0.4,"electrode sink")?;
+        let w=s.blade.base_width;let ground=s.blade.length*(1.-e.sink);
+        for i in 0..e.count {
+            let angle=std::f64::consts::PI*i as f64/(e.count-1) as f64;
+            let poly=[[0.1*w,ground-0.35*w],[e.reach*w,ground-0.06*w],[e.reach*w,ground+0.06*w],[0.1*w,ground-0.15*w]];
+            let id=format!("electrode/{i}");let mut c=component(&id,extrude(&poly,0.18*w)?);
+            c.matrix=geom::compose([0.;3],[0.,angle,0.],[1.;3]);
+            let socket=geom::apply_point(&c.matrix,[e.reach*w,ground,0.]);
+            a.anchors.push(Anchor {id:format!("circle/socket/{i}"),parent:id,position:socket,normal:[0.,-1.,0.],role:"ground-power".into(),vocabulary:1});
+            a.components.push(c);
+        }
+    }
     if let Some(c)=&f.circuit {
         anyhow::ensure!((1..=3).contains(&c.branches),"circuit branches must be 1..=3");valid(c.width,0.03,0.09,"circuit width")?;
         anyhow::ensure!(f.aperture.is_none() && f.fracture.is_none() && f.cleft.is_none() && f.strata.is_none(),"circuit needs continuous blade surface");

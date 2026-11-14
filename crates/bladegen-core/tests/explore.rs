@@ -354,6 +354,18 @@ fn furnace_routes_are_connected_closed_and_clear_of_surface() {
     for c in paths.iter().skip(1) {assert!(c.mesh.pos.chunks_exact(3).take(4).any(|p|p[0].abs()<0.03));}
 }
 
+#[test]
+fn electrodes_share_circle_socket_positions_and_preserve_front_approach() {
+    for count in [2,3,6] {
+        let f=Features {electrodes:Some(Electrodes {count,..Electrodes::default()}),..Features::default()};
+        let a=build(&reference(),42,&f).unwrap();assert_eq!(a,build(&reference(),42,&f).unwrap());assert_eq!(a.anchors.len(),count as usize);
+        for n in &a.anchors {assert!((n.position[1]-5.28).abs()<1e-10);assert!(n.position[2]<=1e-10);
+            let c=a.components.iter().find(|c|c.id==n.parent).unwrap();closed_outward(&c.mesh);
+            let endpoint=geom::apply_point(&c.matrix,[1.4,5.28,0.]);assert_eq!(endpoint,n.position);
+        }
+    }
+}
+
 fn weld(m:&mut Mesh) {
     let mut ids=BTreeMap::new();let mut remap=vec![];let mut pos=vec![];
     for p in m.pos.chunks_exact(3) {

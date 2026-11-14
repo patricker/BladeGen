@@ -260,3 +260,14 @@ legacy surface topology, with a heavy containment appearance. Front face only in
 Tests: all 14 route/rim solids closed/outward/finite, deterministic, above surface; branches terminate
 on the main trunk. Verdict **keep** as a shared emission motif; weight/frequency 0.5, volcanic ×2,
 magnetic ×1.6. A true engraved network would need dedicated channel-floor topology, not grid deformation.
+
+## 19 — Root electrodes
+
+Built a rear/lateral fan of 2–6 (3) massive closed electrodes with shared circle/socket records.
+Reach 0.8–1.8 W (1.4), explicit sink 0–0.4 (0.12). Replaced a full radial layout with a
+semicircle to preserve the front probe corridor. Every socket lies on the declared ground plane;
+the engine can build its circle directly from the same ordered IDs. No terrain fitting is invented.
+[GLB](out/19-electrodes/sword.glb), [mast](out/19-electrodes/mast.png), [drone](out/19-electrodes/drone.png).
+Tests: all counts, closed/outward/finite/repeatable arms, exact socket endpoints and no forward
+socket intrusion. Verdict **promising** as placement hardware; frequency 0.35 on magnetic worlds.
+Consumer must align its circle to exported sockets and use the identical burial transform.

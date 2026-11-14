@@ -68,6 +68,8 @@ pub struct Features {
     pub terminator: Option<Terminator>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub circuit: Option<Circuit>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub electrodes: Option<Electrodes>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

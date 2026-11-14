@@ -16,7 +16,34 @@ impl Default for Crystals {fn default()->Self {Self {count:4,length:0.95,width:0
 pub struct Kernel {pub core_radius:f64,pub read_lift:f64}
 impl Default for Kernel {fn default()->Self {Self {core_radius:0.18,read_lift:0.1}}}
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Chains {pub links:u32,pub slack:f64}
+impl Default for Chains {fn default()->Self {Self {links:6,slack:0.2}}}
+
 pub(super) fn apply(a:&mut Assembly,s:&Sword,seed:u32,f:&Features)->anyhow::Result<()> {
+    if let Some(ch)=&f.chains {
+        anyhow::ensure!((4..=10).contains(&ch.links),"chain links must be 4..=10");valid(ch.slack,0.,0.3,"chain slack")?;
+        anyhow::ensure!(f.fracture.is_none() && f.cleft.is_none() && f.aperture.is_none() && f.gate.is_none(),"chains require fixed forged-guard and blade anchors");
+        let w=s.blade.base_width;
+        for sign in [1.,-1.] {
+            let start=[sign*1.35*w,0.,0.];let end=[sign*0.42*w,0.44*s.blade.length,0.];
+            a.anchors.push(Anchor {id:format!("chain/root/{sign}"),parent:"guard#0".into(),position:start,normal:[0.,0.,1.],role:"restraint".into(),vocabulary:1});
+            a.anchors.push(Anchor {id:format!("chain/end/{sign}"),parent:"blade#0".into(),position:end,normal:[0.,0.,1.],role:"restraint".into(),vocabulary:1});
+            let step=(end[1]-start[1])/ch.links as f64;
+            for i in 0..ch.links {
+                let t=(i as f64+0.5)/ch.links as f64;
+                let x=start[0]+(end[0]-start[0])*t+sign*ch.slack*w*4.*t*(1.-t);
+                let y=start[1]+(end[1]-start[1])*t;
+                let mut mesh=annulus_y(0.,step*0.46,step*0.22,step*0.20);
+                // Turn annulus Y into a vertical link plane, alternating by 90 degrees about chain axis.
+                let tilt=std::f64::consts::FRAC_PI_2;
+                let transform=geom::compose([x,y,0.],[tilt,if i%2==0 {0.} else {tilt},0.],[0.75,1.,1.25]);
+                for p in mesh.pos.chunks_exact_mut(3) {let q=geom::apply_point(&transform,[p[0] as f64,p[1] as f64,p[2] as f64]);for k in 0..3 {p[k]=q[k] as f32;}}
+                mesh.compute_vertex_normals();a.components.push(component(&format!("chain/{sign}/{i}"),mesh));
+            }
+        }
+    }
     if let Some(k)=&f.kernel {
         valid(k.core_radius,0.12,0.20,"kernel radius")?;valid(k.read_lift,0.,0.1,"kernel lift")?;
         a.components.retain(|c|!c.id.starts_with("pommel#"));let w=s.blade.base_width;let y=-s.handle.length;

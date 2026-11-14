@@ -280,3 +280,12 @@ fn captive_kernel_has_real_open_seam_and_bounded_core_lift() {
     }
     let cage=a.components.iter().find(|c|c.id=="kernel/cage/1").unwrap();assert!(surface(&cage.mesh,0.,-1.95).is_none());
 }
+
+#[test]
+fn tension_links_are_closed_repeatable_and_have_named_endpoints() {
+    let f=Features {chains:Some(Chains::default()),..Features::default()};let a=build(&reference(),42,&f).unwrap();
+    assert_eq!(a,build(&reference(),42,&f).unwrap());assert_eq!(a.anchors.len(),4);
+    let links:Vec<_>=a.components.iter().filter(|c|c.id.starts_with("chain/")).collect();assert_eq!(links.len(),12);
+    for c in links {closed_outward(&c.mesh);let (lo,hi)=geom::world_bbox(&c.mesh,&c.matrix);assert!(lo[1]> -0.2 && hi[1]<2.9);}
+    assert!(a.anchors.iter().all(|n|n.parent=="guard#0" || n.parent=="blade#0"));
+}

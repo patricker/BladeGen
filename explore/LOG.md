@@ -193,3 +193,15 @@ bounds. Topology is capped polygonal hardware with intentionally floating core.
 Tests: closed/outward components, repeatability, true centre seam and core's free-corridor bounds
 over 66 read samples. Verdict **keep** with open staves; strong beacon, useful drone reveal.
 Proposed pommel weight 0.6, magnetic ×2.5, blueStar ×1.5.
+
+## 9 — Tension chains
+
+Built two seeded-design-independent restraint chains from named forged-guard roots to blade-edge
+anchors. Parameters: links 4–10 (6), polynomial lateral slack 0–0.3 W (0.2). Closed rectangular
+annular links alternate orientation; static only, no gravity simulation. This is a visual chain
+study, not physically validated interlocking: end rings/fittings and link intersection tolerances
+need another pass before production.
+[GLB](out/09-chains/sword.glb), [mast](out/09-chains/mast.png), [drone](out/09-chains/drone.png).
+Tests: 12 closed/outward/finite links, bounded extent, named endpoints, repeat buffers.
+Verdict **drop current recipe**: links risk reading as disconnected beads at distance, attachment
+hardware is unfinished. Keep the kernel/annulus helpers. Suggested weight 0 until redesigned.

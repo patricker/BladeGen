@@ -28,6 +28,7 @@ fn main() -> anyhow::Result<()> {
         "11-strata" => Features {strata:Some(Strata::default()),..Features::default()},
         "13-basalt" => Features {encroachment:Some(Encroachment::default()),..Features::default()},
         "14-terminator" => Features {terminator:Some(Terminator::default()),..Features::default()},
+        "17-circuit" => Features {circuit:Some(Circuit::default()),..Features::default()},
         _ => anyhow::bail!("unknown experiment {id}"),
     };
     let s = explore::reference();

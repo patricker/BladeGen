@@ -41,6 +41,24 @@ impl Default for Encroachment {fn default()->Self {Self {height:0.1,sink:0.12,pr
 pub struct Terminator {pub bias:f64}
 impl Default for Terminator {fn default()->Self {Self {bias:0.5}}}
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Circuit {pub branches:u32,pub width:f64}
+impl Default for Circuit {fn default()->Self {Self {branches:3,width:0.055}}}
+
+fn route(mesh:&Mesh,start:[f64;2],end:[f64;2],width:f64,lift:f64)->anyhow::Result<Mesh> {
+    let dx=end[0]-start[0];let dy=end[1]-start[1];let length=geom::v8_hypot(&[dx,dy]);
+    let n=[dy/length,-dx/length];let mut rings=vec![];
+    for i in 0..=16 {
+        let t=i as f64/16.;let p=[start[0]+dx*t,start[1]+dy*t];let mut ps=[[0.;3];4];
+        for (j,side) in [-1.,1.].into_iter().enumerate() {
+            let (x,y)=(p[0]+n[0]*width*0.5*side,p[1]+n[1]*width*0.5*side);
+            let z=surface(mesh,x,y).ok_or_else(||anyhow::anyhow!("circuit route outside blade"))?.0[2]+lift;
+            ps[j]=[x,y,z];ps[3-j]=[x,y,z+width*0.14];
+        }rings.push(ps);
+    }Ok(loft(&rings))
+}
+
 pub(super) fn terminator(a:&mut Assembly,s:&Sword,t:&Terminator,f:&Features)->anyhow::Result<()> {
     valid(t.bias,-0.7,0.7,"terminator bias")?;
     anyhow::ensure!(f.gate.is_none() && f.fracture.is_none() && f.kernel.is_none(),"terminator requires static support tracks");
@@ -65,6 +83,20 @@ fn block(id:&str,center:[f64;3],size:[f64;3])->Component {
 }
 
 pub(super) fn apply(a:&mut Assembly,s:&Sword,seed:u32,f:&Features)->anyhow::Result<()> {
+    if let Some(c)=&f.circuit {
+        anyhow::ensure!((1..=3).contains(&c.branches),"circuit branches must be 1..=3");valid(c.width,0.03,0.09,"circuit width")?;
+        anyhow::ensure!(f.aperture.is_none() && f.fracture.is_none() && f.cleft.is_none() && f.strata.is_none(),"circuit needs continuous blade surface");
+        let w=s.blade.base_width;let l=s.blade.length;let mut lines=vec![([0.,0.76*l],[0.,0.16*l])];
+        for i in 0..c.branches {let y=(0.24+0.36*i as f64/c.branches as f64)*l;
+            for sign in [-1.,1.] {lines.push(([0.,y+0.07*l],[sign*0.29*w,y]));}
+        }
+        for (i,(p,q)) in lines.into_iter().enumerate() {
+            let rim=route(&a.components[0].mesh,p,q,c.width*w*1.7,0.005*w)?;
+            a.components.push(component(&format!("circuit/rim/{i}"),rim));
+            let mesh=route(&a.components[0].mesh,p,q,c.width*w,0.022*w)?;
+            let mut wire=component(&format!("circuit/path/{i}"),mesh);wire.role="channel".into();wire.color=[1.,0.16,0.015];wire.strength=3.;a.components.push(wire);
+        }
+    }
     if let Some(e)=&f.encroachment {
         valid(e.height,0.04,0.2,"encroachment height")?;valid(e.sink,0.,0.4,"encroachment sink")?;valid(e.projection,0.1,0.35,"encroachment projection")?;
         let w=s.blade.base_width;let ground=s.blade.length*(1.-e.sink);

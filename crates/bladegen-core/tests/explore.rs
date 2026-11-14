@@ -341,6 +341,19 @@ fn terminator_bias_coordinates_all_parts_without_changing_indices_or_y() {
     }
 }
 
+#[test]
+fn furnace_routes_are_connected_closed_and_clear_of_surface() {
+    let f=Features {circuit:Some(Circuit::default()),..Features::default()};let a=build(&reference(),42,&f).unwrap();
+    assert_eq!(a,build(&reference(),42,&f).unwrap());
+    let paths:Vec<_>=a.components.iter().filter(|c|c.id.starts_with("circuit/path/")).collect();assert_eq!(paths.len(),7);
+    for c in a.components.iter().filter(|c|c.id.starts_with("circuit/")) {
+        closed_outward(&c.mesh);
+        for p in c.mesh.pos.chunks_exact(3) {assert!(p[2] as f64>surface(&a.components[0].mesh,p[0] as f64,p[1] as f64).unwrap().0[2]);}
+    }
+    // Every branch has a centreline endpoint on the continuous axial conduit.
+    for c in paths.iter().skip(1) {assert!(c.mesh.pos.chunks_exact(3).take(4).any(|p|p[0].abs()<0.03));}
+}
+
 fn weld(m:&mut Mesh) {
     let mut ids=BTreeMap::new();let mut remap=vec![];let mut pos=vec![];
     for p in m.pos.chunks_exact(3) {

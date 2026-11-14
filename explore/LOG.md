@@ -249,3 +249,14 @@ are baked once, then normals recomputed. Symbolic left/right only: no world star
 Tests: both bias extremes, exact repeatability, unchanged indices/Y bounds and finite buffers for
 every part. Moving support recipes explicitly rejected. Verdict **promising**, but asymmetric mass
 alone is subtler than the proposed heat vents; use as a locked-world modifier, frequency 0.5 when locked.
+
+## 17 — Furnace script
+
+Built one connected axial conduit with 1–3 (default 3) paired chevron branches, stable path IDs,
+closed dark rims and inset orange channels following actual blade triangles. Width 0.03–0.09 W
+(0.055). Changed carved trenches to **raised conduits**: substantially safer to combine with the
+legacy surface topology, with a heavy containment appearance. Front face only in this study.
+[GLB](out/17-circuit/sword.glb), [mast](out/17-circuit/mast.png), [drone](out/17-circuit/drone.png).
+Tests: all 14 route/rim solids closed/outward/finite, deterministic, above surface; branches terminate
+on the main trunk. Verdict **keep** as a shared emission motif; weight/frequency 0.5, volcanic ×2,
+magnetic ×1.6. A true engraved network would need dedicated channel-floor topology, not grid deformation.

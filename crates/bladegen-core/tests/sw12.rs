@@ -641,3 +641,11 @@ fn sw12_swords_build_the_same_bytes_every_time_and_match_their_goldens() {
         assert_eq!(w["meshes"], n["meshes"], "{}", w["id"]);
     }
 }
+
+#[test]
+fn the_written_defaults_are_the_ones_read() {
+    assert_eq!(keel::Window::of(&keel::defaults()), keel::Window::of(&Aperture::default()));
+    let (w, l) = (0.6, 3.6);
+    assert_eq!(fault::Faults::of(&fault::defaults(), w, l), fault::Faults::of(&Fracture::default(), w, l));
+    assert_eq!(shear::Gate::of(&shear::defaults()), shear::Gate::of(&GuardShear::default()));
+}

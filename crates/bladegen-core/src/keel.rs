@@ -218,3 +218,18 @@ pub fn build_glow(b: &Blade) -> Option<Mesh> {
     }
     bands.finish()
 }
+
+/// The defaults `blade.aperture` reads (`Window::of` of an empty block), written in full: what the web app's
+/// validation writes back.
+pub fn defaults() -> Aperture {
+    Aperture {
+        start: Some(0.2),
+        end: Some(0.66),
+        width: Some(0.42),
+        shoulder: Some(0.22),
+        point: Some(0.22),
+        arch: Some(0.0),
+        rail: Some(0.18),
+        lip: Some(0.2),
+    }
+}

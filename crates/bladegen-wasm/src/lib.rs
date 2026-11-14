@@ -15,7 +15,7 @@
 use bladegen_core::families::{self, Catalogue, Force, PlanetTraits};
 use bladegen_core::geom::Mesh;
 use bladegen_core::params::{Blade, Guard, Pommel, Sword};
-use bladegen_core::{blade, glow, hilt, model, monument};
+use bladegen_core::{blade, fault, glow, hilt, keel, model, monument, shear};
 use serde_json::{json, Map, Value};
 
 /// One call: `op` names the function, `input` is its JSON argument. Returns the result buffer (see the crate docs).
@@ -63,11 +63,12 @@ fn run(op: &str, input: &[u8], meshes: &mut Meshes) -> Result<Value, String> {
             meshes.push((blade::build_blade(&b), Value::Null));
             Ok(Value::Null)
         }
-        // the blade after SW1's export preparation (grid UVs, winding fix, normals, tangents)
+        // the blade after SW1's export preparation (grid UVs, winding fix, normals, tangents; SW12's window-keel and
+        // faultbound blades are built ready for export)
         "blade_export" => {
             let b: Blade = parse(&v, "blade")?;
             let mut m = blade::build_blade(&b);
-            blade::prepare_export(&mut m, blade::sweep_segments(&b));
+            blade::prepare_export_blade(&b, &mut m);
             meshes.push((m, Value::Null));
             Ok(Value::Null)
         }
@@ -95,6 +96,24 @@ fn run(op: &str, input: &[u8], meshes: &mut Meshes) -> Result<Value, String> {
             meshes.push((m, Value::Null));
             Ok(json!({ "halfHeight": half }))
         }
+        // SW12 shear-gate: {halfHeight, throat}; meshes[0] the metal, meshes[1] the throat's glow when it has one
+        "guard_shear" => {
+            let g: Guard = parse(field(&v, "guard")?, "guard")?;
+            let b: Blade = parse(field(&v, "blade")?, "blade")?;
+            let (m, t, half) = shear::geometry(&g, &b);
+            meshes.push((m, Value::Null));
+            let throat = t.is_some();
+            if let Some(t) = t {
+                meshes.push((t, Value::Null));
+            }
+            Ok(json!({ "halfHeight": half, "throat": throat }))
+        }
+        // SW12: the defaults validation writes back for blade.aperture, blade.fracture and guard.shear
+        "sw12_defaults" => Ok(json!({
+            "aperture": keel::defaults(),
+            "fracture": fault::defaults(),
+            "shear": shear::defaults(),
+        })),
         // buildMonumentPommelGeometry(p, se)
         "pommel_monument" => {
             let p: Pommel = parse(field(&v, "pommel")?, "pommel")?;

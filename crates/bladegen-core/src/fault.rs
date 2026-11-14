@@ -220,3 +220,17 @@ pub fn build_glow(b: &Blade) -> Option<Mesh> {
     }
     bands.finish()
 }
+
+/// The defaults `blade.fracture` reads (`Faults::of` of an empty block), written in full: what the web app's
+/// validation writes back.
+pub fn defaults() -> Fracture {
+    Fracture {
+        segments: Some(4.0),
+        gap: Some(0.24),
+        offset: Some(0.14),
+        tilt: Some(0.03),
+        zigzag: Some(0.07),
+        seed: Some(1.0),
+        rim: Some(0.07),
+    }
+}

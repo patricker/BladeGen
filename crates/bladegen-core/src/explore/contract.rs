@@ -36,24 +36,26 @@ fn hash(bytes: &[u8]) -> String {
   }
   format!("{h:016x}")
 }
+// Git's autocrlf must not make an identical commit look like a different implementation.
+fn source_hash(text: &str) -> String {
+  hash(text.replace("\r\n", "\n").as_bytes())
+}
 fn implementation() -> String {
-  hash(
-    concat!(
-      include_str!("../explore.rs"),
-      include_str!("details.rs"),
-      include_str!("authoring.rs"),
-      include_str!("../blade.rs"),
-      include_str!("../geom.rs"),
-      include_str!("../hilt.rs"),
-      include_str!("../glow.rs"),
-      include_str!("../monument.rs"),
-      include_str!("../model.rs"),
-      include_str!("../families.rs"),
-      include_str!("../params.rs"),
-      include_str!("presets.rs")
-    )
-    .as_bytes(),
-  )
+  source_hash(concat!(
+    include_str!("../explore.rs"),
+    include_str!("details.rs"),
+    include_str!("authoring.rs"),
+    include_str!("../blade.rs"),
+    include_str!("../geom.rs"),
+    include_str!("../hilt.rs"),
+    include_str!("../glow.rs"),
+    include_str!("../monument.rs"),
+    include_str!("../model.rs"),
+    include_str!("../families.rs"),
+    include_str!("../params.rs"),
+    include_str!("presets.rs"),
+    include_str!("../../../../Cargo.lock")
+  ))
 }
 fn records(a: &Assembly) -> Vec<Record> {
   a.components
@@ -120,7 +122,7 @@ pub fn record(
     recipe_version: 1,
     core_version: crate::VERSION.into(),
     math_profile: "libm-f64-f32-v1".into(),
-    catalogue_fnv1a64: hash(crate::families::CATALOGUE_JSON.as_bytes()),
+    catalogue_fnv1a64: source_hash(crate::families::CATALOGUE_JSON),
     implementation_fnv1a64: implementation(),
     seed,
     base: base.clone(),
@@ -141,7 +143,7 @@ pub fn replay(m: &Manifest) -> anyhow::Result<Assembly> {
     "unsupported core/math profile"
   );
   anyhow::ensure!(
-    m.catalogue_fnv1a64 == hash(crate::families::CATALOGUE_JSON.as_bytes()),
+    m.catalogue_fnv1a64 == source_hash(crate::families::CATALOGUE_JSON),
     "catalogue fingerprint changed"
   );
   anyhow::ensure!(
@@ -154,4 +156,19 @@ pub fn replay(m: &Manifest) -> anyhow::Result<Assembly> {
     "resolved output does not match manifest"
   );
   build(&m.base, m.seed, &m.features)
+}
+
+#[cfg(test)]
+mod tests {
+  #[test]
+  fn source_fingerprints_are_independent_of_checkout_line_endings() {
+    assert_eq!(
+      super::source_hash("one\r\ntwo\r\n"),
+      super::source_hash("one\ntwo\n")
+    );
+    assert_ne!(
+      super::source_hash("one\ntwo\n"),
+      super::source_hash("one\nthree\n")
+    );
+  }
 }

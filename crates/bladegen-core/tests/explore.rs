@@ -849,6 +849,13 @@ fn every_review_preset_replays_and_reads_at_planet_scale() {
   }
 }
 
+#[test]
+fn committed_review_fixture_replays_in_the_current_checkout() {
+  let m: bladegen_core::explore::contract::Manifest =
+    serde_json::from_str(include_str!("../../../explore/fixtures/recipe.json")).unwrap();
+  bladegen_core::explore::contract::replay(&m).unwrap();
+}
+
 fn weld(m: &mut Mesh) {
   let mut ids = BTreeMap::new();
   let mut remap = vec![];

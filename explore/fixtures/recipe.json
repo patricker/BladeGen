@@ -4,7 +4,7 @@
   "coreVersion": "0.1.0",
   "mathProfile": "libm-f64-f32-v1",
   "catalogueFnv1a64": "48f8900b5bdbd8a3",
-  "implementationFnv1a64": "276d6c9ad01872b9",
+  "implementationFnv1a64": "c67ec8a8d539ff3c",
   "seed": 42,
   "base": {
     "blade": {

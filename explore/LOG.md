@@ -346,7 +346,7 @@ report errors rather than leaving floating nodes or channels across holes.
 
 Validation results:
 
-- Rust: **28 new tests pass**, plus 4 existing core tests, 3 stroke tests and the golden test.
+- Rust: **30 new tests pass**, plus 4 existing core tests, 3 stroke tests and the golden test.
   **243 legacy cases / 1283 meshes remain byte-identical**. The eight external-corpus test
   functions returned early because those corpora are absent; they were not conformance-tested here.
 - TypeScript: **52 files, 375 passed, 1 skipped**, including existing wasm goldens, the buffer
@@ -362,6 +362,10 @@ Validation results:
 - No changes to catalogue JSON, original params/defaults, legacy builders, golden data or wasm.
   Runtime weight for every experiment remains effectively zero because the shipped selection path
   cannot choose them. Suggested weights below are future art-direction proposals only.
+
+Portability review caught one metadata-only issue: raw source fingerprints could differ between
+CRLF and LF checkouts. Fingerprints now canonicalize source/catalogue newlines and include the
+dependency lockfile. Tests prove newline independence and replay the committed real fixture.
 
 Rebuild everything with `./explore/run.ps1 -Idea '--all'`, then `python explore/gallery.py`.
 Run Rust with `./explore/run.ps1 -Tests`; verify exported assets with `node explore/verify.mjs`.

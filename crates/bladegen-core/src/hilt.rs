@@ -15,7 +15,7 @@ pub const GUARD_HEIGHT: f64 = 0.08;
 /// Why this port cannot build the guard (with its decorations), or `None`.
 pub fn guard_unsupported(g: &Guard) -> Option<String> {
     let s = g.style.as_deref().unwrap_or("bar");
-    (!(matches!(s, "bar" | "forged") || super::monument::is_guard_style(Some(s))))
+    (!(matches!(s, "bar" | "forged" | "shear") || super::monument::is_guard_style(Some(s))))
         .then(|| format!("guard style {:?}", g.style))
 }
 

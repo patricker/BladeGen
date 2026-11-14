@@ -285,29 +285,139 @@ pub fn sweep_segments(b: &Blade) -> usize {
     jmax(16.0, jmin(512.0, jround(b.sweep_segments.unwrap_or(128.0)))) as usize
 }
 
-/// `buildBladeGeometry(b)`: positions, indices and `computeVertexNormals()`.
-pub fn build_blade(b: &Blade) -> Mesh {
-    let l = jmax(0.01, b.length);
-    let tl0 = jmax(0.001, b.thickness_left.or(b.thickness).unwrap_or(0.08));
-    let tr0 = jmax(0.001, b.thickness_right.or(b.thickness).unwrap_or(0.08));
-    let base_w = jmax(0.002, b.base_width);
-    let tip_w = jmax(0.0, b.tip_width);
-    let segs = sweep_segments(b);
-    let cols = COLS;
-    let serr_amp = b.serration_amplitude.unwrap_or(0.0);
-    let serr_amp_l = b.serration_amplitude_left.unwrap_or(serr_amp);
-    let serr_amp_r = b.serration_amplitude_right.unwrap_or(serr_amp);
-    let serr_freq = b.serration_frequency.unwrap_or(0.0);
-    let chaos = b.chaos.unwrap_or(0.0);
-    let row_stride = (cols + 1) * 2;
-    let mut pos = vec![0f32; (segs + 1) * row_stride * 3];
-    let vi = |i: usize, j: usize, side: usize| (i * row_stride + j * 2 + side) as u32;
+/// The blade's cross-section at any station: what `buildBladeGeometry` computes once per row (`t`, [`Section::row`])
+/// and once per column (`s`, [`Section::point`]). The grid builder below evaluates it at `t = i / segs`,
+/// `s = j / cols`, in bladegen's operation order; SW12's window-keel and faultbound blades evaluate the same surface
+/// at their own stations, so every blade option (profiles, tips, bevels, serration, waves, twist) carries over.
+pub struct Section<'a> {
+    b: &'a Blade,
+    l: f64,
+    tl0: f64,
+    tr0: f64,
+    base_w: f64,
+    tip_w: f64,
+    serr_amp_l: f64,
+    serr_amp_r: f64,
+    serr_freq: f64,
+    chaos: f64,
+    bevel: f64,
+    cs: &'a str,
+    ser_pat: &'a str,
+    ser_seed: f64,
+    sharp: f64,
+    bias_left: f64,
+    bias_right: f64,
+    carve: Vec<Fuller>,
+    ricasso: f64,
+    fe_len: f64,
+    fe_depth: f64,
+    spine_sign: f64,
+    tip_shape: &'a str,
+    asym: f64,
+    twist_angle: f64,
+    hollow: Option<&'a super::params::HollowGrind>,
+}
 
-    let bevel = clamp(b.bevel.unwrap_or(0.5), 0.0, 1.0);
-    let cs = b.cross_section.as_deref().unwrap_or("flat");
-    let shape_factor = |u: f64| -> f64 {
+/// One station along the blade ([`Section::row`]): its edges, centre line, thicknesses and twist.
+pub struct Row {
+    pub t: f64,
+    pub y: f64,
+    pub xl: f64,
+    pub xr: f64,
+    pub bend: f64,
+    half_edge_l: f64,
+    half_edge_r: f64,
+    edge_mid_half: f64,
+    center_half: f64,
+    cos_t: f64,
+    sin_t: f64,
+}
+
+impl<'a> Section<'a> {
+    pub fn new(b: &'a Blade) -> Section<'a> {
+        let l = jmax(0.01, b.length);
+        let tl0 = jmax(0.001, b.thickness_left.or(b.thickness).unwrap_or(0.08));
+        let tr0 = jmax(0.001, b.thickness_right.or(b.thickness).unwrap_or(0.08));
+        let base_w = jmax(0.002, b.base_width);
+        let tip_w = jmax(0.0, b.tip_width);
+        let serr_amp = b.serration_amplitude.unwrap_or(0.0);
+        let serr_amp_l = b.serration_amplitude_left.unwrap_or(serr_amp);
+        let serr_amp_r = b.serration_amplitude_right.unwrap_or(serr_amp);
+        let serr_freq = b.serration_frequency.unwrap_or(0.0);
+        let chaos = b.chaos.unwrap_or(0.0);
+        let bevel = clamp(b.bevel.unwrap_or(0.5), 0.0, 1.0);
+        let cs = b.cross_section.as_deref().unwrap_or("flat");
+        let ser_pat = b.serration_pattern.as_deref().unwrap_or("sine");
+        let ser_seed = b.serration_seed.unwrap_or(1337.0);
+        let sharp = clamp(b.serration_sharpness.unwrap_or(0.0), 0.0, 1.0);
+        let bias_left = clamp(b.serration_lean_left.unwrap_or(0.0), -1.0, 1.0);
+        let bias_right = clamp(b.serration_lean_right.unwrap_or(0.0), -1.0, 1.0);
+        let has_explicit = b.fullers.as_ref().is_some_and(|f| !f.is_empty());
+        let active = b.fuller_enabled.unwrap_or(false) || has_explicit;
+        let resolved = if active { resolve_fullers(b) } else { Vec::new() };
+        let carve: Vec<Fuller> =
+            resolved.into_iter().filter(|f| f.carve && f.inset > 0.0 && f.end > f.start).collect();
+        let ricasso = clamp(b.ricasso_length.unwrap_or(0.0), 0.0, 0.3);
+        let fe_len = clamp(b.false_edge_length.unwrap_or(0.0), 0.0, 1.0);
+        let fe_depth = clamp(b.false_edge_depth.unwrap_or(0.0), 0.0, 0.2);
+        let single = b.edge_type.as_deref().unwrap_or("double") == "single";
+        let spine_sign = if single {
+            if tr0 >= tl0 {
+                1.0
+            } else {
+                -1.0
+            }
+        } else {
+            1.0
+        };
+        let tip_shape = b.tip_shape.as_deref().unwrap_or("");
+        let asym = b.asymmetry.unwrap_or(0.0);
+        let twist_angle = b.twist_angle.unwrap_or(0.0);
+        let hollow = b.hollow_grind.as_ref().filter(|h| h.enabled.unwrap_or(false) || h.mix.unwrap_or(0.0) > 0.0);
+        Section {
+            b,
+            l,
+            tl0,
+            tr0,
+            base_w,
+            tip_w,
+            serr_amp_l,
+            serr_amp_r,
+            serr_freq,
+            chaos,
+            bevel,
+            cs,
+            ser_pat,
+            ser_seed,
+            sharp,
+            bias_left,
+            bias_right,
+            carve,
+            ricasso,
+            fe_len,
+            fe_depth,
+            spine_sign,
+            tip_shape,
+            asym,
+            twist_angle,
+            hollow,
+        }
+    }
+
+    /// The blade length the section uses (`max(0.01, length)`).
+    pub fn length(&self) -> f64 {
+        self.l
+    }
+
+    /// The base width the section uses (`max(0.002, baseWidth)`).
+    pub fn base_width(&self) -> f64 {
+        self.base_w
+    }
+
+    fn shape_factor(&self, u: f64) -> f64 {
         let au = u.abs();
-        match cs {
+        let bevel = self.bevel;
+        match self.cs {
             "diamond" => 1.0 - pow(au, lerp(1.0, 2.5, bevel)),
             "lenticular" => {
                 let g = lerp(1.4, 0.8, bevel);
@@ -332,52 +442,34 @@ pub fn build_blade(b: &Blade) -> Mesh {
             }
             _ => 0.0,
         }
-    };
+    }
 
-    let ser_pat = b.serration_pattern.as_deref().unwrap_or("sine");
-    let ser_seed = b.serration_seed.unwrap_or(1337.0);
-    let sharp = clamp(b.serration_sharpness.unwrap_or(0.0), 0.0, 1.0);
-    let bias_left = clamp(b.serration_lean_left.unwrap_or(0.0), -1.0, 1.0);
-    let bias_right = clamp(b.serration_lean_right.unwrap_or(0.0), -1.0, 1.0);
-    let serr = |t: f64, freq: f64, amp: f64, bias: f64, seed_offset: f64| {
-        serration_wave(t, freq, amp, ser_pat, ser_seed + seed_offset, sharp, bias)
-    };
+    fn serr(&self, t: f64, freq: f64, amp: f64, bias: f64, seed_offset: f64) -> f64 {
+        serration_wave(t, freq, amp, self.ser_pat, self.ser_seed + seed_offset, self.sharp, bias)
+    }
 
-    let has_explicit = b.fullers.as_ref().is_some_and(|f| !f.is_empty());
-    let active = b.fuller_enabled.unwrap_or(false) || has_explicit;
-    let resolved = if active { resolve_fullers(b) } else { Vec::new() };
-    let carve: Vec<&Fuller> =
-        resolved.iter().filter(|f| f.carve && f.inset > 0.0 && f.end > f.start).collect();
-    let ricasso = clamp(b.ricasso_length.unwrap_or(0.0), 0.0, 0.3);
-    let fe_len = clamp(b.false_edge_length.unwrap_or(0.0), 0.0, 1.0);
-    let fe_depth = clamp(b.false_edge_depth.unwrap_or(0.0), 0.0, 0.2);
-    let single = b.edge_type.as_deref().unwrap_or("double") == "single";
-    let spine_sign = if single {
-        if tr0 >= tl0 {
-            1.0
-        } else {
-            -1.0
-        }
-    } else {
-        1.0
-    };
-    let tip_shape = b.tip_shape.as_deref().unwrap_or("");
-    let asym = b.asymmetry.unwrap_or(0.0);
-    let twist_angle = b.twist_angle.unwrap_or(0.0);
-    let hollow = b.hollow_grind.as_ref().filter(|h| h.enabled.unwrap_or(false) || h.mix.unwrap_or(0.0) > 0.0);
-
-    for i in 0..=segs {
-        let t = i as f64 / segs as f64;
+    /// The station at `t` (0 at the guard, 1 at the tip): `buildBladeGeometry`'s per-row values.
+    pub fn row(&self, t: f64) -> Row {
+        let b = self.b;
+        let (l, base_w, tip_w, tl0, tr0, bevel) = (self.l, self.base_w, self.tip_w, self.tl0, self.tr0, self.bevel);
+        let (ricasso, chaos, asym, spine_sign) = (self.ricasso, self.chaos, self.asym, self.spine_sign);
+        let tip_shape = self.tip_shape;
         let y = t * l;
         let mut w = tip_width_with_kissaki(b, t, base_w, tip_w);
         let in_ricasso = ricasso > 0.0 && t <= ricasso;
         if in_ricasso {
             w = base_w;
         }
-        let serr_l =
-            if in_ricasso { 0.0 } else { serr(t, serr_freq, serr_amp_l, bias_left, 0.0) * (1.0 - t) };
-        let serr_r =
-            if in_ricasso { 0.0 } else { serr(t, serr_freq, serr_amp_r, bias_right, 7.0) * (1.0 - t) };
+        let serr_l = if in_ricasso {
+            0.0
+        } else {
+            self.serr(t, self.serr_freq, self.serr_amp_l, self.bias_left, 0.0) * (1.0 - t)
+        };
+        let serr_r = if in_ricasso {
+            0.0
+        } else {
+            self.serr(t, self.serr_freq, self.serr_amp_r, self.bias_right, 7.0) * (1.0 - t)
+        };
         let c1 = sin(t * PI * 16.0 + 1.3);
         let c2 = sin(t * PI * 9.7 + 0.6);
         let chaos_offset = (c1 * 0.6 + c2 * 0.4) * chaos * 0.08 * base_w * (1.0 - t * 0.6);
@@ -434,77 +526,123 @@ pub fn build_blade(b: &Blade) -> Mesh {
         let base_spine_target = thick * 0.5 * t_scale * tip_thick;
         let base_spine_half = jmax(edge_mid_half + 0.0005, base_spine_target);
         let mut center_half = jmax(base_spine_half, edge_mid_half * (1.0 + 2.0 * bevel));
-        if cs == "tSpine" {
+        if self.cs == "tSpine" {
             let ridge_boost = jmax(0.0005, thick * 0.15);
             center_half = jmax(center_half, base_spine_half + ridge_boost);
         }
-        let twist = twist_angle * t;
+        let twist = self.twist_angle * t;
         let (cos_t, sin_t) = (cos(twist), sin(twist));
+        Row { t, y, xl, xr, bend, half_edge_l, half_edge_r, edge_mid_half, center_half, cos_t, sin_t }
+    }
 
+    /// The front (-Z) and back (+Z) surface points `(x, z)` of a row at `s` across it (0 = left edge, 1 = right):
+    /// `buildBladeGeometry`'s per-column values.
+    pub fn point(&self, r: &Row, s: f64) -> ((f64, f64), (f64, f64)) {
+        let t = r.t;
+        let u = s * 2.0 - 1.0;
+        let x_raw = lerp(r.xl, r.xr, s);
+        let edge_half = lerp(r.half_edge_l, r.half_edge_r, s);
+        let f = self.shape_factor(u);
+        let mut z_half = edge_half + (r.center_half - r.edge_mid_half) * f;
+        if let Some(h) = self.hollow {
+            let mix = clamp(h.mix.unwrap_or(if h.enabled.unwrap_or(false) { 0.65 } else { 0.0 }), 0.0, 1.0);
+            let depth = clamp(h.depth.unwrap_or(0.45), 0.0, 1.0);
+            let radius = clamp(h.radius.unwrap_or(0.6), 0.1, 6.0);
+            let hbias = clamp(h.bias.unwrap_or(0.0), -1.0, 1.0);
+            if mix > 0.0 && depth > 0.0 {
+                let biased = clamp(u.abs() + hbias * 0.5, 0.0, 1.0);
+                let concave = pow(1.0 - pow(biased, radius), 1.25);
+                let target = edge_half + (r.center_half - edge_half) * (1.0 - concave * depth);
+                z_half = lerp(z_half, jmax(edge_half, target), mix);
+            }
+        }
+        for slot in &self.carve {
+            if t < slot.start || t > slot.end {
+                continue;
+            }
+            let span = jmax(1e-6, slot.end - slot.start);
+            let along = clamp((t - slot.start) / span, 0.0, 1.0);
+            let width_scale = jmax(0.1, 1.0 - slot.taper * along);
+            let half_w = jmax(0.002, slot.width * 0.5 * width_scale);
+            let cx = r.bend + slot.offset;
+            let dx = (x_raw - cx).abs();
+            if dx > half_w {
+                continue;
+            }
+            let inner = 1.0 - clamp(dx / jmax(1e-6, half_w), 0.0, 1.0);
+            let profile = match slot.profile {
+                "u" => inner.sqrt(),
+                "flat" => inner * 0.85,
+                _ => inner,
+            };
+            let depth_scale = jmax(0.0, 1.0 - slot.taper * along);
+            let inset = profile * slot.inset * depth_scale;
+            z_half = jmax(0.0006, z_half - inset);
+        }
+        if self.fe_len > 0.0 && self.fe_depth > 0.0 && t >= 1.0 - self.fe_len {
+            let along = clamp((t - (1.0 - self.fe_len)) / jmax(1e-6, self.fe_len), 0.0, 1.0);
+            let to_spine = if self.spine_sign > 0.0 { s } else { 1.0 - s };
+            let across = pow(clamp(to_spine, 0.0, 1.0), 2.0);
+            let carve = self.fe_depth * along * across;
+            z_half = jmax(0.0006, z_half - carve);
+        }
+        let rot = |x: f64, z: f64| (x * r.cos_t - z * r.sin_t, x * r.sin_t + z * r.cos_t);
+        (rot(x_raw, -z_half), rot(x_raw, z_half))
+    }
+}
+
+/// How a blade is built (SW12): bladegen's grid, or one of the two SW12 topologies.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Topology {
+    /// `buildBladeGeometry`'s grid (every blade before SW12).
+    Grid,
+    /// `blade.aperture`: [`crate::keel`].
+    Keel,
+    /// `blade.fracture`: [`crate::fault`] (wins over `aperture`).
+    Fault,
+}
+
+pub fn topology(b: &Blade) -> Topology {
+    if b.fracture.is_some() {
+        Topology::Fault
+    } else if b.aperture.is_some() {
+        Topology::Keel
+    } else {
+        Topology::Grid
+    }
+}
+
+/// `buildBladeGeometry(b)`: positions, indices and `computeVertexNormals()`. SW12: a blade with a `fracture` block is
+/// [`crate::fault`]'s, one with an `aperture` block [`crate::keel`]'s (wound outward already, see
+/// [`prepare_export_blade`]); every other blade is the grid below, unchanged.
+pub fn build_blade(b: &Blade) -> Mesh {
+    match topology(b) {
+        Topology::Fault => return super::fault::build_blade(b),
+        Topology::Keel => return super::keel::build_blade(b),
+        Topology::Grid => {}
+    }
+    let segs = sweep_segments(b);
+    let cols = COLS;
+    let row_stride = (cols + 1) * 2;
+    let mut pos = vec![0f32; (segs + 1) * row_stride * 3];
+    let vi = |i: usize, j: usize, side: usize| (i * row_stride + j * 2 + side) as u32;
+    let sec = Section::new(b);
+    for i in 0..=segs {
+        let t = i as f64 / segs as f64;
+        let r = sec.row(t);
         for j in 0..=cols {
             let s = j as f64 / cols as f64;
-            let u = s * 2.0 - 1.0;
-            let x_raw = lerp(xl, xr, s);
-            let edge_half = lerp(half_edge_l, half_edge_r, s);
-            let f = shape_factor(u);
-            let mut z_half = edge_half + (center_half - edge_mid_half) * f;
-            if let Some(h) = hollow {
-                let mix =
-                    clamp(h.mix.unwrap_or(if h.enabled.unwrap_or(false) { 0.65 } else { 0.0 }), 0.0, 1.0);
-                let depth = clamp(h.depth.unwrap_or(0.45), 0.0, 1.0);
-                let radius = clamp(h.radius.unwrap_or(0.6), 0.1, 6.0);
-                let hbias = clamp(h.bias.unwrap_or(0.0), -1.0, 1.0);
-                if mix > 0.0 && depth > 0.0 {
-                    let biased = clamp(u.abs() + hbias * 0.5, 0.0, 1.0);
-                    let concave = pow(1.0 - pow(biased, radius), 1.25);
-                    let target = edge_half + (center_half - edge_half) * (1.0 - concave * depth);
-                    z_half = lerp(z_half, jmax(edge_half, target), mix);
-                }
-            }
-            for slot in &carve {
-                if t < slot.start || t > slot.end {
-                    continue;
-                }
-                let span = jmax(1e-6, slot.end - slot.start);
-                let along = clamp((t - slot.start) / span, 0.0, 1.0);
-                let width_scale = jmax(0.1, 1.0 - slot.taper * along);
-                let half_w = jmax(0.002, slot.width * 0.5 * width_scale);
-                let cx = bend + slot.offset;
-                let dx = (x_raw - cx).abs();
-                if dx > half_w {
-                    continue;
-                }
-                let inner = 1.0 - clamp(dx / jmax(1e-6, half_w), 0.0, 1.0);
-                let profile = match slot.profile {
-                    "u" => inner.sqrt(),
-                    "flat" => inner * 0.85,
-                    _ => inner,
-                };
-                let depth_scale = jmax(0.0, 1.0 - slot.taper * along);
-                let inset = profile * slot.inset * depth_scale;
-                z_half = jmax(0.0006, z_half - inset);
-            }
-            if fe_len > 0.0 && fe_depth > 0.0 && t >= 1.0 - fe_len {
-                let along = clamp((t - (1.0 - fe_len)) / jmax(1e-6, fe_len), 0.0, 1.0);
-                let to_spine = if spine_sign > 0.0 { s } else { 1.0 - s };
-                let across = pow(clamp(to_spine, 0.0, 1.0), 2.0);
-                let carve = fe_depth * along * across;
-                z_half = jmax(0.0006, z_half - carve);
-            }
-            let rot = |x: f64, z: f64| (x * cos_t - z * sin_t, x * sin_t + z * cos_t);
-            let front = rot(x_raw, -z_half);
-            let back = rot(x_raw, z_half);
+            let (front, back) = sec.point(&r, s);
             let k = vi(i, j, 0) as usize * 3;
             pos[k] = front.0 as f32;
-            pos[k + 1] = y as f32;
+            pos[k + 1] = r.y as f32;
             pos[k + 2] = front.1 as f32;
             let k = vi(i, j, 1) as usize * 3;
             pos[k] = back.0 as f32;
-            pos[k + 1] = y as f32;
+            pos[k + 1] = r.y as f32;
             pos[k + 2] = back.1 as f32;
         }
     }
-
     let mut idx: Vec<u32> = Vec::with_capacity(segs * (cols * 12 + 12) + cols * 12);
     for i in 0..segs {
         for j in 0..cols {
@@ -619,4 +757,12 @@ pub fn prepare_export(m: &mut Mesh, segs: usize) {
     }
     m.compute_vertex_normals();
     compute_blade_tangents(m);
+}
+
+/// SW1's export preparation for any blade (SW12): [`prepare_export`] for the grid; the SW12 topologies are built
+/// with outward winding, normals, tangents and UVs already, so they are exported as built.
+pub fn prepare_export_blade(b: &Blade, m: &mut Mesh) {
+    if topology(b) == Topology::Grid {
+        prepare_export(m, sweep_segments(b));
+    }
 }

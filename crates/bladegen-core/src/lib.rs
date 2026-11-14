@@ -20,13 +20,17 @@
 //! wraps, octahedron and fishtail pommels, fuller and hamon overlays, engravings, scabbard, tassel, the randomizer and
 //! validation. [`model::build_parts`] names any such part it skips.
 pub mod blade;
+pub mod fault;
 pub mod families;
 pub mod geom;
 pub mod glow;
 pub mod hilt;
+pub mod keel;
 pub mod model;
 pub mod monument;
 pub mod params;
+pub mod shear;
+mod solid;
 
 /// The crate's version, for consumers that record what built their geometry.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

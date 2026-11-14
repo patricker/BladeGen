@@ -3,7 +3,7 @@
 //! `sword/mod.rs` (BG1); the code is unchanged.
 use crate::geom::{self, Mat4, Mesh};
 use crate::params;
-use crate::{blade, glow, hilt, monument as mon};
+use crate::{blade, glow, hilt, monument as mon, shear};
 
 /// One mesh of the sword in bladegen's scene coordinates (units, blade along +Y from the guard line at y = 0).
 /// `name` is the part (`blade`, `glow`, `handle`, `guard`, `pommel`); the k-th part of a name is bladegen's
@@ -24,8 +24,13 @@ pub fn build_parts(s: &params::Sword, export: bool) -> (Vec<Part>, Vec<String>) 
     let mut b = blade::build_blade(&s.blade);
     let segs = blade::sweep_segments(&s.blade);
     let glow_mesh = glow::build_glow(&s.blade, &b.pos);
+    let glow_on = s.blade.glow.as_ref().is_some_and(|g| g.enabled != Some(false));
     if export {
-        blade::prepare_export(&mut b, segs);
+        if blade::topology(&s.blade) == blade::Topology::Grid {
+            blade::prepare_export(&mut b, segs);
+        } else {
+            blade::prepare_export_blade(&s.blade, &mut b);
+        }
     }
     let base_y = geom::world_bbox(&b, &geom::IDENTITY).0[1];
     parts.push(Part { name: "blade", mesh: b, matrix: geom::IDENTITY });
@@ -48,6 +53,17 @@ pub fn build_parts(s: &params::Sword, export: bool) -> (Vec<Part>, Vec<String>) 
     parts.extend(wraps.into_iter().map(|(mesh, matrix)| Part { name: "handle", mesh, matrix }));
     if s.guard_enabled != Some(false) {
         match hilt::guard_unsupported(&s.guard) {
+            None if s.guard.style.as_deref() == Some("shear") => {
+                // SW12: the shear-gate; its throat glows (a glow part, after the guard, with the guard's matrix)
+                let (gm, throat, gmat) = shear::build_guard(&s.guard, &s.blade, base_y);
+                parts.push(Part { name: "guard", mesh: gm, matrix: gmat });
+                for (mesh, matrix) in hilt::build_quillons(&s.guard, base_y) {
+                    parts.push(Part { name: "guard", mesh, matrix });
+                }
+                if let Some(t) = throat.filter(|_| glow_on) {
+                    parts.push(Part { name: "glow", mesh: t, matrix: gmat });
+                }
+            }
             None => {
                 let (gm, gmat) = if s.guard.style.as_deref() == Some("forged") {
                     hilt::build_guard_forged(&s.guard, &s.blade, base_y)

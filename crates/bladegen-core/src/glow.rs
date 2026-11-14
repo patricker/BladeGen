@@ -118,6 +118,12 @@ pub fn rune_glyph(rng: &mut Rng32) -> Vec<[i32; 4]> {
 /// `buildBladeGlowGeometry(b, bladeGeo)`: `None` when the glow is off or draws nothing. `blade_pos` is the blade
 /// mesh's f32 positions (unchanged by the winding fix).
 pub fn build_glow(b: &Blade, blade_pos: &[f32]) -> Option<Mesh> {
+    // SW12: the window-keel and faultbound blades lay their glow on their own surfaces (`blade_pos` unused)
+    match super::blade::topology(b) {
+        super::blade::Topology::Keel => return super::keel::build_glow(b),
+        super::blade::Topology::Fault => return super::fault::build_glow(b),
+        super::blade::Topology::Grid => {}
+    }
     let g: &Glow = b.glow.as_ref().filter(|g| g.enabled != Some(false))?;
     let segs = super::blade::sweep_segments(b);
     let cols = COLS;

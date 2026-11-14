@@ -322,15 +322,17 @@ fn picks_of(v: &Value) -> bladegen_core::families::Picks {
 }
 
 /// The engine's tuning table is bladegen's (`sword/catalogue.json` = the corpus's `catalogue.json`, entry for entry
-/// and number for number), and it passes the engine's own check.
+/// and number for number), and it passes the engine's own check. SW12: apart from its dormant (weight-0) entries,
+/// which are exactly window, faultbound and shear (`Catalogue::drawable`).
 #[test]
 fn the_catalogue_is_bladegens() {
     let Some(dir) = sw10_dir() else { return };
     use bladegen_core::families::{catalogue, Catalogue};
     let theirs: Catalogue = serde_json::from_value(read_exact(&dir.join("catalogue.json"))).unwrap();
     let ours: Catalogue = serde_json::from_value(exact_json(bladegen_core::families::CATALOGUE_JSON)).unwrap();
-    assert_eq!(ours, theirs, "src/three/sword/monument/catalogue.json differs from the corpus's");
-    assert_eq!(catalogue(), &theirs);
+    assert_eq!(ours.drawable(), theirs, "src/three/sword/monument/catalogue.json differs from the corpus's");
+    assert_eq!(catalogue().drawable(), theirs);
+    assert_eq!(ours.dormant(), ["window", "faultbound", "shear"]);
     theirs.check().unwrap();
     // a bad table is refused
     let bad = bladegen_core::families::CATALOGUE_JSON.replace("\"talon\"", "\"claw\"");
@@ -373,7 +375,13 @@ fn families_match_sw10_pick_table() {
                 .into_iter()
                 .enumerate()
         {
-            let ws = entry_weights(list, &st, &order[..k]);
+            // SW12: the dormant entries weigh exactly 0 everywhere; the rest are the corpus's, bit for bit
+            let all = entry_weights(list, &st, &order[..k]);
+            let dormant = cat.dormant();
+            let ws: Vec<_> = all.iter().filter(|(id, _)| !dormant.contains(&id.as_str())).collect();
+            for (id, w) in all.iter().filter(|(id, _)| dormant.contains(&id.as_str())) {
+                assert_eq!(w.to_bits(), 0f64.to_bits(), "{what} {stage}: dormant {id} weighs {w}");
+            }
             let theirs = row["weights"][stage].as_array().unwrap();
             assert_eq!(ws.len(), theirs.len(), "{what} {stage}");
             for ((id, w), tw) in ws.iter().zip(theirs) {

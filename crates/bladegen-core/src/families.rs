@@ -25,9 +25,22 @@ use std::sync::OnceLock;
 /// The tuning table (bladegen's `monument/catalogue.json`, byte for byte).
 pub const CATALOGUE_JSON: &str = include_str!("../../../src/three/sword/monument/catalogue.json");
 
-pub const BLADES: [&str; 9] =
-    ["classic", "greatsword", "leaf", "flamberge", "falchion", "cleaver", "stepped", "shard", "serpent"];
-pub const GUARDS: [&str; 7] = ["forged", "recurve", "crescent", "halo", "wings", "talon", "ziggurat"];
+/// SW12 added `window` (window-keel) and `faultbound` to the blades and `shear` (shear-gate) to the guards; the
+/// catalogue lists them at weight 0 (dormant: never drawn, so no design moves) until the owner gives them a weight.
+pub const BLADES: [&str; 11] = [
+    "classic",
+    "greatsword",
+    "leaf",
+    "flamberge",
+    "falchion",
+    "cleaver",
+    "stepped",
+    "shard",
+    "serpent",
+    "window",
+    "faultbound",
+];
+pub const GUARDS: [&str; 8] = ["forged", "recurve", "crescent", "halo", "wings", "talon", "ziggurat", "shear"];
 pub const POMMELS: [&str; 5] = ["native", "gem", "sunwheel", "horned", "tiered"];
 pub const GRIPS: [&str; 5] = ["native", "ridged", "smooth", "wound", "banded"];
 /// The trait inputs a catalogue ramp or flag may read (`PlanetTraits`' numeric and boolean fields).
@@ -120,6 +133,34 @@ impl Catalogue {
             }
         }
         Ok(())
+    }
+}
+
+impl Catalogue {
+    /// The entries a draw can pick: every stage without its weight-0 (dormant) entries. A weight-0 entry adds 0 to
+    /// the total and is never chosen (the draw is `r < w` with `r >= 0`, and the fallback skips `w <= 0`), so a
+    /// catalogue and its `drawable()` pick, weigh and design every planet the same; SW12's conformance compares this
+    /// with the corpora, which predate the dormant entries.
+    pub fn drawable(&self) -> Catalogue {
+        let keep = |list: &Vec<Entry>| list.iter().filter(|e| e.weight != 0.0).cloned().collect::<Vec<_>>();
+        Catalogue {
+            version: self.version,
+            traits: self.traits.clone(),
+            blades: keep(&self.blades),
+            guards: keep(&self.guards),
+            pommels: keep(&self.pommels),
+            grips: keep(&self.grips),
+        }
+    }
+
+    /// The ids listed at weight 0, in catalogue order.
+    pub fn dormant(&self) -> Vec<&str> {
+        [&self.blades, &self.guards, &self.pommels, &self.grips]
+            .into_iter()
+            .flatten()
+            .filter(|e| e.weight == 0.0)
+            .map(|e| e.id.as_str())
+            .collect()
     }
 }
 
@@ -367,6 +408,8 @@ fn straighten(b: &mut Blade) {
     b.thickness_left = b.thickness;
     b.thickness_right = b.thickness;
     b.asymmetry = Some(0.0);
+    b.aperture = None;
+    b.fracture = None;
 }
 
 fn no_fullers(b: &mut Blade) {
@@ -510,6 +553,63 @@ fn shape_blade(id: &str, b: &mut Blade, rng: &mut Rng32) {
             b.sweep_segments = Some(192.0);
             b.cross_section = s(pick(rng, &["diamond", "hexagonal"]));
         }
+        // SW12 window-keel: a broad blade, parallel to the shoulders, with one long opening between two rails
+        "window" => {
+            b.base_width = q3(bw0 * rng.range(1.15, 1.35));
+            b.tip_width = q3(b.base_width * rng.range(0.05, 0.1));
+            b.tip_ramp_start = Some(r3(rng, 0.7, 0.82));
+            b.kissaki_length = Some(r3(rng, 0.1, 0.18));
+            b.cross_section = s(pick(rng, &["diamond", "hexagonal", "lenticular"]));
+            b.bevel = Some(r3(rng, 0.4, 0.75));
+            b.tip_shape = s("pointed");
+            b.sweep_segments = Some(192.0);
+            no_fullers(b);
+            let start = r3(rng, 0.16, 0.26);
+            let end = r3(rng, 0.6, 0.7);
+            let width = r3(rng, 0.36, 0.5);
+            let shoulder = r3(rng, 0.15, 0.3);
+            let point = r3(rng, 0.12, 0.3);
+            let arch = if rng.chance(0.35) { r3(rng, 0.6, 1.0) } else { 0.0 };
+            let lip = r3(rng, 0.16, 0.26);
+            b.aperture = Some(Aperture {
+                start: Some(start),
+                end: Some(end),
+                width: Some(width),
+                shoulder: Some(shoulder),
+                point: Some(point),
+                arch: Some(arch),
+                rail: Some(0.18),
+                lip: Some(lip),
+            });
+        }
+        // SW12 faultbound: a heavy blade broken into 3-5 fragments held apart across glowing fractures
+        "faultbound" => {
+            b.base_width = q3(bw0 * rng.range(1.05, 1.2));
+            b.tip_width = q3(b.base_width * rng.range(0.05, 0.1));
+            b.tip_ramp_start = Some(r3(rng, 0.65, 0.8));
+            b.kissaki_length = Some(r3(rng, 0.12, 0.2));
+            b.cross_section = s(pick(rng, &["diamond", "hexagonal"]));
+            b.bevel = Some(r3(rng, 0.5, 0.9));
+            b.tip_shape = s("pointed");
+            b.sweep_segments = Some(192.0);
+            no_fullers(b);
+            let segments = int(rng, 3, 5);
+            let gap = r3(rng, 0.2, 0.3);
+            let offset = r3(rng, 0.08, 0.2);
+            let tilt = r3(rng, 0.015, 0.045);
+            let zigzag = r3(rng, 0.04, 0.09);
+            let seed = int(rng, 1, 65535);
+            let rim = r3(rng, 0.05, 0.09);
+            b.fracture = Some(Fracture {
+                segments: Some(segments),
+                gap: Some(gap),
+                offset: Some(offset),
+                tilt: Some(tilt),
+                zigzag: Some(zigzag),
+                seed: Some(seed),
+                rim: Some(rim),
+            });
+        }
         _ => unreachable!("unknown monument blade family {id} (Catalogue::check)"),
     }
     if let Some(g) = b.glow.as_mut() {
@@ -538,10 +638,40 @@ fn shape_guard(id: &str, g: &mut Guard, t: &PlanetTraits, rng: &mut Rng32, width
         if g.style.as_deref() != Some("forged") {
             g.style = s("forged");
             g.forged = Some(forged_defaults());
+            g.shear = None;
         }
         if width_scale != 1.0 {
             g.width = q3(g.width * width_scale);
         }
+        return;
+    }
+    if id == "shear" {
+        // SW12 shear-gate: two stepped jaws either side of a hub with a glowing throat
+        g.width = q3(g.width * width_scale * rng.range(1.0, 1.2));
+        let height = r3(rng, 0.4, 0.54);
+        let depth = r3(rng, 2.2, 3.0);
+        let block = r3(rng, 0.5, 0.7);
+        let tooth = r3(rng, 0.7, 1.2);
+        let at = r3(rng, 0.5, 0.68);
+        let span = r3(rng, 0.24, 0.36);
+        let stagger = r3(rng, 0.1, 0.26);
+        let chamfer = r3(rng, 0.12, 0.24);
+        let throat = r3(rng, 0.5, 0.75);
+        g.style = s("shear");
+        g.forged = None;
+        g.monument = None;
+        g.shear = Some(GuardShear {
+            height: Some(height),
+            depth: Some(depth),
+            block: Some(block),
+            tooth: Some(tooth),
+            at: Some(at),
+            span: Some(span),
+            stagger: Some(stagger),
+            chamfer: Some(chamfer),
+            throat: Some(throat),
+        });
+        g.quillon_count = Some(0.0);
         return;
     }
     let mut span = |rng: &mut Rng32, a: f64, b: f64| g.width = q3(g.width * width_scale * rng.range(a, b));
@@ -628,6 +758,7 @@ fn shape_guard(id: &str, g: &mut Guard, t: &PlanetTraits, rng: &mut Rng32, width
     }
     g.style = s(id);
     g.forged = None;
+    g.shear = None;
     // written in full, in the defaults' key order, as validation writes it back (the engine stores it so)
     let d = guard_defaults(id);
     g.monument = Some(GuardMonument {

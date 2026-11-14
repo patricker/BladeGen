@@ -194,6 +194,78 @@ pub struct Blade {
     pub sweep_segments: Option<f64>,
     #[serde(default)]
     pub glow: Option<Glow>,
+    /// SW12 window-keel ([`crate::keel`]): one long opening through the blade, a rail either side, a solid planted
+    /// keel. Absent on every design before SW12, and skipped when serialising, so their JSON is unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aperture: Option<Aperture>,
+    /// SW12 faultbound ([`crate::fault`]): the blade broken into separate fragments across zigzag fractures. Takes
+    /// precedence over `aperture` when both are set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fracture: Option<Fracture>,
+}
+
+/// SW12 window-keel (`blade.aperture`, [`crate::keel`]); `None` = the default. Positions are fractions of the blade
+/// length from the guard (t), widths multiples of the blade's base width (W). Field order is the order the family
+/// recipe writes.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Aperture {
+    /// Where the opening starts (t), 0.08..0.4; default 0.2.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start: Option<f64>,
+    /// Where it ends (t), 0.4..0.8 and at least 0.2 after `start`; default 0.66.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end: Option<f64>,
+    /// The opening's widest span (x W), 0.15..0.65; default 0.42. The rails keep at least `rail`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width: Option<f64>,
+    /// The tip-side shoulder's length, a fraction of the opening's length (the guard side's is half of it), 0..0.45;
+    /// default 0.22.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shoulder: Option<f64>,
+    /// The opening's width at its two ends, a fraction of `width`, 0.05..1; default 0.22 (pointed shoulders).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub point: Option<f64>,
+    /// 0 = straight (angular) shoulders, 1 = arched, 0..1; default 0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arch: Option<f64>,
+    /// The thinnest a rail may get (x W), 0.08..0.4; default 0.18.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rail: Option<f64>,
+    /// The glowing lip round the opening on both faces, a fraction of the rail's width, 0..0.6; default 0.2
+    /// (0 = none). Part of the glow mesh, so only with `blade.glow` on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lip: Option<f64>,
+}
+
+/// SW12 faultbound (`blade.fracture`, [`crate::fault`]); `None` = the default. Lengths are multiples of the blade's
+/// base width (W). Field order is the order the family recipe writes.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Fracture {
+    /// Fragments, 2..7; default 4. The first (at the guard) and the last (the planted keel) never move.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub segments: Option<f64>,
+    /// The open gap along the blade between neighbours (x W), 0.08..0.4; default 0.24.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gap: Option<f64>,
+    /// Sideways displacement of the free fragments (x W), 0..0.35; default 0.14.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub offset: Option<f64>,
+    /// Turn of the free fragments about the blade's normal (radians), 0..0.08; default 0.03. Limited so that no
+    /// corner closes more than 40 % of the gap.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tilt: Option<f64>,
+    /// The fracture's zigzag (x W), 0..0.12; default 0.07.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub zigzag: Option<f64>,
+    /// Seed of the per-fracture signs (zigzag direction, offset side, turn), an integer; default 1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seed: Option<f64>,
+    /// Glowing rims along each fracture on both faces (x W), 0..0.2; default 0.07 (0 = none). Part of the glow mesh,
+    /// so only with `blade.glow` on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rim: Option<f64>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
@@ -222,6 +294,45 @@ pub struct Guard {
     /// proportions relative to the blade and each style's shape knobs.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub monument: Option<GuardMonument>,
+    /// SW12 style `shear` (shear-gate, [`crate::shear`]): two stepped jaws either side of a hub with a glowing
+    /// throat, sized from the blade like the monument styles.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shear: Option<GuardShear>,
+}
+
+/// SW12 shear-gate (`guard.shear`); `None` = the default. Sizes relative to the blade: multiples of its base width
+/// (W) or thickness (T); `guard.width` is the span, tip to tip. Field order is the order the family recipe writes.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GuardShear {
+    /// A jaw's bar height (x W), 0.25..0.8; default 0.46.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height: Option<f64>,
+    /// A jaw's depth across the blade's flat (x T), 1.2..4; default 2.6. The hub is 1.15x deeper.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub depth: Option<f64>,
+    /// The hub's half width (x W), 0.35..0.9; default 0.6.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub block: Option<f64>,
+    /// The tooth's rise above its bar (x bar height), 0.3..1.6; default 0.95.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tooth: Option<f64>,
+    /// The tooth's centre along the arm (0 = at the hub, 1 = at the end), 0.25..0.8; default 0.58.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<f64>,
+    /// The tooth's width, a fraction of the arm, 0.12..0.45; default 0.3.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub span: Option<f64>,
+    /// The jaws' offset along the blade, the right one toward the tip, the left toward the grip (x W), 0..0.5;
+    /// default 0.18.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stagger: Option<f64>,
+    /// Corner chamfers (x bar height), 0..0.35; default 0.18.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chamfer: Option<f64>,
+    /// The glowing throat on the hub's two faces (x hub height), 0..0.9; default 0.62 (0 = none).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub throat: Option<f64>,
 }
 
 /// bladegen's `GuardMonumentParams` (`monument/guards.ts`); `None` = the style's default. Field order is the

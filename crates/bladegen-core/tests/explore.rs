@@ -191,3 +191,24 @@ fn gate_jaws_are_closed_and_move_outward_without_crossing() {
         assert_eq!(a.components[0],b.components[0]);
     }
 }
+
+#[test]
+fn faultbound_fragments_are_closed_capped_and_never_collide_during_read() {
+    for segments in [2,4,7] {for seed in [0,42,99] {
+        let f=Features {fracture:Some(Fracture {segments,..Fracture::default()}),..Features::default()};
+        let a=build(&reference(),seed,&f).unwrap();assert_eq!(a,build(&reference(),seed,&f).unwrap());
+        let fragments:Vec<_>=a.components.iter().filter(|c|c.id.starts_with("fragment/")).collect();
+        assert_eq!(fragments.len(),segments as usize);
+        for c in &fragments {closed_outward(&c.mesh);}
+        assert_eq!(fragments.first().unwrap().travel,[0.;3]);assert_eq!(fragments.last().unwrap().travel,[0.;3]);
+        for t in [0,1500,3000,4500,6000,6500] {
+            let b=sample_read(&a,&Read::default(),t).unwrap();
+            let fr:Vec<_>=b.components.iter().filter(|c|c.id.starts_with("fragment/")).collect();
+            for pair in fr.windows(2) {
+                let hi=geom::world_bbox(&pair[0].mesh,&pair[0].matrix).1;
+                let lo=geom::world_bbox(&pair[1].mesh,&pair[1].matrix).0;
+                assert!(lo[1]-hi[1]>0.12,"fracture gap survives entire motion");
+            }
+        }
+    }}
+}

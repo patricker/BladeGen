@@ -123,3 +123,17 @@ Tests: every gate component closed/outward/finite, repeatability, 66 fixed-time 
 jaws remain on separate sides and move outward; hub/root overlaps are intentional slide bearings.
 Verdict **keep**: severe mechanical cross. Proposed guard weight 0.8, heavy ×2, barren ×1.8.
 Bevel omitted in this first study; a broad step reads better than tiny chamfers at 75 m.
+
+## 3 — Faultbound blade
+
+Built individually capped fragments with seed-indexed shared zigzag fracture boundaries, large
+open gaps, inset orange fault bars and independent lateral alignment tracks. Root and planted
+terminal fragment stay fixed. Parameters: segments 2–7 (4), gap 0.1–0.3 W (0.22), offset
+0–0.35 W (0.18), readClosure 0–0.9 (0.65). Read closes lateral misalignment only; axial gaps
+stay open to preserve attachment and guaranteed clearance. Dropped rotation for this slice:
+translation alone communicates restraint without risking swept-face collisions.
+[GLB](out/03-faultbound/sword.glb), [mast](out/03-faultbound/mast.png), [drone](out/03-faultbound/drone.png).
+Tests across 2/4/7 fragments and three seeds: closed/outward/finite/deterministic, fixed endpoints,
+and conservative disjoint Y bounds at read samples (motion only X, so bounds prove all-time clearance).
+Verdict **keep**: clear impossible mass. Proposed blade weight 0.45, volcanic ×2.5, eccentric ×2.
+Legacy nodes/channels/scars are rejected on this topology until fragment-local routes are authored.

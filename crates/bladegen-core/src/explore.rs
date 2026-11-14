@@ -42,6 +42,53 @@ pub struct Features {
     pub grammar: Option<Grammar>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gate: Option<Gate>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fracture: Option<Fracture>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Fracture { pub segments:u32, pub gap:f64, pub offset:f64, pub read_closure:f64 }
+impl Default for Fracture {fn default()->Self {Self {segments:4,gap:0.22,offset:0.18,read_closure:0.65}}}
+
+fn blank_width(s:&Sword,t:f64)->f64 {
+    s.blade.base_width * if t>0.8 {1.-0.98*(t-0.8)/0.2} else {1.}
+}
+fn add_fracture(a:&mut Assembly,s:&Sword,seed:u32,f:&Fracture)->anyhow::Result<()> {
+    anyhow::ensure!((2..=7).contains(&f.segments),"fracture segments must be 2..=7");
+    valid(f.gap,0.10,0.30,"fracture gap")?;valid(f.offset,0.,0.35,"fracture offset")?;valid(f.read_closure,0.,0.9,"read closure")?;
+    let w=s.blade.base_width;let l=s.blade.length;let d=s.blade.thickness.unwrap_or(0.16);
+    anyhow::ensure!(l/f.segments as f64>f.gap*w+0.3*w,"fracture leaves insufficient fragment height");
+    a.components.retain(|c|!c.id.starts_with("blade#") && !c.id.starts_with("glow#"));
+    let boundary=|i:u32,shift:f64|->Vec<[f64;2]> {
+        let t=i as f64/f.segments as f64;let width=blank_width(s,t);
+        let y=t*l+shift;
+        if i==0 || i==f.segments {return vec![[-width*0.5,y],[width*0.5,y]];}
+        let sign=if hash_seed(&format!("{seed}|fault/{i}"))&1==0 {1.} else {-1.};
+        vec![[-width*0.5,y],[-width*0.15,y-0.045*w*sign],[width*0.15,y+0.045*w*sign],[width*0.5,y]]
+    };
+    for i in 0..f.segments {
+        let mut poly=boundary(i,if i==0 {0.} else {f.gap*w*0.5});
+        let top=boundary(i+1,if i+1==f.segments {0.} else {-f.gap*w*0.5});
+        // Preserve the broad shoulder before the planted terminal taper.
+        let crosses_shoulder=(i as f64/f.segments as f64)<0.8 && ((i+1) as f64/f.segments as f64)>0.8;
+        if crosses_shoulder {poly.push([w*0.5,0.8*l]);}
+        poly.extend(top.into_iter().rev());
+        if crosses_shoulder {poly.push([-w*0.5,0.8*l]);}
+        let mut c=component(&format!("fragment/{i}"),extrude(&poly,d)?);
+        let fixed=i==0 || i+1==f.segments;
+        let sign=if hash_seed(&format!("{seed}|offset/{i}"))&1==0 {1.} else {-1.};
+        c.matrix[12]=if fixed {0.} else {sign*f.offset*w};
+        c.travel[0]=-c.matrix[12]*f.read_closure;
+        a.components.push(c);
+        if i+1<f.segments {
+            let y=(i+1) as f64/f.segments as f64*l-f.gap*w*0.5-0.08*w;
+            let mut seam=component(&format!("fault/light/{i}"),extrude(&[[-0.32*w,y-0.018*w],[0.32*w,y-0.018*w],[0.32*w,y+0.018*w],[-0.32*w,y+0.018*w]],0.018*w)?);
+            seam.matrix[12]=a.components.last().unwrap().matrix[12];seam.matrix[14]=d*0.5+0.01*w;
+            seam.travel[0]=a.components.last().unwrap().travel[0];
+            seam.role="fracture".into();seam.color=[1.,0.2,0.03];seam.strength=5.;a.components.push(seam);
+        }
+    } Ok(())
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -99,10 +146,12 @@ impl Default for Grammar {fn default()->Self {Self {major_motif_budget:2,min_sha
 /// Conservative preflight with explicit reasons; never silently changes the chosen recipe.
 /// Numeric sanitation stays in each builder. No visit-order state or unbounded rejection loops.
 pub fn check_grammar(f:&Features)->anyhow::Result<()> {
+    anyhow::ensure!(!(f.fracture.is_some() && (f.scars.is_some() || f.resonance.is_some() || f.emission.is_some())),
+        "fracture requires fragment-specific nodes and channels; incompatible legacy surface feature");
     if let Some(g)=&f.grammar {
         anyhow::ensure!((1..=4).contains(&g.major_motif_budget),"motif budget must be 1..=4");
         valid(g.min_shaft_gap,0.05,0.3,"minimum shaft gap")?;
-        let motifs=u32::from(f.scars.is_some())+u32::from(f.staves.is_some())+u32::from(f.gate.is_some());
+        let motifs=u32::from(f.scars.is_some())+u32::from(f.staves.is_some())+u32::from(f.gate.is_some())+u32::from(f.fracture.is_some());
         anyhow::ensure!(motifs<=g.major_motif_budget,"major motif budget exceeded: {motifs}");
         if let Some(st)=&f.staves {
             anyhow::ensure!(st.radius-st.section*0.75-0.08>=g.min_shaft_gap,"stave/core clearance below grammar minimum");
@@ -393,6 +442,7 @@ pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
     };
     if let Some(st)=&f.staves { add_staves(&mut a,s,st)?; }
     if let Some(g)=&f.gate { add_gate(&mut a,s,g)?; }
+    if let Some(fr)=&f.fracture { add_fracture(&mut a,s,seed,fr)?; }
     if let Some(sc)=&f.scars {
         // Replace only the experimental blade; legacy builder never calls this path.
         a.components[0].mesh=scar_blade(s,seed,sc)?;

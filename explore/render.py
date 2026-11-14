@@ -1,7 +1,7 @@
 """Offline GLB writer and fixed-point CPU silhouette rasterizer. No third-party packages.
 
 Consumes Rust meshes only; never implements sword geometry. Cameras are in metres, 45 degree
-vertical FOV, mast 75 m away at y=22, drone (28,43,45). Raster coverage uses integer edge
+vertical FOV, mast 75 m away at y=22, drone (35,48,65). Raster coverage uses integer edge
 functions at pixel centres, round-to-nearest 1/256 px, double-sided triangles, depth buffering.
 PNG shows dark metal and emission roles, without bloom. Metrics are diagnostic, not aesthetics.
 """
@@ -143,7 +143,7 @@ def main():
         folder = ROOT/'out'/name
         doc = json.loads((folder/'mesh.json').read_text())
         glb(doc,folder/'sword.glb')
-        stats = {name:raster(doc,eye,folder/(name+'.png')) for name,eye in [('mast',[0,22,75]),('drone',[28,43,45])]}
+        stats = {name:raster(doc,eye,folder/(name+'.png')) for name,eye in [('mast',[0,22,75]),('drone',[35,48,65])]}
         (folder/'views.json').write_text(json.dumps(stats,indent=2)+'\n')
         print(folder,stats)
 

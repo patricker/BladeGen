@@ -108,3 +108,6 @@ Every example now exports Rust `metrics.json`; the dependency-free Python render
 Tests: repeated masks identical, measured occupied/emission counts, width bounds, and staves add
 real enclosed voids in both views. Verdict **keep** as offline diagnostics; no catalogue weight.
 No bloom model yet, so narrow-gap survival under show exposure remains a renderer review task.
+
+Preview correction: first drone eye (28,43,45) cropped tall pommels. Moved both rasterizers to
+(35,48,65), target (0,22,0), preserving 45° FOV and a complete monument silhouette.

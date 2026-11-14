@@ -25,7 +25,7 @@ pub fn render(a:&Assembly,blade_length:f64,height_m:f64,sink:f64,view:View,size:
     anyhow::ensure!([64,128,256].contains(&size),"raster resolution must be 64, 128 or 256");
     super::valid(blade_length,0.01,1000.,"raster blade length")?;
     super::valid(height_m,30.,42.,"raster height")?;super::valid(sink,0.,0.6,"raster sink")?;
-    let eye=match view {View::Mast=>[0.,22.,75.],View::Drone=>[28.,43.,45.]};
+    let eye=match view {View::Mast=>[0.,22.,75.],View::Drone=>[35.,48.,65.]};
     let forward=norm([-eye[0],22.-eye[1],-eye[2]]);
     let right=norm(cross(forward,[0.,1.,0.]));let up=cross(right,forward);
     let focal=size as f64/(2.*geom::tan(std::f64::consts::PI/8.));

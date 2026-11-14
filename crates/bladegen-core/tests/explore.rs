@@ -228,3 +228,15 @@ fn window_keel_is_one_closed_solid_with_a_real_through_aperture() {
         for view in [View::Mast,View::Drone] {assert!(render(&a,6.,36.,0.12,view,128).unwrap().enclosed_void>20);}
     }
 }
+
+#[test]
+fn cleft_has_two_guard_roots_and_a_solid_shared_planted_keel() {
+    for separation in [0.3,0.6,0.9] {for bias in [-0.1,0.05,0.1] {
+        let f=Features {cleft:Some(Cleft {separation,bias,..Cleft::default()}),..Features::default()};
+        let a=build(&reference(),42,&f).unwrap();assert_eq!(a,build(&reference(),42,&f).unwrap());
+        let c=a.components.iter().find(|c|c.id=="cleft/keel").unwrap();closed_outward(&c.mesh);
+        assert!(surface(&c.mesh,0.,0.01).is_none());assert!(surface(&c.mesh,0.,5.1).is_some());
+        assert!(surface(&c.mesh,separation*0.5+0.1,0.01).is_some());
+        assert!(surface(&c.mesh,-separation*0.5-0.1,0.01).is_some());
+    }}
+}

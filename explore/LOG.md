@@ -151,3 +151,14 @@ Tests cover three aperture widths, single-solid closed/outward/finite topology, 
 through the opening, real rail hits, exact bounds/determinism, and visible void area in both views.
 Verdict **keep, first production family**. Proposed blade weight 0.6, magnetic ×3, light ×2.
 All additions remain outside the shipped catalogue; legacy recipes and wasm are unchanged.
+
+## 2 — Cleft-keel blade
+
+Built a single closed forked blade with two real guard roots and a common planted keel. The
+slot opens at the guard and merges through a biased chevron shoulder. Parameters: separation
+0.3–0.9 W (0.6), mergeAt 0.6–0.8 L (0.72), bias ±0.1 L (0.05). Two limbs only: three
+read too readily as a trident. Fixed 0.25 W rail ligaments keep mass around the opening.
+[GLB](out/02-cleft/sword.glb), [mast](out/02-cleft/mast.png), [drone](out/02-cleft/drone.png).
+Tests: nine separation/bias pairs, manifold closure/winding, determinism, both guard-root hits,
+empty upper centre and solid terminal keel. Verdict **promising**; window-keel is more coherent
+at distance, but the open slot produces a severe tuning-fork variant. Weight 0.3, moons ×1.8.

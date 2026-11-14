@@ -46,6 +46,21 @@ pub struct Features {
     pub fracture: Option<Fracture>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub aperture: Option<Aperture>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cleft: Option<Cleft>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Cleft {pub separation:f64,pub merge_at:f64,pub bias:f64}
+impl Default for Cleft {fn default()->Self {Self {separation:0.6,merge_at:0.72,bias:0.05}}}
+fn add_cleft(a:&mut Assembly,s:&Sword,c:&Cleft)->anyhow::Result<()> {
+    valid(c.separation,0.3,0.9,"cleft separation")?;valid(c.merge_at,0.6,0.8,"cleft merge")?;valid(c.bias,-0.1,0.1,"cleft bias")?;
+    let w=s.blade.base_width;let l=s.blade.length;let gap=c.separation*w*0.5;let rail=0.25*w;
+    let poly=[[-gap-rail,0.],[-gap,0.],[-gap,c.merge_at*l-0.1*w],[0.,c.merge_at*l+c.bias*l],
+        [gap,c.merge_at*l-0.1*w],[gap,0.],[gap+rail,0.],[gap+rail,0.82*l],[0.01*w,l],[-0.01*w,l],[-gap-rail,0.82*l]];
+    a.components.retain(|p|!p.id.starts_with("blade#") && !p.id.starts_with("glow#"));
+    a.components.push(component("cleft/keel",extrude(&poly,s.blade.thickness.unwrap_or(0.16))?));Ok(())
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -181,6 +196,7 @@ impl Default for Grammar {fn default()->Self {Self {major_motif_budget:2,min_sha
 /// Conservative preflight with explicit reasons; never silently changes the chosen recipe.
 /// Numeric sanitation stays in each builder. No visit-order state or unbounded rejection loops.
 pub fn check_grammar(f:&Features)->anyhow::Result<()> {
+    if f.cleft.is_some() {anyhow::ensure!(f.aperture.is_none() && f.fracture.is_none() && f.scars.is_none() && f.resonance.is_none() && f.emission.is_none(),"cleft requires limb-local features");}
     anyhow::ensure!(!(f.aperture.is_some() && (f.fracture.is_some() || f.scars.is_some() || f.resonance.is_some() || f.emission.is_some())),
         "aperture requires rail-local surface features; incompatible blade topology");
     anyhow::ensure!(!(f.fracture.is_some() && (f.scars.is_some() || f.resonance.is_some() || f.emission.is_some())),
@@ -188,7 +204,7 @@ pub fn check_grammar(f:&Features)->anyhow::Result<()> {
     if let Some(g)=&f.grammar {
         anyhow::ensure!((1..=4).contains(&g.major_motif_budget),"motif budget must be 1..=4");
         valid(g.min_shaft_gap,0.05,0.3,"minimum shaft gap")?;
-        let motifs=u32::from(f.scars.is_some())+u32::from(f.staves.is_some())+u32::from(f.gate.is_some())+u32::from(f.fracture.is_some())+u32::from(f.aperture.is_some());
+        let motifs=u32::from(f.scars.is_some())+u32::from(f.staves.is_some())+u32::from(f.gate.is_some())+u32::from(f.fracture.is_some())+u32::from(f.aperture.is_some())+u32::from(f.cleft.is_some());
         anyhow::ensure!(motifs<=g.major_motif_budget,"major motif budget exceeded: {motifs}");
         if let Some(st)=&f.staves {
             anyhow::ensure!(st.radius-st.section*0.75-0.08>=g.min_shaft_gap,"stave/core clearance below grammar minimum");
@@ -481,6 +497,7 @@ pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
     if let Some(g)=&f.gate { add_gate(&mut a,s,g)?; }
     if let Some(fr)=&f.fracture { add_fracture(&mut a,s,seed,fr)?; }
     if let Some(ap)=&f.aperture { add_aperture(&mut a,s,ap)?; }
+    if let Some(c)=&f.cleft { add_cleft(&mut a,s,c)?; }
     if let Some(sc)=&f.scars {
         // Replace only the experimental blade; legacy builder never calls this path.
         a.components[0].mesh=scar_blade(s,seed,sc)?;

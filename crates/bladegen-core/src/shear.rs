@@ -122,7 +122,7 @@ pub fn geometry(g: &Guard, blade: &Blade) -> (Mesh, Option<Mesh>, f64) {
     // the throat: a tall hexagonal slot on each face of the hub, a thin plate standing just proud of it
     let throat = if p.throat > 0.0 {
         let th = p.throat * 2.0 * hy;
-        let tw = jmin(0.36 * bl, 0.5 * th);
+        let tw = jmin(0.5 * bl, 0.5 * th);
         let slot = dedup(vec![
             [0.0, -0.5 * th],
             [0.5 * tw, -0.5 * th + 0.5 * tw],

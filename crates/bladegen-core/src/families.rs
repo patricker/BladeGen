@@ -566,7 +566,7 @@ fn shape_blade(id: &str, b: &mut Blade, rng: &mut Rng32) {
             no_fullers(b);
             let start = r3(rng, 0.16, 0.26);
             let end = r3(rng, 0.6, 0.7);
-            let width = r3(rng, 0.36, 0.5);
+            let width = r3(rng, 0.42, 0.56);
             let shoulder = r3(rng, 0.15, 0.3);
             let point = r3(rng, 0.12, 0.3);
             let arch = if rng.chance(0.35) { r3(rng, 0.6, 1.0) } else { 0.0 };
@@ -594,9 +594,9 @@ fn shape_blade(id: &str, b: &mut Blade, rng: &mut Rng32) {
             b.sweep_segments = Some(192.0);
             no_fullers(b);
             let segments = int(rng, 3, 5);
-            let gap = r3(rng, 0.2, 0.3);
-            let offset = r3(rng, 0.08, 0.2);
-            let tilt = r3(rng, 0.015, 0.045);
+            let gap = r3(rng, 0.3, 0.4);
+            let offset = r3(rng, 0.14, 0.26);
+            let tilt = r3(rng, 0.025, 0.06);
             let zigzag = r3(rng, 0.04, 0.09);
             let seed = int(rng, 1, 65535);
             let rim = r3(rng, 0.05, 0.09);

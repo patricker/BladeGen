@@ -52,6 +52,8 @@ pub struct Features {
     pub cleft: Option<Cleft>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ribs: Option<Ribs>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crystals: Option<Crystals>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

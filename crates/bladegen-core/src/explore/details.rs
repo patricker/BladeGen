@@ -6,7 +6,27 @@ use super::*;
 pub struct Ribs {pub pairs:u32,pub reach:f64}
 impl Default for Ribs {fn default()->Self {Self {pairs:3,reach:0.7}}}
 
-pub(super) fn apply(a:&mut Assembly,s:&Sword,_seed:u32,f:&Features)->anyhow::Result<()> {
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Crystals {pub count:u32,pub length:f64,pub width:f64}
+impl Default for Crystals {fn default()->Self {Self {count:4,length:0.95,width:0.24}}}
+
+pub(super) fn apply(a:&mut Assembly,s:&Sword,seed:u32,f:&Features)->anyhow::Result<()> {
+    if let Some(c)=&f.crystals {
+        anyhow::ensure!((1..=6).contains(&c.count),"crystal count must be 1..=6");valid(c.length,0.4,1.5,"crystal length")?;valid(c.width,0.15,0.35,"crystal width")?;
+        anyhow::ensure!(f.fracture.is_none() && f.cleft.is_none() && f.aperture.is_none(),"crystals need a continuous blade edge");
+        let w=s.blade.base_width;
+        for i in 0..c.count {
+            let hash=hash_seed(&format!("{seed}|crystal/{i}"));let sign=if hash&1==0 {1.} else {-1.};
+            let y=(0.16+0.48*i as f64/c.count.max(1) as f64)*s.blade.length;
+            let mut mesh=node_mesh([0.;3],c.width*w*0.5);
+            for p in mesh.pos.chunks_exact_mut(3) {p[1]=(p[1] as f64*c.length/c.width+c.length*w*0.35) as f32;}
+            mesh.compute_vertex_normals();let mut part=component(&format!("crystal/{i}"),mesh);
+            let angle=-sign*std::f64::consts::PI*(0.28+0.04*((hash>>8)%3) as f64);
+            part.matrix=geom::compose([sign*0.36*w,y,0.],[0.,0.,angle],[1.;3]);
+            part.role="mineral".into();part.color=[0.09,0.65,0.8];part.strength=0.7;a.components.push(part);
+        }
+    }
     if let Some(r)=&f.ribs {
         anyhow::ensure!((2..=4).contains(&r.pairs),"rib pairs must be 2..=4");valid(r.reach,0.4,1.,"rib reach")?;
         anyhow::ensure!(f.fracture.is_none() && f.aperture.is_none() && f.cleft.is_none() && f.scars.is_none(),"ribs require continuous legacy blade roots");

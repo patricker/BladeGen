@@ -248,8 +248,21 @@ fn ribs_have_closed_members_and_two_blade_attachment_roots() {
         let a=build(&reference(),42,&f).unwrap();assert_eq!(a,build(&reference(),42,&f).unwrap());
         let ribs:Vec<_>=a.components.iter().filter(|c|c.id.starts_with("rib/")).collect();assert_eq!(ribs.len(),pairs as usize*2);
         for c in ribs {closed_outward(&c.mesh);let (lo,hi)=geom::world_bbox(&c.mesh,&c.matrix);
-            assert!(lo[1]>0. && hi[1]<4.6);assert!(lo[0]<-1. || hi[0]>1.);
+            assert!(lo[1]>0. && hi[1]<4.6);assert!(lo[0]< -1. || hi[0]>1.);
             let root=c.mesh.pos.chunks_exact(3).filter(|p|p[0].abs()<0.4).count();assert!(root>=8);
         }
     }
+}
+
+#[test]
+fn crystals_are_closed_facets_with_embedded_roots_and_large_projection() {
+    for count in [1,4,6] {for seed in [0,42,777] {
+        let f=Features {crystals:Some(Crystals {count,..Crystals::default()}),..Features::default()};
+        let a=build(&reference(),seed,&f).unwrap();assert_eq!(a,build(&reference(),seed,&f).unwrap());
+        let crystals:Vec<_>=a.components.iter().filter(|c|c.id.starts_with("crystal/")).collect();assert_eq!(crystals.len(),count as usize);
+        for c in crystals {closed_outward(&c.mesh);let root=geom::apply_point(&c.matrix,[0.;3]);
+            assert!(root[0].abs()<0.5);assert!(surface(&a.components[0].mesh,root[0],root[1]).is_some());
+            let (lo,hi)=geom::world_bbox(&c.mesh,&c.matrix);assert!(lo[0]< -0.8 || hi[0]>0.8);
+        }
+    }}
 }

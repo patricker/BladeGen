@@ -1,5 +1,8 @@
 param([Parameter(Mandatory=$true)][string]$Message)
 $ErrorActionPreference = 'Stop'
+# Never record an experiment with failing Rust tests.
+& (Join-Path $PSScriptRoot 'run.ps1') -Tests
+if ($LASTEXITCODE -ne 0) { throw 'Tests must pass before recording an experiment' }
 # This session's .git is read-only. Keep a genuine, importable per-idea branch in writable metadata.
 $workspaceDir = (Resolve-Path '.').Path
 $metadataDir = Join-Path $workspaceDir 'explore/out/git-history'

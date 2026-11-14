@@ -21,6 +21,7 @@ fn main() -> anyhow::Result<()> {
         "01-window" => Features {aperture:Some(Aperture::default()),..Features::default()},
         "02-cleft" => Features {cleft:Some(Cleft::default()),..Features::default()},
         "04-ribs" => Features {ribs:Some(Ribs::default()),..Features::default()},
+        "05-crystals" => Features {crystals:Some(Crystals::default()),..Features::default()},
         _ => anyhow::bail!("unknown experiment {id}"),
     };
     let s = explore::reference();

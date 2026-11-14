@@ -172,3 +172,13 @@ more containment-frame than folklore. Restricted to continuous legacy blade root
 Tests: all counts, manifold members/outward/finite/repeatable, two attachment zones, extent bounds.
 Verdict **promising**, likely too busy at four pairs; prefer two or three. Weight 0.35, heavy ×2,
 magnetic ×2.5. Aiming for a few enormous bays rather than high-frequency serration.
+
+## 5 — Accretion crown
+
+Built seed-indexed six-vertex faceted mineral intrusions with deeply embedded blade-edge roots.
+Parameters: count 1–6 (4), length 0.4–1.5 W (0.95), width 0.15–0.35 W (0.24). Directions
+come from three deterministic libm angles per side; every crystal extends beyond the blade silhouette.
+[GLB](out/05-crystals/sword.glb), [mast](out/05-crystals/mast.png), [drone](out/05-crystals/drone.png).
+Tests across counts/seeds: closed/outward facets, finite bounds, repeatability, embedded roots and
+large projection. Verdict **promising** at 2–4 growths; six approaches a rock cluster. Weight 0.4,
+cold ×2, volcanic ×1.4. Root color/strength is preview material, not a new shipped look.

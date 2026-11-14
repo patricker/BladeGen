@@ -30,6 +30,7 @@ fn main() -> anyhow::Result<()> {
         "14-terminator" => Features {terminator:Some(Terminator::default()),..Features::default()},
         "17-circuit" => Features {circuit:Some(Circuit::default()),..Features::default()},
         "19-electrodes" => Features {electrodes:Some(Electrodes::default()),..Features::default()},
+        "22-dedup" => Features {aperture:Some(Aperture::default()),..Features::default()},
         _ => anyhow::bail!("unknown experiment {id}"),
     };
     let s = explore::reference();
@@ -40,6 +41,15 @@ fn main() -> anyhow::Result<()> {
         "normal":c.mesh.nrm,"index":c.mesh.idx,"matrix":c.matrix.to_vec(),"role":c.role,"color":c.color,"strength":c.strength})).collect();
     let dir = std::path::Path::new("explore/out").join(&id);
     std::fs::create_dir_all(&dir)?;
+    if id=="22-dedup" {
+        let mut scenes=vec![];
+        for (name,f) in [("blank-a",Features::default()),("blank-b",Features::default()),
+            ("window",features.clone()),("cleft",Features {cleft:Some(Cleft::default()),..Features::default()}),
+            ("faultbound",Features {fracture:Some(Fracture::default()),..Features::default()})] {
+            scenes.push((name.to_string(),build(&s,42,&f)?));
+        }
+        std::fs::write(dir.join("audit.json"),serde_json::to_vec_pretty(&explore::audit::nearest(&scenes,s.blade.length)?)?)?;
+    }
     use explore::raster::{render,View};
     std::fs::write(dir.join("metrics.json"),serde_json::to_vec(&json!({
         "mast":render(&a,s.blade.length,36.,0.12,View::Mast,128)?,

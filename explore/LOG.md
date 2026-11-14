@@ -271,3 +271,13 @@ the engine can build its circle directly from the same ordered IDs. No terrain f
 Tests: all counts, closed/outward/finite/repeatable arms, exact socket endpoints and no forward
 socket intrusion. Verdict **promising** as placement hardware; frequency 0.35 on magnetic worlds.
 Consumer must align its circle to exported sockets and use the identical burial transform.
+
+## 22 — Perceptual deduplication
+
+Built integer silhouette/emission IoU, profile delta, two-view nearest neighbors, 0.92 near-duplicate
+flagging and canonical ID tie-breaking in Rust. Offline only: no history-dependent runtime rejection.
+The five-design audit intentionally includes identical blanks to prove duplicate detection.
+[GLB](out/22-dedup/sword.glb), [mast](out/22-dedup/mast.png), [drone](out/22-dedup/drone.png),
+[audit](out/22-dedup/audit.json). Tests: identical score=1000, window distinct, repeatability and
+input-order-independent tie resolution. Verdict **keep** as authoring diagnostics; no catalogue weight.
+Current nearest pass is quadratic; use small review corpora before indexing 16k designs.

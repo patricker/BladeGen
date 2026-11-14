@@ -366,6 +366,18 @@ fn electrodes_share_circle_socket_positions_and_preserve_front_approach() {
     }
 }
 
+#[test]
+fn dedup_detects_identical_silhouettes_and_breaks_ties_by_id() {
+    use bladegen_core::explore::audit::*;
+    let a=build(&reference(),42,&Features::default()).unwrap();
+    let b=build(&reference(),42,&Features {aperture:Some(Aperture::default()),..Features::default()}).unwrap();
+    let scenes=vec![("z".into(),a.clone()),("b".into(),a.clone()),("a".into(),a),("window".into(),b)];
+    let n=nearest(&scenes,6.).unwrap();assert_eq!(n,nearest(&scenes,6.).unwrap());
+    let z=n.iter().find(|n|n.id=="z").unwrap();assert_eq!(z.neighbor,"a");assert_eq!(z.silhouette_iou_milli,1000);
+    let w=n.iter().find(|n|n.id=="window").unwrap();assert!(w.silhouette_iou_milli<920);
+    let mut reversed=scenes.clone();reversed.reverse();assert_eq!(n,nearest(&reversed,6.).unwrap());
+}
+
 fn weld(m:&mut Mesh) {
     let mut ids=BTreeMap::new();let mut remap=vec![];let mut pos=vec![];
     for p in m.pos.chunks_exact(3) {

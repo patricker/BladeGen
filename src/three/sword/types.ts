@@ -225,6 +225,54 @@ export type BladeParams = {
    * `enabled: false` leaves the blade geometry exactly as before.
    */
   glow?: BladeGlow;
+  /**
+   * SW12 window-keel: one long opening through the blade between two rails, closing into a solid keel toward the
+   * tip, with a glowing lip (bladegen-core `keel.rs`). Absent: the ordinary blade.
+   */
+  aperture?: BladeAperture;
+  /**
+   * SW12 faultbound: the blade broken into fragments held apart across zigzag fractures, with glowing rims
+   * (bladegen-core `fault.rs`). Wins over `aperture`.
+   */
+  fracture?: BladeFracture;
+};
+
+/** SW12 window-keel (`blade.aperture`): t = fraction of the blade length from the guard, W = the base width. */
+export type BladeAperture = {
+  /** Where the opening starts (t), 0.08..0.4. */
+  start?: number;
+  /** Where it ends (t), 0.4..0.8, at least 0.2 after start. */
+  end?: number;
+  /** The opening's widest span (x W), 0.15..0.65. */
+  width?: number;
+  /** The tip-side shoulder's length, a fraction of the opening (the guard side's is half), 0..0.45. */
+  shoulder?: number;
+  /** The opening's width at its ends, a fraction of width, 0.05..1. */
+  point?: number;
+  /** 0 = straight shoulders, 1 = arched. */
+  arch?: number;
+  /** The thinnest a rail may get (x W), 0.08..0.4. */
+  rail?: number;
+  /** The glowing lip round the opening, a fraction of the rail's width, 0..0.6 (needs blade.glow). */
+  lip?: number;
+};
+
+/** SW12 faultbound (`blade.fracture`): W = the blade's base width. */
+export type BladeFracture = {
+  /** Fragments, 2..7; the first and the last never move. */
+  segments?: number;
+  /** The open gap between neighbours (x W), 0.08..0.4. */
+  gap?: number;
+  /** Sideways shift of the free fragments (x W), 0..0.35. */
+  offset?: number;
+  /** Turn of the free fragments (radians), 0..0.08. */
+  tilt?: number;
+  /** The fracture's zigzag (x W), 0..0.12. */
+  zigzag?: number;
+  /** Seed of the per-fracture signs, an integer. */
+  seed?: number;
+  /** Glowing rims along each fracture (x W), 0..0.2 (needs blade.glow). */
+  rim?: number;
 };
 
 /**
@@ -282,7 +330,8 @@ export type GuardStyle =
   | 'halo'
   | 'wings'
   | 'talon'
-  | 'ziggurat';
+  | 'ziggurat'
+  | 'shear';
 
 /**
  * Forged cross guard (style 'forged'): one closed, swept tube from quillon tip to quillon tip through a
@@ -424,6 +473,33 @@ export type GuardParams = {
   forged?: GuardForgedParams;
   /** Monument styles (SW10): the guard's proportions and shape knobs, relative to the blade. */
   monument?: GuardMonumentParams;
+  /** Style 'shear' (SW12 shear-gate): the hub, jaws and throat, relative to the blade. */
+  shear?: GuardShearParams;
+};
+
+/**
+ * SW12 shear-gate (style 'shear', bladegen-core `shear.rs`): a hub round the blade's root with a glowing throat and
+ * two stepped, point-symmetric jaws. W = the blade's base width, T = its thickness; guard.width is the span.
+ */
+export type GuardShearParams = {
+  /** A jaw's bar height (x W), 0.25..0.8. */
+  height?: number;
+  /** A jaw's depth (x T), 1.2..4; the hub is 1.15x deeper. */
+  depth?: number;
+  /** The hub's half width (x W), 0.35..0.9. */
+  block?: number;
+  /** The tooth's rise (x bar height), 0.3..1.6. */
+  tooth?: number;
+  /** The tooth's centre along the arm, 0.25..0.8. */
+  at?: number;
+  /** The tooth's width, a fraction of the arm, 0.12..0.45. */
+  span?: number;
+  /** The jaws' offset along the blade (x W), 0..0.5. */
+  stagger?: number;
+  /** Corner chamfers (x bar height), 0..0.35. */
+  chamfer?: number;
+  /** The glowing throat (x hub height), 0..0.9; 0 = none. */
+  throat?: number;
 };
 
 export type HandleParams = {

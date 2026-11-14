@@ -222,7 +222,7 @@ describe('monument design (catalogue)', () => {
     }
     // guard styles and pommel styles the catalogue names exist
     for (const g of MONUMENT_CATALOGUE.guards)
-      expect(['forged', ...MONUMENT_GUARD_STYLES]).toContain(g.id);
+      expect(['forged', ...MONUMENT_GUARD_STYLES, 'shear']).toContain(g.id);
     for (const p of MONUMENT_CATALOGUE.pommels)
       expect(['native', ...MONUMENT_POMMEL_STYLES]).toContain(p.id);
   });
@@ -252,19 +252,21 @@ describe('monument design (catalogue)', () => {
     expect(count(TRAITS.giant, (p) => p.guard === 'halo')).toBeGreaterThan(
       2 * count(TRAITS.lava, (p) => p.guard === 'halo')
     );
-    // every family is reachable
+    // every family with a weight is reachable; SW12's dormant (weight-0) entries never are
     const seen = new Set<string>();
     for (const t of Object.values(TRAITS))
       for (let s = 0; s < 2000; s++) {
         const p = pickMonument(t, s).picks;
         seen.add(`b:${p.blade}`).add(`g:${p.guard}`).add(`p:${p.pommel}`).add(`h:${p.grip}`);
       }
+    const live = (l: { weight: number }[]) => l.filter((e) => e.weight > 0).length;
     expect(seen.size).toBe(
-      MONUMENT_CATALOGUE.blades.length +
-        MONUMENT_CATALOGUE.guards.length +
-        MONUMENT_CATALOGUE.pommels.length +
-        MONUMENT_CATALOGUE.grips.length
+      live(MONUMENT_CATALOGUE.blades) +
+        live(MONUMENT_CATALOGUE.guards) +
+        live(MONUMENT_CATALOGUE.pommels) +
+        live(MONUMENT_CATALOGUE.grips)
     );
+    for (const id of ['b:window', 'b:faultbound', 'g:shear']) expect(seen.has(id)).toBe(false);
   });
   it('weights multiply affinities and pairs in table order', () => {
     const s = traitStrengths(TRAITS.lava);

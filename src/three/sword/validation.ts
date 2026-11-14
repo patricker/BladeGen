@@ -4,6 +4,7 @@ import type {
   GuardParams,
   GuardForgedParams,
   GuardMonumentParams,
+  GuardShearParams,
   GuardStyle,
   HandleParams,
   PommelParams,
@@ -19,6 +20,7 @@ import type {
 } from './types';
 import { FORGED_DEFAULTS } from './guardForged';
 import { MONUMENT_GUARD_DEFAULTS, isMonumentGuardStyle } from './monument/guards';
+import { SW12_DEFAULTS } from './shear';
 
 /**
  * Clamp helper to bound numeric values.
@@ -395,6 +397,35 @@ export function validateSwordParams(params: SwordParams): SwordParams {
   if (hollow) blade.hollowGrind = hollow;
   const glow = sanitizeGlow((b as any).glow);
   if (glow) blade.glow = glow;
+  // SW12 window-keel and faultbound: written back in full from the core's defaults when present
+  const ap = (b as any).aperture;
+  if (ap && typeof ap === 'object') {
+    const d = SW12_DEFAULTS.aperture;
+    const start = clamp(ap.start ?? d.start, 0.08, 0.4);
+    blade.aperture = {
+      start,
+      end: clamp(ap.end ?? d.end, Math.max(0.4, start + 0.2), 0.8),
+      width: clamp(ap.width ?? d.width, 0.15, 0.65),
+      shoulder: clamp(ap.shoulder ?? d.shoulder, 0, 0.45),
+      point: clamp(ap.point ?? d.point, 0.05, 1),
+      arch: clamp(ap.arch ?? d.arch, 0, 1),
+      rail: clamp(ap.rail ?? d.rail, 0.08, 0.4),
+      lip: clamp(ap.lip ?? d.lip, 0, 0.6),
+    };
+  }
+  const fr = (b as any).fracture;
+  if (fr && typeof fr === 'object') {
+    const d = SW12_DEFAULTS.fracture;
+    blade.fracture = {
+      segments: Math.round(clamp(fr.segments ?? d.segments, 2, 7)),
+      gap: clamp(fr.gap ?? d.gap, 0.08, 0.4),
+      offset: clamp(fr.offset ?? d.offset, 0, 0.35),
+      tilt: clamp(fr.tilt ?? d.tilt, 0, 0.08),
+      zigzag: clamp(fr.zigzag ?? d.zigzag, 0, 0.12),
+      seed: Math.round(clamp(fr.seed ?? d.seed, 0, 4294967295)),
+      rim: clamp(fr.rim ?? d.rim, 0, 0.2),
+    };
+  }
   const faceFullers = sanitizeFullerFaces((b as any).fullerFaces, blade);
   if (faceFullers) {
     blade.fullerFaces = faceFullers.faces;
@@ -512,6 +543,25 @@ export function validateSwordParams(params: SwordParams): SwordParams {
     };
   } else if ((guard as any).monument) {
     delete (guard as any).monument;
+  }
+
+  // SW12 shear-gate: its block, written back in full from the core's defaults (that style only)
+  if (guard.style === 'shear') {
+    const sr = ((g as any).shear ?? {}) as GuardShearParams;
+    const d = SW12_DEFAULTS.shear;
+    guard.shear = {
+      height: clamp(sr.height ?? d.height, 0.25, 0.8),
+      depth: clamp(sr.depth ?? d.depth, 1.2, 4),
+      block: clamp(sr.block ?? d.block, 0.35, 0.9),
+      tooth: clamp(sr.tooth ?? d.tooth, 0.3, 1.6),
+      at: clamp(sr.at ?? d.at, 0.25, 0.8),
+      span: clamp(sr.span ?? d.span, 0.12, 0.45),
+      stagger: clamp(sr.stagger ?? d.stagger, 0, 0.5),
+      chamfer: clamp(sr.chamfer ?? d.chamfer, 0, 0.35),
+      throat: clamp(sr.throat ?? d.throat, 0, 0.9),
+    };
+  } else if ((guard as any).shear) {
+    delete (guard as any).shear;
   }
 
   const h = params.handle;

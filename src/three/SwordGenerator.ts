@@ -187,7 +187,8 @@ export class SwordGenerator {
     }
     obj.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if ((mesh as any).isMesh) mesh.material = mat;
+      // SW12: a part's own emissive child (the shear-gate's throat) keeps its glow material
+      if ((mesh as any).isMesh && !mesh.userData?.keepMaterial) mesh.material = mat;
     });
   }
 

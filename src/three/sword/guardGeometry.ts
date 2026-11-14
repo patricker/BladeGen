@@ -3,6 +3,8 @@ import type { BladeParams, GuardParams } from './types';
 import { buildGuardHalfShape } from './guardShapes';
 import { buildForgedGuardGeometry } from './guardForged';
 import { buildMonumentGuardGeometry, isMonumentGuardStyle } from './monument/guards';
+import { buildShearGuardGeometry } from './shear';
+import { createGlowMaterial } from './glow';
 
 /**
  * Build guard geometry based on style. Returns either a single mesh (guardMesh)
@@ -53,6 +55,22 @@ export function buildGuard(
     guardMesh.castShadow = true;
     guardMesh.position.set(0, targetTopY - halfHeight, 0);
     guardMesh.rotation.z = g.tilt ?? 0;
+    return { guardMesh };
+  } else if (g.style === 'shear') {
+    // SW12 shear-gate: placed like the monument styles; its throat glows with the blade's glow material (a child
+    // that keeps its material when the guard's is reapplied)
+    const { geometry, throat, halfHeight } = buildShearGuardGeometry(g, ctx.bladeParams);
+    const guardMesh = new THREE.Mesh(geometry, ctx.makeMaterial('guard'));
+    guardMesh.castShadow = true;
+    guardMesh.position.set(0, targetTopY - halfHeight, 0);
+    guardMesh.rotation.z = g.tilt ?? 0;
+    const glow = ctx.bladeParams?.glow;
+    if (throat && glow && glow.enabled !== false) {
+      const t = new THREE.Mesh(throat, createGlowMaterial(glow));
+      t.name = 'guard.throat';
+      t.userData.keepMaterial = true;
+      guardMesh.add(t);
+    }
     return { guardMesh };
   } else if (g.style === 'disk') {
     const radius = Math.max(0.05, g.width * 0.5);

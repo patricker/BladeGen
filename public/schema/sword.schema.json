@@ -815,9 +815,48 @@
         "glow": {
           "$ref": "#/$defs/BladeGlow",
           "description": "Optional exportable glow channel (edge strips, core band, procedural runes). Absent or disabled leaves the blade unchanged."
+        },
+        "aperture": {
+          "$ref": "#/$defs/BladeAperture",
+          "description": "SW12 window-keel: one long opening through the blade between two rails, closing into a solid keel toward the tip. Absent: the ordinary blade."
+        },
+        "fracture": {
+          "$ref": "#/$defs/BladeFracture",
+          "description": "SW12 faultbound: the blade broken into fragments held apart across zigzag fractures. Wins over aperture."
         }
       },
       "required": ["length", "baseWidth", "tipWidth", "thickness", "curvature"]
+    },
+    "BladeAperture": {
+      "type": "object",
+      "title": "Window-Keel",
+      "description": "SW12 window-keel (bladegen-core keel.rs): the blade's own surface laid out so two rails frame one opening; the rails' inner walls and the opening's end walls close the solid. t = fraction of the blade length from the guard, W = base width.",
+      "additionalProperties": false,
+      "properties": {
+        "start": { "type": "number", "minimum": 0.08, "maximum": 0.4, "description": "Where the opening starts (t)." },
+        "end": { "type": "number", "minimum": 0.4, "maximum": 0.8, "description": "Where it ends (t), at least 0.2 after start." },
+        "width": { "type": "number", "minimum": 0.15, "maximum": 0.65, "description": "The opening's widest span, x W." },
+        "shoulder": { "type": "number", "minimum": 0, "maximum": 0.45, "description": "The tip-side shoulder's length as a fraction of the opening (the guard side's is half)." },
+        "point": { "type": "number", "minimum": 0.05, "maximum": 1, "description": "The opening's width at its ends, a fraction of width." },
+        "arch": { "type": "number", "minimum": 0, "maximum": 1, "description": "0 straight (angular) shoulders, 1 arched." },
+        "rail": { "type": "number", "minimum": 0.08, "maximum": 0.4, "description": "The thinnest a rail may get, x W." },
+        "lip": { "type": "number", "minimum": 0, "maximum": 0.6, "description": "The glowing lip round the opening as a fraction of the rail's width (in the glow mesh)." }
+      }
+    },
+    "BladeFracture": {
+      "type": "object",
+      "title": "Faultbound",
+      "description": "SW12 faultbound (bladegen-core fault.rs): fragments of the blade's own surface between zigzag fractures, the first and last fixed, the others shifted and turned by hashes of the seed. W = base width.",
+      "additionalProperties": false,
+      "properties": {
+        "segments": { "type": "integer", "minimum": 2, "maximum": 7, "description": "Fragments." },
+        "gap": { "type": "number", "minimum": 0.08, "maximum": 0.4, "description": "The open gap between neighbours, x W." },
+        "offset": { "type": "number", "minimum": 0, "maximum": 0.35, "description": "Sideways shift of the free fragments, x W." },
+        "tilt": { "type": "number", "minimum": 0, "maximum": 0.08, "description": "Turn of the free fragments in radians." },
+        "zigzag": { "type": "number", "minimum": 0, "maximum": 0.12, "description": "The fracture's zigzag, x W." },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295, "description": "Seed of the zigzag, shift and turn signs." },
+        "rim": { "type": "number", "minimum": 0, "maximum": 0.2, "description": "Glowing rims along each fracture, x W (in the glow mesh)." }
+      }
     },
     "BladeGlow": {
       "type": "object",
@@ -874,7 +913,7 @@
         },
         "style": {
           "type": "string",
-          "enum": ["bar", "winged", "claw", "disk", "basket", "knucklebow", "swept", "shell", "forged", "recurve", "crescent", "halo", "wings", "talon", "ziggurat"],
+          "enum": ["bar", "winged", "claw", "disk", "basket", "knucklebow", "swept", "shell", "forged", "recurve", "crescent", "halo", "wings", "talon", "ziggurat", "shear"],
           "description": "Guard style preset: rectangular bar, curved wing, pointy claw, circular disk (tsuba), basket shell, knuckle bow, swept hilt, cup/shell guard, or forged cross (a swept, tapered cross sized from the blade; see 'forged'). Monument styles sized from the blade (see 'monument'): recurve (S-swept arms with counter-quillons), crescent (horns), halo (a ring with rays), wings (a fan of feathers), talon (hooked claws), ziggurat (stepped tiers with obelisks)."
         },
         "curveSegments": {
@@ -1102,6 +1141,10 @@
         "monument": {
           "$ref": "#/$defs/GuardMonument",
           "description": "For the monument styles (recurve, crescent, halo, wings, talon, ziggurat): proportions relative to the blade and the style's shape knobs."
+        },
+        "shear": {
+          "$ref": "#/$defs/GuardShear",
+          "description": "For style='shear' (SW12 shear-gate): the hub, jaws and throat, relative to the blade."
         }
       },
       "required": ["width", "thickness", "curve", "tilt", "style"]
@@ -1143,6 +1186,23 @@
         "section": { "type": "number", "minimum": -1, "maximum": 1, "description": "Cross-section: -1 square flats, 0 round, 1 diamond ridge." },
         "segments": { "type": "integer", "minimum": 4, "maximum": 96, "description": "Rings along each arm." },
         "radial": { "type": "integer", "minimum": 8, "maximum": 64, "multipleOf": 4, "description": "Points around the cross-section." }
+      }
+    },
+    "GuardShear": {
+      "type": "object",
+      "title": "Shear-Gate",
+      "description": "SW12 shear-gate (bladegen-core shear.rs): a chamfered hub round the blade's root with a glowing throat on both faces and two stepped, point-symmetric jaws; sizes relative to the blade (base width W, thickness T), guard.width is the span.",
+      "additionalProperties": false,
+      "properties": {
+        "height": { "type": "number", "minimum": 0.25, "maximum": 0.8, "description": "A jaw's bar height, x W." },
+        "depth": { "type": "number", "minimum": 1.2, "maximum": 4, "description": "A jaw's depth across the flats, x T (the hub is 1.15x deeper)." },
+        "block": { "type": "number", "minimum": 0.35, "maximum": 0.9, "description": "The hub's half width, x W." },
+        "tooth": { "type": "number", "minimum": 0.3, "maximum": 1.6, "description": "The tooth's rise above its bar, x the bar height." },
+        "at": { "type": "number", "minimum": 0.25, "maximum": 0.8, "description": "The tooth's centre along the arm (0 at the hub, 1 at the end)." },
+        "span": { "type": "number", "minimum": 0.12, "maximum": 0.45, "description": "The tooth's width as a fraction of the arm." },
+        "stagger": { "type": "number", "minimum": 0, "maximum": 0.5, "description": "The jaws' offset along the blade (right toward the tip, left toward the grip), x W." },
+        "chamfer": { "type": "number", "minimum": 0, "maximum": 0.35, "description": "Corner chamfers, x the bar height." },
+        "throat": { "type": "number", "minimum": 0, "maximum": 0.9, "description": "The glowing throat's height as a fraction of the hub's; 0 = none." }
       }
     },
     "HandleParams": {

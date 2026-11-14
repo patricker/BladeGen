@@ -358,3 +358,31 @@ preset: strengths, every stage's weights, picks and the designed params); each m
 (every guard twice, every pommel twice, every blade family, every grip, plus `--designs`)
 has `<id>.case.json` (inputs and the designed params), `<id>.validated.json` and the SW1 mesh
 dump. A port matches the pick table by JSON equality and the meshes as the SW1 fixtures.
+
+## SW12 features: window-keel, faultbound, shear-gate
+
+CX2's three strongest studies (`explore/codex-sword-ideas`) as parameterised bladegen-core features. They are in
+the catalogue at weight 0 (`window`, `faultbound` blades; `shear` guard): never drawn, so no planet sword changes
+until the owner gives them a weight. `Catalogue::drawable()` is the table without them (what the SW10/SW11 corpora
+compare); `Catalogue::dormant()` lists them.
+
+- **`blade.aperture`** (`keel.rs`, preset `monument-window`): bladegen's blade surface (`blade::Section`, the same
+  per-row and per-column evaluation as the grid blade), its 13 columns laid out per row so columns 4 and 8 are the
+  opening's edges. Inside the opening the middle cells are left out and the rails' inner walls and the two end
+  walls close the solid on their own vertices: one closed, outward-wound mesh. Knobs: `start`, `end` (t),
+  `width` (x base width), `shoulder`, `point`, `arch`, `rail` (the thinnest rail), `lip` (the glowing lip round the
+  opening, in the glow mesh). Runes are not drawn on a window-keel; the edge strips are.
+- **`blade.fracture`** (`fault.rs`, preset `monument-faultbound`): fragments of the same surface between zigzag
+  fractures (each column its own run of t), the first and last fixed, the others shifted and turned by FNV-1a
+  hashes of `"<seed>|fault|<k>|..."` (no PRNG stream). Knobs: `segments`, `gap`, `offset`, `tilt`, `zigzag`,
+  `seed`, `rim` (glowing rims along each fracture). The zigzag and turn are limited so a fracture never closes
+  below 30 % of its gap. Wins over `aperture`.
+- **`guard.style = 'shear'` + `guard.shear`** (`shear.rs`, preset `monument-shear`): a chamfered hub and two
+  stepped, point-symmetric jaws (flat-shaded prisms, ear-clipped in a fixed order), sized from the blade and placed
+  like the monument guards; the throat is a second mesh drawn with the glow material (a `glow` part after the
+  guard in `model::build_parts`, a child of the guard mesh in the site).
+
+The window-keel and faultbound blades are built wound outward with normals, tangents, uv = (s, t) and the glow
+mask, so the export preparation leaves them as built (`blade::prepare_export_blade`). `crates/bladegen-core/tests/
+sw12.rs` checks them (closed, outward, on all 182 golden blades; the opening open, the fragments apart, the shear
+symmetric) and pins 24 swords' digests in `tests/goldens/sw12.json`, which `sw12.spec.ts` checks against the wasm.

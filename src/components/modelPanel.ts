@@ -654,6 +654,64 @@ export function attachModelPanel(opts: {
   );
 
   // Family presets & advanced waves
+  // SW12 window-keel (blade.aperture) and faultbound (blade.fracture): on/off, then their knobs
+  const sw12Group = (
+    title: string,
+    key: 'aperture' | 'fracture',
+    enableLabel: string,
+    rows: Array<[string, string, number, number, number, number, string]>
+  ) => {
+    const grp = addGroup(sections.Blade, title);
+    grp.dataset.advanced = 'true';
+    const ensure = () => {
+      const b: any = state.blade as any;
+      if (!b[key]) b[key] = {};
+      return b[key] as any;
+    };
+    checkbox(
+      grp,
+      enableLabel,
+      !!(state.blade as any)[key],
+      (v) => {
+        if (v) ensure();
+        else delete (state.blade as any)[key];
+      },
+      rerender
+    );
+    for (const [label, k, min, max, step, def, help] of rows) {
+      slider(
+        grp,
+        label,
+        min,
+        max,
+        step,
+        (state.blade as any)[key]?.[k] ?? def,
+        (v) => (ensure()[k] = v),
+        rerender,
+        help
+      );
+    }
+  };
+  sw12Group('Window Keel', 'aperture', 'Enable Window', [
+    ['Window Start', 'start', 0.08, 0.4, 0.01, 0.2, 'Where the opening starts, along the blade from the guard.'],
+    ['Window End', 'end', 0.4, 0.8, 0.01, 0.66, 'Where it ends (at least 0.2 after the start).'],
+    ['Window Width', 'width', 0.15, 0.65, 0.01, 0.42, 'The widest span, x the base width.'],
+    ['Window Shoulder', 'shoulder', 0, 0.45, 0.01, 0.22, 'Shoulder length, a fraction of the opening.'],
+    ['Window Point', 'point', 0.05, 1, 0.01, 0.22, 'The width at the ends, a fraction of the span.'],
+    ['Window Arch', 'arch', 0, 1, 0.01, 0, '0 straight shoulders, 1 arched.'],
+    ['Window Rail', 'rail', 0.08, 0.4, 0.01, 0.18, 'The thinnest rail, x the base width.'],
+    ['Window Lip', 'lip', 0, 0.6, 0.01, 0.2, 'The glowing lip, a fraction of the rail (needs the glow).'],
+  ]);
+  sw12Group('Faultbound', 'fracture', 'Enable Fracture', [
+    ['Fragments', 'segments', 2, 7, 1, 4, 'Fragments; the first and the last never move.'],
+    ['Fracture Gap', 'gap', 0.08, 0.4, 0.01, 0.24, 'The open gap, x the base width.'],
+    ['Fracture Offset', 'offset', 0, 0.35, 0.01, 0.14, 'Sideways shift of the free fragments, x the base width.'],
+    ['Fracture Tilt', 'tilt', 0, 0.08, 0.001, 0.03, 'Turn of the free fragments (radians).'],
+    ['Fracture Zigzag', 'zigzag', 0, 0.12, 0.005, 0.07, 'The zigzag, x the base width.'],
+    ['Fracture Seed', 'seed', 0, 9999, 1, 1, 'Seed of the zigzag, offset and turn signs.'],
+    ['Fracture Rim', 'rim', 0, 0.2, 0.005, 0.07, 'Glowing rims, x the base width (needs the glow).'],
+  ]);
+
   const bFamily = addGroup(sections.Blade, 'Family');
   bFamily.dataset.advanced = 'true';
   select(
@@ -865,6 +923,7 @@ export function attachGuardControls(opts: {
       'wings',
       'talon',
       'ziggurat',
+      'shear',
     ],
     state.guard.style as any,
     (v) => (state.guard.style = v as any),
@@ -996,6 +1055,39 @@ export function attachGuardControls(opts: {
       step,
       (state.guard as any).monument?.[key] ?? def,
       (v) => (ensureMonument()[key] = v),
+      rerender,
+      help
+    );
+  }
+
+  // SW12 shear-gate (style 'shear'): hub, stepped jaws and glowing throat, relative to the blade
+  const gShear = addGroup(sections.Guard, 'Shear Gate');
+  gShear.dataset.advanced = 'true';
+  const ensureShear = () => {
+    const g: any = state.guard as any;
+    if (!g.shear) g.shear = {};
+    return g.shear as any;
+  };
+  const shearSliders: Array<[string, string, number, number, number, number, string]> = [
+    ['Jaw Height', 'height', 0.25, 0.8, 0.01, 0.46, 'A jaw bar height, x the blade base width.'],
+    ['Jaw Depth', 'depth', 1.2, 4, 0.05, 2.6, 'Depth across the flats, x the blade thickness (the hub 1.15x).'],
+    ['Hub Width', 'block', 0.35, 0.9, 0.01, 0.6, 'Hub half width, x the blade base width.'],
+    ['Tooth Rise', 'tooth', 0.3, 1.6, 0.01, 0.95, 'The tooth above its bar, x the bar height.'],
+    ['Tooth At', 'at', 0.25, 0.8, 0.01, 0.58, 'The tooth centre along the arm (0 hub, 1 end).'],
+    ['Tooth Width', 'span', 0.12, 0.45, 0.01, 0.3, 'The tooth width, a fraction of the arm.'],
+    ['Jaw Stagger', 'stagger', 0, 0.5, 0.01, 0.18, 'The two jaws offset along the blade, x the base width.'],
+    ['Chamfer', 'chamfer', 0, 0.35, 0.01, 0.18, 'Corner chamfers, x the bar height.'],
+    ['Throat', 'throat', 0, 0.9, 0.01, 0.62, 'The glowing throat, x the hub height (needs the blade glow).'],
+  ];
+  for (const [label, key, min, max, step, def, help] of shearSliders) {
+    slider(
+      gShear,
+      label,
+      min,
+      max,
+      step,
+      (state.guard as any).shear?.[key] ?? def,
+      (v) => (ensureShear()[key] = v),
       rerender,
       help
     );

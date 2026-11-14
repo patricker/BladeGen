@@ -181,10 +181,10 @@ export function presetShowcaseArming(): SwordParams {
   p.blade.fullerDepth = 0.015;
   p.blade.fullerLength = 0.55;
   // Some builds expose fullerWidth/count/profile via unions; guard behind any
-  ;(p.blade as any).fullerWidth = 0.05;
+  (p.blade as any).fullerWidth = 0.05;
   p.blade.fullerProfile = 'u' as any;
   p.blade.fullerMode = 'overlay';
-  ;(p.blade as any).fullerCount = 1;
+  (p.blade as any).fullerCount = 1;
   p.blade.ricassoLength = 0.04;
   p.blade.chaos = 0;
   p.blade.edgeType = 'double';
@@ -206,10 +206,10 @@ export function presetShowcaseArming(): SwordParams {
   p.handle.wrapEnabled = true;
   p.handle.wrapTurns = 6;
   p.handle.wrapDepth = 0.01;
-  ;(p.handle as any).wrapTexture = true;
+  (p.handle as any).wrapTexture = true;
   p.handle.wrapTexScale = 9;
   p.handle.wrapTexAngle = Math.PI / 6;
-  ;(p.handle as any).ovalRatio = 1.1;
+  (p.handle as any).ovalRatio = 1.1;
 
   // Pommel
   p.pommel.style = 'scentStopper' as any;
@@ -868,9 +868,27 @@ export const swordPresets: PresetEntry[] = [
     label: 'Cup-Hilt Rapier',
     build: presetRapierCup,
     materials: {
-      blade: { color: '#edf2ff', metalness: 0.95, roughness: 0.16, envMapIntensity: 1.35, anisotropy: 0.3 },
-      guard: { color: '#f2f0eb', metalness: 0.93, roughness: 0.22, anisotropy: 0.6, envMapIntensity: 1.55 },
-      handle: { color: '#2f2f3a', metalness: 0.12, roughness: 0.58, sheen: 0.26, sheenColor: '#4c4c61' },
+      blade: {
+        color: '#edf2ff',
+        metalness: 0.95,
+        roughness: 0.16,
+        envMapIntensity: 1.35,
+        anisotropy: 0.3,
+      },
+      guard: {
+        color: '#f2f0eb',
+        metalness: 0.93,
+        roughness: 0.22,
+        anisotropy: 0.6,
+        envMapIntensity: 1.55,
+      },
+      handle: {
+        color: '#2f2f3a',
+        metalness: 0.12,
+        roughness: 0.58,
+        sheen: 0.26,
+        sheenColor: '#4c4c61',
+      },
       pommel: { color: '#f2f0eb', metalness: 0.93, roughness: 0.24, anisotropy: 0.5 },
     },
     variants: [
@@ -889,7 +907,12 @@ export const swordPresets: PresetEntry[] = [
         parts: {
           guard: { color: '#1e1e26', metalness: 0.45, roughness: 0.48, anisotropy: 0.25 },
           pommel: { color: '#1e1e26', metalness: 0.45, roughness: 0.5 },
-          blade: { color: '#cfd6ff', roughness: 0.18, emissiveColor: '#6a7dff', emissiveIntensity: 0.5 },
+          blade: {
+            color: '#cfd6ff',
+            roughness: 0.18,
+            emissiveColor: '#6a7dff',
+            emissiveIntensity: 0.5,
+          },
         },
       },
     ],
@@ -899,23 +922,53 @@ export const swordPresets: PresetEntry[] = [
     label: 'Basket-Hilt Broadsword',
     build: presetBasketBroadsword,
     materials: {
-      blade: { color: '#e0ebff', metalness: 0.9, roughness: 0.2, envMapIntensity: 1.4, anisotropy: 0.28 },
+      blade: {
+        color: '#e0ebff',
+        metalness: 0.9,
+        roughness: 0.2,
+        envMapIntensity: 1.4,
+        anisotropy: 0.28,
+      },
       guard: { color: '#b7c3d9', metalness: 0.82, roughness: 0.3, anisotropy: 0.48 },
-      handle: { color: '#3b2e2e', metalness: 0.08, roughness: 0.56, sheen: 0.24, sheenColor: '#523c3c' },
+      handle: {
+        color: '#3b2e2e',
+        metalness: 0.08,
+        roughness: 0.56,
+        sheen: 0.24,
+        sheenColor: '#523c3c',
+      },
       pommel: { color: '#b7c3d9', metalness: 0.82, roughness: 0.32, anisotropy: 0.46 },
     },
   },
   {
     id: 'jian-scholar',
-    label: 'Jian — Scholar\'s Edge',
+    label: "Jian — Scholar's Edge",
     build: presetJianScholar,
     materials: {
-      blade: { color: '#dbe4ff', metalness: 0.9, roughness: 0.22, envMapIntensity: 1.2, anisotropy: 0.2 },
+      blade: {
+        color: '#dbe4ff',
+        metalness: 0.9,
+        roughness: 0.22,
+        envMapIntensity: 1.2,
+        anisotropy: 0.2,
+      },
       guard: { color: '#aab6c7', metalness: 0.82, roughness: 0.32, anisotropy: 0.42 },
-      handle: { color: '#463223', metalness: 0.04, roughness: 0.74, sheen: 0.2, sheenColor: '#5f412d' },
+      handle: {
+        color: '#463223',
+        metalness: 0.04,
+        roughness: 0.74,
+        sheen: 0.2,
+        sheenColor: '#5f412d',
+      },
       pommel: { color: '#b4bccb', metalness: 0.8, roughness: 0.34, anisotropy: 0.36 },
       scabbard: { color: '#2f2418', metalness: 0.05, roughness: 0.7, sheen: 0.25 },
-      tassel: { color: '#7c3f1d', metalness: 0.05, roughness: 0.8, sheen: 0.35, sheenColor: '#d8a273' },
+      tassel: {
+        color: '#7c3f1d',
+        metalness: 0.05,
+        roughness: 0.8,
+        sheen: 0.35,
+        sheenColor: '#d8a273',
+      },
     },
   },
   {
@@ -923,9 +976,23 @@ export const swordPresets: PresetEntry[] = [
     label: 'Katana — Midare Hamon',
     build: presetKatanaMidare,
     materials: {
-      blade: { color: '#d8e6ff', metalness: 0.88, roughness: 0.2, clearcoat: 0.25, clearcoatRoughness: 0.35, envMapIntensity: 1.4, anisotropy: 0.32 },
+      blade: {
+        color: '#d8e6ff',
+        metalness: 0.88,
+        roughness: 0.2,
+        clearcoat: 0.25,
+        clearcoatRoughness: 0.35,
+        envMapIntensity: 1.4,
+        anisotropy: 0.32,
+      },
       guard: { color: '#2f1e14', metalness: 0.4, roughness: 0.46 },
-      handle: { color: '#352d25', metalness: 0.05, roughness: 0.58, sheen: 0.28, sheenColor: '#4a3b2d' },
+      handle: {
+        color: '#352d25',
+        metalness: 0.05,
+        roughness: 0.58,
+        sheen: 0.28,
+        sheenColor: '#4a3b2d',
+      },
       pommel: { color: '#2c1f16', metalness: 0.45, roughness: 0.42 },
     },
   },
@@ -945,7 +1012,13 @@ export const swordPresets: PresetEntry[] = [
     label: 'Sabre / Kilij',
     build: presetKilij,
     materials: {
-      blade: { color: '#e0ebff', metalness: 0.9, roughness: 0.2, envMapIntensity: 1.4, anisotropy: 0.28 },
+      blade: {
+        color: '#e0ebff',
+        metalness: 0.9,
+        roughness: 0.2,
+        envMapIntensity: 1.4,
+        anisotropy: 0.28,
+      },
       guard: { color: '#b7c3d9', metalness: 0.82, roughness: 0.3, anisotropy: 0.48 },
       handle: { color: '#3b2e2e', metalness: 0.08, roughness: 0.56, sheen: 0.24 },
       pommel: { color: '#b7c3d9', metalness: 0.82, roughness: 0.32 },
@@ -956,7 +1029,13 @@ export const swordPresets: PresetEntry[] = [
     label: 'Flamberge Zweihänder',
     build: presetFlambergeZweihander,
     materials: {
-      blade: { color: '#eef4ff', metalness: 0.93, roughness: 0.16, envMapIntensity: 1.35, anisotropy: 0.24 },
+      blade: {
+        color: '#eef4ff',
+        metalness: 0.93,
+        roughness: 0.16,
+        envMapIntensity: 1.35,
+        anisotropy: 0.24,
+      },
       guard: { color: '#c9a347', metalness: 0.82, roughness: 0.34 },
       handle: { color: '#2f3338', metalness: 0.05, roughness: 0.7, sheen: 0.24 },
       pommel: { color: '#c9a347', metalness: 0.82, roughness: 0.35 },
@@ -1621,6 +1700,95 @@ export function presetMonument(): SwordParams {
   return p;
 }
 
+/**
+ * SW12 window-keel on the monument: a broader blade, parallel to its shoulders, with one long opening between two
+ * rails (`blade.aperture`), a glowing lip, a solid keel toward the planted tip; no fuller (the opening is the
+ * blade's centre). bladegen-core `keel.rs`.
+ */
+export function presetMonumentWindow(): SwordParams {
+  const p = presetMonument();
+  p.blade.baseWidth = 0.75;
+  p.blade.tipWidth = 0.05;
+  p.blade.tipRampStart = 0.74;
+  p.blade.kissakiLength = 0.14;
+  p.blade.crossSection = 'hexagonal';
+  p.blade.fullerEnabled = false;
+  p.blade.fullerCount = 0;
+  p.blade.sweepSegments = 192;
+  p.blade.aperture = {
+    start: 0.2,
+    end: 0.66,
+    width: 0.5,
+    shoulder: 0.24,
+    point: 0.2,
+    arch: 0,
+    rail: 0.18,
+    lip: 0.22,
+  };
+  p.guard.width = 3.0;
+  return p;
+}
+
+/**
+ * SW12 faultbound on the monument: the blade broken into four fragments held apart across glowing zigzag
+ * fractures (`blade.fracture`); the root and the planted keel fixed, the two between shifted and turned.
+ * bladegen-core `fault.rs`.
+ */
+export function presetMonumentFaultbound(): SwordParams {
+  const p = presetMonument();
+  p.blade.baseWidth = 0.66;
+  p.blade.fullerEnabled = false;
+  p.blade.fullerCount = 0;
+  p.blade.sweepSegments = 192;
+  p.blade.fracture = {
+    segments: 4,
+    gap: 0.34,
+    offset: 0.2,
+    tilt: 0.04,
+    zigzag: 0.07,
+    seed: 7,
+    rim: 0.07,
+  };
+  p.guard.width = 2.64;
+  return p;
+}
+
+/**
+ * SW12 shear-gate on the monument: a deep hub with a glowing throat and two stepped, point-symmetric jaws
+ * (`guard.style = 'shear'`, `guard.shear`), sized from the blade. bladegen-core `shear.rs`.
+ */
+export function presetMonumentShear(): SwordParams {
+  const p = presetMonument();
+  p.guard.style = 'shear';
+  delete (p.guard as any).forged;
+  p.guard.width = 2.6;
+  p.guard.shear = {
+    height: 0.46,
+    depth: 2.6,
+    block: 0.6,
+    tooth: 0.95,
+    at: 0.58,
+    span: 0.3,
+    stagger: 0.18,
+    chamfer: 0.18,
+    throat: 0.62,
+  };
+  return p;
+}
+
+const monumentMaterials = {
+  blade: { color: '#c9d3e6', metalness: 0.9, roughness: 0.28 },
+  guard: { color: '#c9a54a', metalness: 0.9, roughness: 0.3 },
+  pommel: { color: '#c9a54a', metalness: 0.9, roughness: 0.3 },
+  handle: { color: '#2b1d14', metalness: 0.05, roughness: 0.75 },
+};
+const monumentRender = {
+  bloomEnabled: true,
+  bloomStrength: 0.9,
+  bloomThreshold: 0.7,
+  bloomRadius: 0.4,
+};
+
 export const giantPresets: PresetEntry[] = [
   {
     id: 'monument',
@@ -1633,5 +1801,27 @@ export const giantPresets: PresetEntry[] = [
       handle: { color: '#2b1d14', metalness: 0.05, roughness: 0.75 },
     },
     render: { bloomEnabled: true, bloomStrength: 0.9, bloomThreshold: 0.7, bloomRadius: 0.4 },
+  },
+  // SW12 (dormant in the planet catalogue until the owner weighs them)
+  {
+    id: 'monument-window',
+    label: 'Monument Window-Keel (Giant)',
+    build: presetMonumentWindow,
+    materials: monumentMaterials,
+    render: monumentRender,
+  },
+  {
+    id: 'monument-faultbound',
+    label: 'Monument Faultbound (Giant)',
+    build: presetMonumentFaultbound,
+    materials: monumentMaterials,
+    render: monumentRender,
+  },
+  {
+    id: 'monument-shear',
+    label: 'Monument Shear-Gate (Giant)',
+    build: presetMonumentShear,
+    materials: monumentMaterials,
+    render: monumentRender,
   },
 ];

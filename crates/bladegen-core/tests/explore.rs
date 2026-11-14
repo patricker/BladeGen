@@ -98,3 +98,19 @@ fn read_is_event_relative_ordered_and_returns_to_rest() {
     assert_eq!(frame,sample_read(&a,&r,4000).unwrap());
     assert!(read_envelope(2200,6500,0.1)>read_envelope(2200,6500,0.5));
 }
+
+#[test]
+fn emission_ribbons_are_closed_outward_and_clear_of_blade() {
+    let f=Features {emission:Some(Emission::default()),..Features::default()};
+    let a=build(&reference(),42,&f).unwrap(); assert_eq!(a,build(&reference(),42,&f).unwrap());
+    for c in a.components.iter().filter(|c|c.role=="edge" || c.role=="channel") {
+        closed_outward(&c.mesh);
+        for p in c.mesh.pos.chunks_exact(3) {
+            let z=surface(&a.components[0].mesh,p[0] as f64,p[1] as f64).unwrap().0[2];
+            assert!(p[2].abs() as f64>z);
+        }
+    }
+    assert_eq!(star_color(10000.),[0.38,0.65,1.]);
+    assert_eq!(star_color(2500.),[1.,0.24,0.06]);
+    assert!(star_color(8000.).iter().all(|x|*x>=0. && *x<=1.));
+}

@@ -31,6 +31,55 @@ pub struct Features {
     pub resonance: Option<Resonance>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub read: Option<Read>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub emission: Option<Emission>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Emission { pub star_k:f64, pub edge_strength:f64, pub channel_strength:f64 }
+impl Default for Emission {
+    fn default()->Self { Self {star_k:10000.,edge_strength:4.,channel_strength:2.} }
+}
+
+/// Authored linear-RGB knots; interpolate in specified table order, never blackbody platform maths.
+pub fn star_color(k:f64)->[f64;3] {
+    let knots=[(2500.,[1.,0.24,0.06]),(5500.,[1.,0.85,0.65]),(10000.,[0.38,0.65,1.]),(30000.,[0.25,0.42,1.])];
+    let k=k.clamp(2500.,30000.);
+    for i in 0..3 { if k<=knots[i+1].0 {
+        let t=(k-knots[i].0)/(knots[i+1].0-knots[i].0);
+        return std::array::from_fn(|j|knots[i].1[j]+(knots[i+1].1[j]-knots[i].1[j])*t);
+    }} knots[3].1
+}
+
+/// Closed four-corner loft. Each ring is clockwise viewed down +Y, no zero-size tips.
+pub fn loft(rings:&[[[f64;3];4]])->Mesh {
+    let mut m=Mesh::default();
+    for ring in rings { for p in ring { m.pos.extend(p.map(|v|v as f32)); } }
+    m.idx.extend([0,1,2,0,2,3]);
+    for i in 0..rings.len()-1 { for k in 0..4 {
+        let a=(i*4+k) as u32; let b=(i*4+(k+1)%4) as u32;
+        m.idx.extend([a,a+4,b,b,a+4,b+4]);
+    }}
+    let n=(rings.len()*4-4) as u32;
+    m.idx.extend([n,n+2,n+1,n,n+3,n+2]);
+    m.compute_vertex_normals(); m
+}
+
+fn luminous_ribbon(s:&Sword,mesh:&Mesh,offset:f64,width:f64)->anyhow::Result<Mesh> {
+    let mut rings=vec![];
+    for i in 0..=24 {
+        let t=0.08+0.70*i as f64/24.; let y=t*s.blade.length;
+        let w=crate::blade::tip_width_with_kissaki(&s.blade,t,s.blade.base_width,s.blade.tip_width);
+        let cx=crate::blade::bend_offset_x(&s.blade,y,s.blade.length)+crate::blade::waviness_at(&s.blade,t).0;
+        let x0=cx+(offset-width*0.5)*w; let x1=cx+(offset+width*0.5)*w;
+        let p0=surface(mesh,x0,y).ok_or_else(||anyhow::anyhow!("ribbon outside surface"))?.0;
+        let p1=surface(mesh,x1,y).ok_or_else(||anyhow::anyhow!("ribbon outside surface"))?.0;
+        let z0=p0[2]+0.004*s.blade.base_width; let z1=p1[2]+0.004*s.blade.base_width;
+        let d=0.006*s.blade.base_width;
+        rings.push([[x0,y,z0],[x1,y,z1],[x1,y,z1+d],[x0,y,z0+d]]);
+    }
+    Ok(loft(&rings))
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -211,6 +260,21 @@ pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
                 strength: 7.,
                 travel: [0.;3],
             });
+        }
+    }
+    if let Some(e)=&f.emission {
+        valid(e.star_k,2500.,30000.,"stellar temperature")?;
+        valid(e.edge_strength,0.,12.,"edge strength")?; valid(e.channel_strength,0.,12.,"channel strength")?;
+        for (i,(offset,width,role,color,strength)) in [(-0.43,0.025,"edge",star_color(e.star_k),e.edge_strength),
+            (0.43,0.025,"edge",star_color(e.star_k),e.edge_strength),(0.,0.065,"channel",[0.10,0.85,0.5],e.channel_strength)].into_iter().enumerate() {
+            let m=luminous_ribbon(s,&a.components[0].mesh,offset,width)?;
+            // Separate front/back meshes keep semantic material roles and face culling intact.
+            for face in [1.,-1.] {
+                let mut mesh=m.clone();
+                if face<0. { for p in mesh.pos.chunks_exact_mut(3) {p[2] = -p[2];} for t in mesh.idx.chunks_exact_mut(3) {t.swap(1,2);} mesh.compute_vertex_normals(); }
+                a.components.push(Component {id:format!("emission/{i}/{face}"),mesh,matrix:geom::IDENTITY,
+                    role:role.into(),color,strength,travel:[0.;3]});
+            }
         }
     }
     Ok(a)

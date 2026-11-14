@@ -48,3 +48,15 @@ Tests cover rest at both endpoints and after duration, stage ordering, determini
 samples, fixed blade and bounded gain. Verdict **keep** as shared show infrastructure. No family
 weight; all selected experimental families can carry this descriptor. Static PNG cannot show gain
 because it intentionally has no exposure/bloom; the GLB carries real emissive strength.
+
+## 15 — Stellar emission roles
+
+Built separate closed front/back edge and mineral channel ribbons, plus white resonance nodes.
+Widths are 2.5%+2.5%+6.5% of local width: 11.5% bright face area before nodes. Authored
+linear-RGB temperature table at 2500/5500/10000/30000 K; strength defaults edge 4, channel 2,
+node 7. Ribbons sample actual blade triangles. Tests: closed/outward/finite/deterministic,
+surface clearance, exact palette knots and interpolation bounds.
+[GLB](out/15-emission/sword.glb), [mast](out/15-emission/mast.png), [drone](out/15-emission/drone.png).
+Verdict **keep** as a shared look. Restrict current mirrored back ribbons to symmetric untwisted
+blades until a back-surface sampler is added; no claim of general asymmetric back attachment.
+Suggested feature frequency 0.7, blueStar ×1.5; currently opt-in only, no catalogue edits.

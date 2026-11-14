@@ -35,6 +35,60 @@ pub struct Features {
     pub emission: Option<Emission>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scars: Option<Scars>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub staves: Option<Staves>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Staves { pub count:u32, pub radius:f64, pub section:f64, pub bow:f64 }
+impl Default for Staves { fn default()->Self { Self {count:4,radius:0.34,section:0.11,bow:0.08} } }
+
+fn component(id:&str,mesh:Mesh)->Component {
+    Component {id:id.into(),mesh,matrix:geom::IDENTITY,role:"metal".into(),color:[0.14,0.17,0.21],strength:0.,travel:[0.;3]}
+}
+
+/// Shared-index rectangular annulus about Y; used as real load-bearing end collars.
+pub fn annulus_y(y:f64,r:f64,section:f64,height:f64)->Mesh {
+    let mut m=Mesh::default(); let n=24;
+    for i in 0..n {
+        let angle=std::f64::consts::TAU*i as f64/n as f64;
+        let (c,s)=(geom::cos(angle),geom::sin(angle));
+        for (radius,dy) in [(r-section*0.5,-height*0.5),(r+section*0.5,-height*0.5),
+            (r+section*0.5,height*0.5),(r-section*0.5,height*0.5)] {
+            m.pos.extend([ (radius*c) as f32,(y+dy) as f32,(radius*s) as f32 ]);
+        }
+    }
+    for i in 0..n {for k in 0..4 {
+        let a=(i*4+k) as u32; let b=(i*4+(k+1)%4) as u32;
+        let c=(((i+1)%n)*4+k) as u32; let d=(((i+1)%n)*4+(k+1)%4) as u32;
+        m.idx.extend([a,b,c,b,d,c]);
+    }} m.compute_vertex_normals();m
+}
+
+fn add_staves(a:&mut Assembly,s:&Sword,st:&Staves)->anyhow::Result<()> {
+    anyhow::ensure!((3..=6).contains(&st.count),"staves count must be 3..=6");
+    valid(st.radius,0.2,0.45,"stave radius")?; valid(st.section,0.07,0.15,"stave section")?; valid(st.bow,0.,0.2,"stave bow")?;
+    let w=s.blade.base_width; let d=st.section*w*0.5;
+    a.components.retain(|c|!c.id.starts_with("handle#"));
+    for i in 0..st.count {
+        let theta=std::f64::consts::TAU*(i as f64+0.5)/st.count as f64;
+        let (c,sn)=(geom::cos(theta),geom::sin(theta));
+        let rings:Vec<_>=(0..=12).map(|j| {
+            let t=j as f64/12.; let r=w*(st.radius+st.bow*4.*t*(1.-t));
+            let (x,z)=(c*r,sn*r);let y=-s.handle.length*(1.-t);
+            [[x-d,y,z-d],[x+d,y,z-d],[x+d,y,z+d],[x-d,y,z+d]]
+        }).collect();
+        a.components.push(component(&format!("stave/{i}"),loft(&rings)));
+    }
+    for (i,y) in [-s.handle.length+0.04*w,-0.04*w].into_iter().enumerate() {
+        a.components.push(component(&format!("stave/collar/{i}"),annulus_y(y,st.radius*w,st.section*w*1.5,0.08*w)));
+    }
+    let mut core=component("stave/core",node_mesh([0.,-s.handle.length*0.5,0.],0.08*w));
+    // A closed elongated octahedron leaves air around the contained power source.
+    for p in core.mesh.pos.chunks_exact_mut(3) {p[1]=(-s.handle.length*0.5+(p[1] as f64+s.handle.length*0.5)*s.handle.length/(0.2*w)) as f32;}
+    core.mesh.compute_vertex_normals();core.role="channel".into();core.color=[0.1,0.85,0.5];core.strength=3.;
+    a.components.push(core); Ok(())
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -264,6 +318,7 @@ pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
         components,
         anchors: vec![],
     };
+    if let Some(st)=&f.staves { add_staves(&mut a,s,st)?; }
     if let Some(sc)=&f.scars {
         // Replace only the experimental blade; legacy builder never calls this path.
         a.components[0].mesh=scar_blade(s,seed,sc)?;

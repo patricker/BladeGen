@@ -72,3 +72,14 @@ positive volume, finite bounds, exact repeatability, notch count and minimum lig
 Verdict **promising**: reads as damage from the mast, but needs exposed fracture emission before
 production; rectangular section is intentionally brutal. Proposed feature frequency 0.35,
 volcanic ×2.5, barren ×1.6. Current API opts in; legacy blade outputs are untouched.
+
+## 7 — Open-stave grip
+
+Built three to six bowed square staves around an empty shaft, two true annular collars and a
+slender floating luminous diamond column. Parameters in blade widths: radius 0.2–0.45 (0.34),
+section 0.07–0.15 (0.11), bow 0–0.2 (0.08). Fixed guard plane y=0 and pommel plane y=-H;
+the old solid grip is removed only in this opt-in assembly. No angular platform maths: libm.
+[GLB](out/07-staves/sword.glb), [mast](out/07-staves/mast.png), [drone](out/07-staves/drone.png).
+Tests: closed/outward members and collars, finite/repeatable buffers, all counts, open shaft
+clearance, attachment planes and bounded core. Verdict **keep**: strong drone energy chamber,
+secondary mast silhouette. Suggested grip weight 0.65, magnetic ×3, light ×1.4 (currently absent).

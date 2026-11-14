@@ -130,3 +130,21 @@ fn scars_have_explicit_notches_closed_winding_and_ligaments() {
         assert_eq!(notched,count as usize);
     }}
 }
+
+#[test]
+fn staves_have_open_shaft_closed_members_and_fixed_attachments() {
+    for count in 3..=6 {
+        let s=reference();let f=Features {staves:Some(Staves {count,..Staves::default()}),..Features::default()};
+        let a=build(&s,42,&f).unwrap();assert_eq!(a,build(&s,42,&f).unwrap());
+        assert!(!a.components.iter().any(|c|c.id.starts_with("handle#")));
+        for c in a.components.iter().filter(|c|c.id.starts_with("stave/")) {
+            closed_outward(&c.mesh);
+            let (lo,hi)=geom::world_bbox(&c.mesh,&c.matrix);
+            assert!(lo[1]>=-s.handle.length-1e-6 && hi[1]<=1e-6);
+            if c.id.matches('/').count()==1 && c.id!="stave/core" {
+                assert!((lo[1]+s.handle.length).abs()<1e-6 && hi[1].abs()<1e-6);
+                for p in c.mesh.pos.chunks_exact(3) {assert!(p[0]*p[0]+p[2]*p[2]>0.035);}
+            }
+        }
+    }
+}

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 pub mod raster;
 pub mod audit;
 pub mod authoring;
+pub mod contract;
 mod details;
 pub use details::*;
 

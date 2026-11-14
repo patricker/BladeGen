@@ -409,6 +409,20 @@ fn lods_keep_aperture_identity_while_reducing_continuous_hilt_meshes() {
     }
 }
 
+#[test]
+fn recipe_contract_roundtrips_and_rejects_version_digest_and_sink_drift() {
+    use bladegen_core::explore::contract::*;
+    let f=Features {aperture:Some(Aperture::default()),..Features::default()};
+    let m=record(&reference(),42,&f,36.,0.12).unwrap();
+    let json=serde_json::to_vec(&m).unwrap();let parsed:Manifest=serde_json::from_slice(&json).unwrap();assert_eq!(m,parsed);
+    assert_eq!(replay(&parsed).unwrap(),build(&reference(),42,&f).unwrap());
+    let mut bad=m.clone();bad.recipe_version=2;assert!(replay(&bad).is_err());
+    let mut bad=m.clone();bad.components[0].digest="0".repeat(16);assert!(replay(&bad).is_err());
+    let mut bad=m.clone();bad.catalogue_fnv1a64="0".repeat(16);assert!(replay(&bad).is_err());
+    let mut bad=m;bad.implementation_fnv1a64="0".repeat(16);assert!(replay(&bad).is_err());
+    assert!(record(&reference(),42,&Features {electrodes:Some(Electrodes::default()),..Features::default()},36.,0.2).is_err());
+}
+
 fn weld(m:&mut Mesh) {
     let mut ids=BTreeMap::new();let mut remap=vec![];let mut pos=vec![];
     for p in m.pos.chunks_exact(3) {

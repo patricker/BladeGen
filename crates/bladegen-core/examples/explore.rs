@@ -33,6 +33,7 @@ fn main() -> anyhow::Result<()> {
         "22-dedup" => Features {aperture:Some(Aperture::default()),..Features::default()},
         "23-explorer" => Features {aperture:Some(Aperture::default()),..Features::default()},
         "24-lod" => Features {aperture:Some(Aperture::default()),..Features::default()},
+        "25-contract" => Features {aperture:Some(Aperture::default()),staves:Some(Staves::default()),..Features::default()},
         _ => anyhow::bail!("unknown experiment {id}"),
     };
     let s = explore::reference();
@@ -43,6 +44,7 @@ fn main() -> anyhow::Result<()> {
         "normal":c.mesh.nrm,"index":c.mesh.idx,"matrix":c.matrix.to_vec(),"role":c.role,"color":c.color,"strength":c.strength})).collect();
     let dir = std::path::Path::new("explore/out").join(&id);
     std::fs::create_dir_all(&dir)?;
+    std::fs::write(dir.join("recipe.json"),serde_json::to_vec_pretty(&explore::contract::record(&s,42,&features,36.,0.12)?)?)?;
     if id=="24-lod" {
         let mut counts=vec![];
         for (level,a) in explore::authoring::lods(&s,42,&features)?.into_iter().enumerate() {

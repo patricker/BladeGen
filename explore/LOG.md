@@ -305,3 +305,16 @@ random generation. Continuous levels use blade sweeps 64/32 and grip radials 32/
 Tests: exact LOD0, strictly decreasing vertex counts, stable IDs, byte-identical window hardware,
 closed retained topology and mast silhouette IoU ≥0.98. Verdict **keep**, conservative first pass.
 Consumer selects LOD; no triangle decimation of critical voids or seeded ornament re-rolls.
+
+## 25 — Versioned design contract
+
+Built a replay-checked manifest: complete Rust base subset and feature blocks, seed, exact source
+and catalogue FNV-1a64 fingerprints, core/math profile, per-component mesh/material/transform
+digests, read translations, semantic anchors and burial convention. Explicitly separate from the
+editor's canonical SwordParams envelope: no site import/export schema changes or version bump.
+Every example now writes `recipe.json`. Old manifests reject changed implementations rather than
+pretend a version number guarantees compatibility; use the recorded commit to replay them.
+[GLB](out/25-contract/sword.glb), [mast](out/25-contract/mast.png), [drone](out/25-contract/drone.png),
+[manifest](out/25-contract/recipe.json). Tests: serde roundtrip and exact replay, version/digest/
+catalogue/source rejection, and placement-sink consistency. Verdict **keep** as experimental
+reproduction infrastructure. FNV is a deterministic identity check, not a security signature.

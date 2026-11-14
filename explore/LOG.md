@@ -137,3 +137,17 @@ Tests across 2/4/7 fragments and three seeds: closed/outward/finite/deterministi
 and conservative disjoint Y bounds at read samples (motion only X, so bounds prove all-time clearance).
 Verdict **keep**: clear impossible mass. Proposed blade weight 0.45, volcanic ×2.5, eccentric ×2.
 Legacy nodes/channels/scars are rejected on this topology until fragment-local routes are authored.
+
+## 1 — Window-keel blade
+
+Built a **single closed manifold solid** around one long angular aperture. Front/back annular
+faces, inner walls, outside walls and tip are explicit; no Boolean subtraction or guessed winding
+repair. Separate closed luminous lips surround the opening on both faces without filling it.
+Parameters: start 0.08–0.35 L (0.18), end 0.45–0.78 L (0.68), width 0.2–0.6 W (0.48).
+Rails retain ≥0.2 W and the planted terminal keel stays solid. Bridge count and arched shoulders
+deferred: the unbroken opening is the strongest distant shape.
+[GLB](out/01-window/sword.glb), [mast](out/01-window/mast.png), [drone](out/01-window/drone.png).
+Tests cover three aperture widths, single-solid closed/outward/finite topology, no centre-ray hit
+through the opening, real rail hits, exact bounds/determinism, and visible void area in both views.
+Verdict **keep, first production family**. Proposed blade weight 0.6, magnetic ×3, light ×2.
+All additions remain outside the shipped catalogue; legacy recipes and wasm are unchanged.

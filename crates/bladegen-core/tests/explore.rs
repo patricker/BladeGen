@@ -212,3 +212,19 @@ fn faultbound_fragments_are_closed_capped_and_never_collide_during_read() {
         }
     }}
 }
+
+#[test]
+fn window_keel_is_one_closed_solid_with_a_real_through_aperture() {
+    use bladegen_core::explore::raster::{render,View};
+    for width in [0.2,0.48,0.6] {
+        let f=Features {aperture:Some(Aperture {width,..Aperture::default()}),..Features::default()};
+        let a=build(&reference(),42,&f).unwrap();assert_eq!(a,build(&reference(),42,&f).unwrap());
+        for c in a.components.iter().filter(|c|c.id.starts_with("window/")) {closed_outward(&c.mesh);}
+        let keel=a.components.iter().find(|c|c.id=="window/keel").unwrap();
+        assert!(surface(&keel.mesh,0.,2.4).is_none());
+        assert!(surface(&keel.mesh,0.45,2.4).is_some());
+        let (lo,hi)=geom::world_bbox(&keel.mesh,&keel.matrix);
+        assert_eq!(lo[1],0.);assert_eq!(hi[1],6.);
+        for view in [View::Mast,View::Drone] {assert!(render(&a,6.,36.,0.12,view,128).unwrap().enclosed_void>20);}
+    }
+}

@@ -44,6 +44,41 @@ pub struct Features {
     pub gate: Option<Gate>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fracture: Option<Fracture>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aperture: Option<Aperture>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Aperture {pub start:f64,pub end:f64,pub width:f64}
+impl Default for Aperture {fn default()->Self {Self {start:0.18,end:0.68,width:0.48}}}
+
+/// Explicit annular face topology: front/back rails, outside walls, inside walls. One closed solid.
+fn window_mesh(outer:&[[f64;2]],inner:&[[f64;2]],depth:f64)->Mesh {
+    let n=outer.len() as u32;let mut m=Mesh::default();
+    for z in [-depth*0.5,depth*0.5] {for ring in [outer,inner] {for p in ring {m.pos.extend([p[0] as f32,p[1] as f32,z as f32]);}}}
+    for i in 0..n {let j=(i+1)%n;
+        m.idx.extend([i,j+n,j,i,i+n,j+n]); // back face
+        m.idx.extend([i+2*n,j+2*n,j+3*n,i+2*n,j+3*n,i+3*n]); // front face
+        m.idx.extend([i,j,i+2*n,j,j+2*n,i+2*n]); // outer wall
+        m.idx.extend([i+n,i+3*n,j+n,j+n,i+3*n,j+3*n]); // inner wall
+    } m.compute_vertex_normals();m
+}
+
+fn add_aperture(a:&mut Assembly,s:&Sword,ap:&Aperture)->anyhow::Result<()> {
+    valid(ap.start,0.08,0.35,"aperture start")?;valid(ap.end,0.45,0.78,"aperture end")?;valid(ap.width,0.2,0.6,"aperture width")?;
+    anyhow::ensure!(ap.end-ap.start>=0.25,"aperture too short for angular shoulders");
+    let w=s.blade.base_width;let l=s.blade.length;let h=ap.width*w*0.5;let d=s.blade.thickness.unwrap_or(0.16);
+    let outer=[[-w*0.5,0.],[w*0.5,0.],[w*0.5,l*0.8],[w*0.01,l],[-w*0.01,l],[-w*0.5,l*0.8]];
+    let inner=[[-h,ap.start*l],[h,ap.start*l],[h,(ap.end-0.06)*l],[h*0.3,ap.end*l],[-h*0.3,ap.end*l],[-h,(ap.end-0.06)*l]];
+    a.components.retain(|c|!c.id.starts_with("blade#") && !c.id.starts_with("glow#"));
+    a.components.push(component("window/keel",window_mesh(&outer,&inner,d)));
+    // Inner bevel lip on both faces: a closed annulus offset away from the opening, never fills it.
+    let lip:Vec<_>=inner.iter().map(|p|[p[0]*1.10,(p[1]-0.5*(ap.start+ap.end)*l)*1.035+0.5*(ap.start+ap.end)*l]).collect();
+    for sign in [1.,-1.] {
+        let mut c=component(&format!("window/lip/{sign}"),window_mesh(&lip,&inner,0.012*w));
+        c.matrix[14]=sign*(d*0.5+0.008*w);c.role="channel".into();c.color=[0.2,0.75,1.];c.strength=4.;a.components.push(c);
+    } Ok(())
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -146,12 +181,14 @@ impl Default for Grammar {fn default()->Self {Self {major_motif_budget:2,min_sha
 /// Conservative preflight with explicit reasons; never silently changes the chosen recipe.
 /// Numeric sanitation stays in each builder. No visit-order state or unbounded rejection loops.
 pub fn check_grammar(f:&Features)->anyhow::Result<()> {
+    anyhow::ensure!(!(f.aperture.is_some() && (f.fracture.is_some() || f.scars.is_some() || f.resonance.is_some() || f.emission.is_some())),
+        "aperture requires rail-local surface features; incompatible blade topology");
     anyhow::ensure!(!(f.fracture.is_some() && (f.scars.is_some() || f.resonance.is_some() || f.emission.is_some())),
         "fracture requires fragment-specific nodes and channels; incompatible legacy surface feature");
     if let Some(g)=&f.grammar {
         anyhow::ensure!((1..=4).contains(&g.major_motif_budget),"motif budget must be 1..=4");
         valid(g.min_shaft_gap,0.05,0.3,"minimum shaft gap")?;
-        let motifs=u32::from(f.scars.is_some())+u32::from(f.staves.is_some())+u32::from(f.gate.is_some())+u32::from(f.fracture.is_some());
+        let motifs=u32::from(f.scars.is_some())+u32::from(f.staves.is_some())+u32::from(f.gate.is_some())+u32::from(f.fracture.is_some())+u32::from(f.aperture.is_some());
         anyhow::ensure!(motifs<=g.major_motif_budget,"major motif budget exceeded: {motifs}");
         if let Some(st)=&f.staves {
             anyhow::ensure!(st.radius-st.section*0.75-0.08>=g.min_shaft_gap,"stave/core clearance below grammar minimum");
@@ -443,6 +480,7 @@ pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
     if let Some(st)=&f.staves { add_staves(&mut a,s,st)?; }
     if let Some(g)=&f.gate { add_gate(&mut a,s,g)?; }
     if let Some(fr)=&f.fracture { add_fracture(&mut a,s,seed,fr)?; }
+    if let Some(ap)=&f.aperture { add_aperture(&mut a,s,ap)?; }
     if let Some(sc)=&f.scars {
         // Replace only the experimental blade; legacy builder never calls this path.
         a.components[0].mesh=scar_blade(s,seed,sc)?;

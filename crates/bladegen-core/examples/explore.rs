@@ -20,6 +20,7 @@ fn main() -> anyhow::Result<()> {
         "03-faultbound" => Features {fracture:Some(Fracture::default()),read:Some(Read::default()),..Features::default()},
         "01-window" => Features {aperture:Some(Aperture::default()),..Features::default()},
         "02-cleft" => Features {cleft:Some(Cleft::default()),..Features::default()},
+        "04-ribs" => Features {ribs:Some(Ribs::default()),..Features::default()},
         _ => anyhow::bail!("unknown experiment {id}"),
     };
     let s = explore::reference();

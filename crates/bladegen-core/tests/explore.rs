@@ -240,3 +240,16 @@ fn cleft_has_two_guard_roots_and_a_solid_shared_planted_keel() {
         assert!(surface(&c.mesh,-separation*0.5-0.1,0.01).is_some());
     }}
 }
+
+#[test]
+fn ribs_have_closed_members_and_two_blade_attachment_roots() {
+    for pairs in [2,3,4] {
+        let f=Features {ribs:Some(Ribs {pairs,..Ribs::default()}),..Features::default()};
+        let a=build(&reference(),42,&f).unwrap();assert_eq!(a,build(&reference(),42,&f).unwrap());
+        let ribs:Vec<_>=a.components.iter().filter(|c|c.id.starts_with("rib/")).collect();assert_eq!(ribs.len(),pairs as usize*2);
+        for c in ribs {closed_outward(&c.mesh);let (lo,hi)=geom::world_bbox(&c.mesh,&c.matrix);
+            assert!(lo[1]>0. && hi[1]<4.6);assert!(lo[0]<-1. || hi[0]>1.);
+            let root=c.mesh.pos.chunks_exact(3).filter(|p|p[0].abs()<0.4).count();assert!(root>=8);
+        }
+    }
+}

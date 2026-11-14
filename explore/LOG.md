@@ -162,3 +162,13 @@ read too readily as a trident. Fixed 0.25 W rail ligaments keep mass around the 
 Tests: nine separation/bias pairs, manifold closure/winding, determinism, both guard-root hits,
 empty upper centre and solid terminal keel. Verdict **promising**; window-keel is more coherent
 at distance, but the open slot produces a severe tuning-fork variant. Weight 0.3, moons ×1.8.
+
+## 4 — Rib-vault blade
+
+Built 2–4 paired angular closed ribs, each rooted twice into the blade, with broad open bays.
+Parameters: pairs 3, reach 0.4–1 W (0.7). Used hard swept facets rather than smooth bone arches:
+more containment-frame than folklore. Restricted to continuous legacy blade roots.
+[GLB](out/04-ribs/sword.glb), [mast](out/04-ribs/mast.png), [drone](out/04-ribs/drone.png).
+Tests: all counts, manifold members/outward/finite/repeatable, two attachment zones, extent bounds.
+Verdict **promising**, likely too busy at four pairs; prefer two or three. Weight 0.35, heavy ×2,
+magnetic ×2.5. Aiming for a few enormous bays rather than high-frequency serration.

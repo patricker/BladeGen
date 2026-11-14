@@ -8,6 +8,8 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 pub mod raster;
+mod details;
+pub use details::*;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -48,6 +50,8 @@ pub struct Features {
     pub aperture: Option<Aperture>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cleft: Option<Cleft>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ribs: Option<Ribs>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -498,6 +502,7 @@ pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
     if let Some(fr)=&f.fracture { add_fracture(&mut a,s,seed,fr)?; }
     if let Some(ap)=&f.aperture { add_aperture(&mut a,s,ap)?; }
     if let Some(c)=&f.cleft { add_cleft(&mut a,s,c)?; }
+    details::apply(&mut a,s,seed,f)?;
     if let Some(sc)=&f.scars {
         // Replace only the experimental blade; legacy builder never calls this path.
         a.components[0].mesh=scar_blade(s,seed,sc)?;

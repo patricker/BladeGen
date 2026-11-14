@@ -111,3 +111,15 @@ No bloom model yet, so narrow-gap survival under show exposure remains a rendere
 
 Preview correction: first drone eye (28,43,45) cropped tall pommels. Moved both rasterizers to
 (35,48,65), target (0,22,0), preserving 45° FOV and a complete monument silhouette.
+
+## 6 — Shear-gate guard
+
+Built two separately identified stepped jaws, central load-bearing hub and orange luminous throat.
+Jaws slide outward analytically during a read; the blade and planted tip remain fixed. Polygon
+extrusion uses deterministic first-ear triangulation, capped front/back and explicit side walls.
+Parameters: jawHeight 0.5–1.5 W (0.9), stagger 0–0.5 W (0.22), readTravel 0.1–0.7 W (0.35).
+[GLB](out/06-gate/sword.glb), [mast](out/06-gate/mast.png), [drone](out/06-gate/drone.png).
+Tests: every gate component closed/outward/finite, repeatability, 66 fixed-time samples verify
+jaws remain on separate sides and move outward; hub/root overlaps are intentional slide bearings.
+Verdict **keep**: severe mechanical cross. Proposed guard weight 0.8, heavy ×2, barren ×1.8.
+Bevel omitted in this first study; a broad step reads better than tiny chamfers at 75 m.

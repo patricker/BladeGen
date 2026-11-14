@@ -1,5 +1,5 @@
 //! Rust geometry -> portable mesh buffers. `python explore/render.py` makes GLB/PNG from these buffers.
-use bladegen_core::explore::{self, Features, Resonance, Read, Emission, Scars, Staves, Grammar};
+use bladegen_core::explore::{self, Features, Resonance, Read, Emission, Scars, Staves, Grammar, Gate};
 use serde_json::json;
 fn main() -> anyhow::Result<()> {
     let id = std::env::args()
@@ -16,6 +16,7 @@ fn main() -> anyhow::Result<()> {
         "07-staves" => Features {staves:Some(Staves::default()),..Features::default()},
         "20-grammar" => Features {scars:Some(Scars::default()),staves:Some(Staves::default()),resonance:Some(Resonance::default()),grammar:Some(Grammar::default()),..Features::default()},
         "21-silhouette" => Features {staves:Some(Staves::default()),emission:Some(Emission::default()),..Features::default()},
+        "06-gate" => Features {gate:Some(Gate::default()),read:Some(Read::default()),..Features::default()},
         _ => anyhow::bail!("unknown experiment {id}"),
     };
     let s = explore::reference();

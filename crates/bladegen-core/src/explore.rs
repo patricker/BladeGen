@@ -40,6 +40,55 @@ pub struct Features {
     pub staves: Option<Staves>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub grammar: Option<Grammar>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gate: Option<Gate>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Gate { pub jaw_height:f64, pub stagger:f64, pub read_travel:f64 }
+impl Default for Gate {fn default()->Self {Self {jaw_height:0.9,stagger:0.22,read_travel:0.35}}}
+
+/// Extrude a simple CCW polygon without booleans. Deterministic first-ear triangulation.
+pub fn extrude(poly:&[[f64;2]],depth:f64)->anyhow::Result<Mesh> {
+    anyhow::ensure!(poly.len()>=3 && depth>0. && depth.is_finite(),"invalid extrusion");
+    let cross=|a:[f64;2],b:[f64;2],c:[f64;2]|(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+    let mut remaining:Vec<_>=(0..poly.len()).collect();let mut faces=vec![];
+    while remaining.len()>3 {
+        let mut found=false;
+        for i in 0..remaining.len() {
+            let (a,b,c)=(remaining[(i+remaining.len()-1)%remaining.len()],remaining[i],remaining[(i+1)%remaining.len()]);
+            if cross(poly[a],poly[b],poly[c])<=1e-12 {continue;}
+            if remaining.iter().any(|&p|p!=a && p!=b && p!=c && cross(poly[a],poly[b],poly[p])>=-1e-12 &&
+                cross(poly[b],poly[c],poly[p])>=-1e-12 && cross(poly[c],poly[a],poly[p])>=-1e-12) {continue;}
+            faces.extend([a as u32,b as u32,c as u32]);remaining.remove(i);found=true;break;
+        }
+        anyhow::ensure!(found,"polygon is not simple CCW");
+    }
+    faces.extend(remaining.iter().map(|v|*v as u32));
+    let n=poly.len() as u32;let mut m=Mesh::default();
+    for z in [-depth*0.5,depth*0.5] {for p in poly {m.pos.extend([p[0] as f32,p[1] as f32,z as f32]);}}
+    for f in faces.chunks_exact(3) {m.idx.extend([f[0],f[2],f[1],f[0]+n,f[1]+n,f[2]+n]);}
+    for a in 0..n {let b=(a+1)%n;m.idx.extend([a,b,a+n,b,b+n,a+n]);}
+    m.compute_vertex_normals();Ok(m)
+}
+
+fn add_gate(a:&mut Assembly,s:&Sword,g:&Gate)->anyhow::Result<()> {
+    valid(g.jaw_height,0.5,1.5,"gate jaw height")?;valid(g.stagger,0.,0.5,"gate stagger")?;valid(g.read_travel,0.1,0.7,"gate travel")?;
+    let w=s.blade.base_width;let h=g.jaw_height*w;let d=s.blade.thickness.unwrap_or(0.16)*3.;
+    a.components.retain(|c|!c.id.starts_with("guard#"));
+    let polygon=[[0.25,-0.4],[1.7,-0.4],[1.7,0.1],[1.35,0.1],[1.35,0.6],[0.65,0.6],[0.65,0.1],[0.25,0.1]];
+    for sign in [1.,-1.] {
+        let poly:Vec<_>=polygon.iter().map(|p|[p[0]*w,p[1]*h]).collect();
+        let mut mesh=extrude(&poly,d)?;
+        for p in mesh.pos.chunks_exact_mut(3) {p[0]*=sign as f32;p[1]=(p[1] as f64*sign+sign*g.stagger*w*0.5) as f32;}
+        // 180 degrees about Z preserves winding.
+        mesh.compute_vertex_normals();
+        let mut c=component(&format!("gate/jaw/{sign}"),mesh);c.travel=[sign*g.read_travel*w,0.,0.];a.components.push(c);
+    }
+    a.components.push(component("gate/hub",extrude(&[[-0.55*w,-0.18*w],[0.55*w,-0.18*w],[0.55*w,0.02*w],[-0.55*w,0.02*w]],d*0.8)?));
+    let mut throat=component("gate/throat",node_mesh([0.,-0.29*w,d*0.5+0.03*w],0.13*w));
+    throat.role="channel".into();throat.color=[1.,0.18,0.04];throat.strength=5.;a.components.push(throat);Ok(())
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -53,7 +102,7 @@ pub fn check_grammar(f:&Features)->anyhow::Result<()> {
     if let Some(g)=&f.grammar {
         anyhow::ensure!((1..=4).contains(&g.major_motif_budget),"motif budget must be 1..=4");
         valid(g.min_shaft_gap,0.05,0.3,"minimum shaft gap")?;
-        let motifs=u32::from(f.scars.is_some())+u32::from(f.staves.is_some());
+        let motifs=u32::from(f.scars.is_some())+u32::from(f.staves.is_some())+u32::from(f.gate.is_some());
         anyhow::ensure!(motifs<=g.major_motif_budget,"major motif budget exceeded: {motifs}");
         if let Some(st)=&f.staves {
             anyhow::ensure!(st.radius-st.section*0.75-0.08>=g.min_shaft_gap,"stave/core clearance below grammar minimum");
@@ -343,6 +392,7 @@ pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
         anchors: vec![],
     };
     if let Some(st)=&f.staves { add_staves(&mut a,s,st)?; }
+    if let Some(g)=&f.gate { add_gate(&mut a,s,g)?; }
     if let Some(sc)=&f.scars {
         // Replace only the experimental blade; legacy builder never calls this path.
         a.components[0].mesh=scar_blade(s,seed,sc)?;

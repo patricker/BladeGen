@@ -175,3 +175,19 @@ fn silhouette_metrics_are_deterministic_and_measure_real_voids() {
         assert_eq!(n.occupied as usize,n.pixels.iter().filter(|p|**p>0).count());
     }
 }
+
+#[test]
+fn gate_jaws_are_closed_and_move_outward_without_crossing() {
+    let s=reference(); let f=Features {gate:Some(Gate::default()),..Features::default()};
+    let a=build(&s,42,&f).unwrap();assert_eq!(a,build(&s,42,&f).unwrap());
+    for c in a.components.iter().filter(|c|c.id.starts_with("gate/")) {closed_outward(&c.mesh);}
+    for t in (0..=6500).step_by(100) {
+        let b=sample_read(&a,&Read::default(),t).unwrap();
+        for (before,after) in a.components.iter().zip(&b.components).filter(|(c,_)|c.id.starts_with("gate/jaw")) {
+            let (lo,hi)=geom::world_bbox(&after.mesh,&after.matrix);
+            assert!(lo[0]>0. || hi[0]<0.);
+            assert!((after.matrix[12]-before.matrix[12])*before.travel[0]>=0.);
+        }
+        assert_eq!(a.components[0],b.components[0]);
+    }
+}

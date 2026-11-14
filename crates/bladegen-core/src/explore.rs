@@ -37,6 +37,28 @@ pub struct Features {
     pub scars: Option<Scars>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub staves: Option<Staves>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grammar: Option<Grammar>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Grammar { pub major_motif_budget:u32, pub min_shaft_gap:f64 }
+impl Default for Grammar {fn default()->Self {Self {major_motif_budget:2,min_shaft_gap:0.12}}}
+
+/// Conservative preflight with explicit reasons; never silently changes the chosen recipe.
+/// Numeric sanitation stays in each builder. No visit-order state or unbounded rejection loops.
+pub fn check_grammar(f:&Features)->anyhow::Result<()> {
+    if let Some(g)=&f.grammar {
+        anyhow::ensure!((1..=4).contains(&g.major_motif_budget),"motif budget must be 1..=4");
+        valid(g.min_shaft_gap,0.05,0.3,"minimum shaft gap")?;
+        let motifs=u32::from(f.scars.is_some())+u32::from(f.staves.is_some());
+        anyhow::ensure!(motifs<=g.major_motif_budget,"major motif budget exceeded: {motifs}");
+        if let Some(st)=&f.staves {
+            anyhow::ensure!(st.radius-st.section*0.75-0.08>=g.min_shaft_gap,"stave/core clearance below grammar minimum");
+        }
+        anyhow::ensure!(!(f.scars.is_some() && f.emission.is_some()),"legacy ribbon route crosses scar voids; supply scar-specific channels");
+    } Ok(())
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -294,6 +316,7 @@ pub fn node_mesh(p: [f64; 3], r: f64) -> Mesh {
 }
 
 pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
+    check_grammar(f)?;
     valid(s.blade.length, 0.01, 1000., "blade length")?;
     valid(s.blade.base_width, 0.002, 100., "blade width")?;
     let mut counts = std::collections::BTreeMap::new();

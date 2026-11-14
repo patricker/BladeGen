@@ -148,3 +148,14 @@ fn staves_have_open_shaft_closed_members_and_fixed_attachments() {
         }
     }
 }
+
+#[test]
+fn grammar_rejects_crowding_budget_and_routes_through_voids() {
+    let mut f=Features {scars:Some(Scars::default()),staves:Some(Staves::default()),grammar:Some(Grammar::default()),..Features::default()};
+    assert!(check_grammar(&f).is_ok());
+    assert_eq!(build(&reference(),42,&f).unwrap(),build(&reference(),42,&f).unwrap());
+    f.grammar.as_mut().unwrap().major_motif_budget=1;assert!(check_grammar(&f).unwrap_err().to_string().contains("budget"));
+    f.grammar.as_mut().unwrap().major_motif_budget=2;
+    f.staves.as_mut().unwrap().radius=0.2;assert!(check_grammar(&f).unwrap_err().to_string().contains("clearance"));
+    f.staves=None;f.emission=Some(Emission::default());assert!(check_grammar(&f).unwrap_err().to_string().contains("voids"));
+}

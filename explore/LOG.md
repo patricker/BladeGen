@@ -83,3 +83,15 @@ the old solid grip is removed only in this opt-in assembly. No angular platform 
 Tests: closed/outward members and collars, finite/repeatable buffers, all counts, open shaft
 clearance, attachment planes and bounded core. Verdict **keep**: strong drone energy chamber,
 secondary mast silhouette. Suggested grip weight 0.65, magnetic ×3, light ×1.4 (currently absent).
+
+## 20 — Assembly grammar
+
+Built a conservative explicit preflight: major motif budget (1–4, default 2), minimum shaft/core
+gap (0.05–0.3 W, default 0.12), and route incompatibility reasons. Rejects crowded staves,
+over-budget designs and legacy ribbons crossing scar voids. Deliberately reduced the original
+candidate-search proposal: a deterministic error is more honest than silently replacing the owner's
+chosen feature. No new PRNG draws. Demonstration combines scars, open staves and read nodes.
+[GLB](out/20-grammar/sword.glb), [mast](out/20-grammar/mast.png), [drone](out/20-grammar/drone.png).
+Tests prove each rejection and repeatability of the accepted composition; constituent topology tests
+apply. Verdict **keep** as opt-in validation infrastructure; no catalogue weight. Further topology
+families will extend this explicit compatibility table rather than rely on generic touching tests.

@@ -205,3 +205,14 @@ need another pass before production.
 Tests: 12 closed/outward/finite links, bounded extent, named endpoints, repeat buffers.
 Verdict **drop current recipe**: links risk reading as disconnected beads at distance, attachment
 hardware is unfinished. Keep the kernel/annulus helpers. Suggested weight 0 until redesigned.
+
+## 10 — Siege sutures
+
+Built huge raised bronze staples across the **actual seeded scar records**. Each bridge runs
+lengthwise over an edge wound and has two feet on intact blade above/below it. Parameters:
+standOff 0.04–0.2 W (0.1), section 0.07–0.16 W (0.1); count comes from the scars, avoiding
+independent placement drift. Closed bridge and foot solids overlap intentionally at their joints.
+[GLB](out/10-sutures/sword.glb), [mast](out/10-sutures/mast.png), [drone](out/10-sutures/drone.png).
+Tests weld primitive seam copies, verify closure/winding, deterministic assemblies, and all six
+anchors hit intact scar-blade surfaces. Verdict **promising**, stronger drone story than mast
+silhouette. Feature frequency 0.25 on scarred swords, heavy ×1.5, barren ×2.

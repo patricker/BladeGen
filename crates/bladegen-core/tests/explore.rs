@@ -289,3 +289,25 @@ fn tension_links_are_closed_repeatable_and_have_named_endpoints() {
     for c in links {closed_outward(&c.mesh);let (lo,hi)=geom::world_bbox(&c.mesh,&c.matrix);assert!(lo[1]> -0.2 && hi[1]<2.9);}
     assert!(a.anchors.iter().all(|n|n.parent=="guard#0" || n.parent=="blade#0"));
 }
+
+#[test]
+fn sutures_bridge_actual_scar_records_and_attach_outside_notches() {
+    let f=Features {scars:Some(Scars::default()),sutures:Some(Sutures::default()),..Features::default()};
+    let a=build(&reference(),42,&f).unwrap();assert_eq!(a,build(&reference(),42,&f).unwrap());
+    for c in a.components.iter().filter(|c|c.id.starts_with("suture/")) {
+        let mut m=c.mesh.clone();weld(&mut m);closed_outward(&m);
+    }
+    assert_eq!(a.anchors.len(),6);
+    for n in &a.anchors {let hit=surface(&a.components[0].mesh,n.position[0],n.position[1]).unwrap().0;
+        assert!((hit[2]-n.position[2]).abs()<1e-6);
+    }
+}
+
+fn weld(m:&mut Mesh) {
+    let mut ids=BTreeMap::new();let mut remap=vec![];let mut pos=vec![];
+    for p in m.pos.chunks_exact(3) {
+        let key=(p[0].to_bits(),p[1].to_bits(),p[2].to_bits());
+        let index=*ids.entry(key).or_insert_with(||{let k=pos.len() as u32/3;pos.extend_from_slice(p);k});remap.push(index);
+    }
+    for i in &mut m.idx {*i=remap[*i as usize];}m.pos=pos;m.compute_vertex_normals();
+}

@@ -21,7 +21,34 @@ impl Default for Kernel {fn default()->Self {Self {core_radius:0.18,read_lift:0.
 pub struct Chains {pub links:u32,pub slack:f64}
 impl Default for Chains {fn default()->Self {Self {links:6,slack:0.2}}}
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Sutures {pub stand_off:f64,pub section:f64}
+impl Default for Sutures {fn default()->Self {Self {stand_off:0.1,section:0.1}}}
+
+fn block(id:&str,center:[f64;3],size:[f64;3])->Component {
+    let mut c=component(id,geom::box_geometry(size[0],size[1],size[2]));c.matrix=geom::compose(center,[0.;3],[1.;3]);c
+}
+
 pub(super) fn apply(a:&mut Assembly,s:&Sword,seed:u32,f:&Features)->anyhow::Result<()> {
+    if let Some(st)=&f.sutures {
+        let sc=f.scars.as_ref().ok_or_else(||anyhow::anyhow!("sutures require explicit scar records"))?;
+        valid(st.stand_off,0.04,0.2,"suture stand-off")?;valid(st.section,0.07,0.16,"suture section")?;
+        let w=s.blade.base_width;let z=s.blade.thickness.unwrap_or(0.16)*0.5;
+        for i in 0..sc.count {
+            let y=(0.16+0.52*i as f64/sc.count as f64)*s.blade.length;
+            let sign=if hash_seed(&format!("{seed}|scar|{i}"))&1==0 {-1.} else {1.};
+            let x=sign*0.40*w;let half=sc.length*s.blade.length*0.5+0.07*w;
+            let mut bar=block(&format!("suture/{i}/bridge"),[x,y,z+st.stand_off*w],[st.section*w,2.*half+st.section*w,0.06*w]);
+            bar.color=[0.6,0.3,0.1];a.components.push(bar);
+            for side in [-1.,1.] {
+                let yy=y+side*half;
+                a.components.push(block(&format!("suture/{i}/foot/{side}"),[x,yy,z+st.stand_off*w*0.5],
+                    [st.section*w,st.section*w,st.stand_off*w+0.04*w]));
+                a.anchors.push(Anchor {id:format!("suture/{i}/anchor/{side}"),parent:"blade#0".into(),position:[x,yy,z],normal:[0.,0.,1.],role:"repair".into(),vocabulary:1});
+            }
+        }
+    }
     if let Some(ch)=&f.chains {
         anyhow::ensure!((4..=10).contains(&ch.links),"chain links must be 4..=10");valid(ch.slack,0.,0.3,"chain slack")?;
         anyhow::ensure!(f.fracture.is_none() && f.cleft.is_none() && f.aperture.is_none() && f.gate.is_none(),"chains require fixed forged-guard and blade anchors");

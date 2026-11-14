@@ -114,3 +114,19 @@ fn emission_ribbons_are_closed_outward_and_clear_of_blade() {
     assert_eq!(star_color(2500.),[1.,0.24,0.06]);
     assert!(star_color(8000.).iter().all(|x|*x>=0. && *x<=1.));
 }
+
+#[test]
+fn scars_have_explicit_notches_closed_winding_and_ligaments() {
+    for seed in 0..8 { for count in [1,3,6] {
+        let s=reference(); let f=Features {scars:Some(Scars {count,..Scars::default()}),..Features::default()};
+        let a=build(&s,seed,&f).unwrap(); assert_eq!(a,build(&s,seed,&f).unwrap());
+        let m=&a.components[0].mesh; closed_outward(m);
+        let (lo,hi)=geom::world_bbox(m,&geom::IDENTITY);
+        assert_eq!(lo[1],0.); assert_eq!(hi[1],s.blade.length);
+        for ring in m.pos.chunks_exact(12) {
+            assert!(ring[3]-ring[0]>=0.019); // terminal section remains real, not a degenerate cap
+        }
+        let notched=m.pos.chunks_exact(12).filter(|r|r[1]>0. && r[1]<4.8 && (r[0]>-0.49 || r[3]<0.49)).count();
+        assert_eq!(notched,count as usize);
+    }}
+}

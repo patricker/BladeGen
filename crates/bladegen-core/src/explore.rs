@@ -33,6 +33,41 @@ pub struct Features {
     pub read: Option<Read>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub emission: Option<Emission>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scars: Option<Scars>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Scars { pub count:u32, pub depth:f64, pub length:f64 }
+impl Default for Scars { fn default()->Self { Self {count:3,depth:0.24,length:0.075} } }
+
+/// Rectangular-section blade with explicit notch stations and a nonzero terminal section.
+/// Scar boundaries exist independently of tessellation; no modification of the legacy blade grid.
+fn scar_blade(s:&Sword,seed:u32,sc:&Scars)->anyhow::Result<Mesh> {
+    anyhow::ensure!((1..=6).contains(&sc.count),"scar count must be 1..=6");
+    valid(sc.depth,0.05,0.3,"scar depth")?; valid(sc.length,0.02,0.09,"scar length")?;
+    let mut scars=vec![];
+    for i in 0..sc.count {
+        let t=0.16+0.52*i as f64/sc.count.max(1) as f64;
+        let left=hash_seed(&format!("{seed}|scar|{i}"))&1==0;
+        scars.push((t,left));
+    }
+    let mut stations=vec![0.,0.8,1.];
+    for &(t,_) in &scars { stations.extend([t-sc.length*0.5,t,t+sc.length*0.5]); }
+    stations.sort_by(f64::total_cmp); stations.dedup();
+    let w=s.blade.base_width; let halfz=s.blade.thickness.unwrap_or(0.16)*0.5;
+    let rings:Vec<_>=stations.into_iter().map(|t| {
+        let width=w*(if t>0.8 {1.-0.98*(t-0.8)/0.2} else {1.});
+        let mut left=-width*0.5; let mut right=width*0.5;
+        for &(at,is_left) in &scars {
+            let e=(1.-(t-at).abs()/(sc.length*0.5)).max(0.);
+            if is_left {left+=e*sc.depth*width;} else {right-=e*sc.depth*width;}
+        }
+        let y=t*s.blade.length;
+        [[left,y,-halfz],[right,y,-halfz],[right,y,halfz],[left,y,halfz]]
+    }).collect();
+    Ok(loft(&rings))
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -229,6 +264,11 @@ pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
         components,
         anchors: vec![],
     };
+    if let Some(sc)=&f.scars {
+        // Replace only the experimental blade; legacy builder never calls this path.
+        a.components[0].mesh=scar_blade(s,seed,sc)?;
+        a.components.retain(|c|!c.id.starts_with("glow#"));
+    }
     if let Some(r) = &f.resonance {
         anyhow::ensure!((3..=9).contains(&r.count), "resonance count must be 3..=9");
         valid(r.radius, 0.03, 0.08, "resonance radius")?;

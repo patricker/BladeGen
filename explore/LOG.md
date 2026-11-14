@@ -60,3 +60,15 @@ surface clearance, exact palette knots and interpolation bounds.
 Verdict **keep** as a shared look. Restrict current mirrored back ribbons to symmetric untwisted
 blades until a back-surface sampler is added; no claim of general asymmetric back attachment.
 Suggested feature frequency 0.7, blueStar ×1.5; currently opt-in only, no catalogue edits.
+
+## 12 — Planetary scars
+
+Built seeded alternating impact bites in a dedicated closed loft blade. This is a broad, severe
+slab section with explicit notch boundaries, rather than carving the legacy 13-column grid.
+Parameters: count 1–6 (3), depth 0.05–0.3 widths (0.24), length 0.02–0.09 blade lengths (0.075).
+Each wound keeps ≥70% local width. Tests exercise seeds/counts, closed manifold edge pairs,
+positive volume, finite bounds, exact repeatability, notch count and minimum ligament.
+[GLB](out/12-scars/sword.glb), [mast](out/12-scars/mast.png), [drone](out/12-scars/drone.png).
+Verdict **promising**: reads as damage from the mast, but needs exposed fracture emission before
+production; rectangular section is intentionally brutal. Proposed feature frequency 0.35,
+volcanic ×2.5, barren ×1.6. Current API opts in; legacy blade outputs are untouched.

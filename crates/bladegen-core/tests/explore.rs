@@ -159,3 +159,19 @@ fn grammar_rejects_crowding_budget_and_routes_through_voids() {
     f.staves.as_mut().unwrap().radius=0.2;assert!(check_grammar(&f).unwrap_err().to_string().contains("clearance"));
     f.staves=None;f.emission=Some(Emission::default());assert!(check_grammar(&f).unwrap_err().to_string().contains("voids"));
 }
+
+#[test]
+fn silhouette_metrics_are_deterministic_and_measure_real_voids() {
+    use bladegen_core::explore::raster::{render,View};
+    let a=build(&reference(),42,&Features::default()).unwrap();
+    let b=build(&reference(),42,&Features {staves:Some(Staves::default()),..Features::default()}).unwrap();
+    for view in [View::Mast,View::Drone] {
+        let m=render(&a,6.,36.,0.12,view,128).unwrap();
+        assert_eq!(m,render(&a,6.,36.,0.12,view,128).unwrap());
+        assert!(m.occupied>500 && m.occupied<4000);assert_eq!(m.emission,0);
+        assert!(m.width_profile.iter().max().unwrap()>&20);
+        let n=render(&b,6.,36.,0.12,view,128).unwrap();
+        assert!(n.emission>0);assert!(n.enclosed_void>m.enclosed_void);
+        assert_eq!(n.occupied as usize,n.pixels.iter().filter(|p|**p>0).count());
+    }
+}

@@ -95,3 +95,16 @@ chosen feature. No new PRNG draws. Demonstration combines scars, open staves and
 Tests prove each rejection and repeatability of the accepted composition; constituent topology tests
 apply. Verdict **keep** as opt-in validation infrastructure; no catalogue weight. Further topology
 families will extend this explicit compatibility table rather than rely on generic touching tests.
+
+## 21 — Silhouette distance scoring
+
+Built a Rust CPU perspective rasterizer (64/128/256 px) with integer 1/256 px coverage, fixed
+45° mast and drone cameras, perspective-correct depth, ground masking, binary silhouette/emission
+masks, 32-bin width profile, and flood-filled enclosed void area. No aggregate beauty score.
+Every example now exports Rust `metrics.json`; the dependency-free Python renderer gives larger
+512 px PNGs for review. Preview uses staves plus stellar roles.
+[GLB](out/21-silhouette/sword.glb), [mast](out/21-silhouette/mast.png),
+[drone](out/21-silhouette/drone.png), [numeric masks](out/21-silhouette/metrics.json).
+Tests: repeated masks identical, measured occupied/emission counts, width bounds, and staves add
+real enclosed voids in both views. Verdict **keep** as offline diagnostics; no catalogue weight.
+No bloom model yet, so narrow-gap survival under show exposure remains a renderer review task.

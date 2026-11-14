@@ -15,6 +15,7 @@ fn main() -> anyhow::Result<()> {
         "12-scars" => Features {scars:Some(Scars::default()),resonance:Some(Resonance::default()),..Features::default()},
         "07-staves" => Features {staves:Some(Staves::default()),..Features::default()},
         "20-grammar" => Features {scars:Some(Scars::default()),staves:Some(Staves::default()),resonance:Some(Resonance::default()),grammar:Some(Grammar::default()),..Features::default()},
+        "21-silhouette" => Features {staves:Some(Staves::default()),emission:Some(Emission::default()),..Features::default()},
         _ => anyhow::bail!("unknown experiment {id}"),
     };
     let s = explore::reference();
@@ -25,6 +26,10 @@ fn main() -> anyhow::Result<()> {
         "normal":c.mesh.nrm,"index":c.mesh.idx,"matrix":c.matrix.to_vec(),"role":c.role,"color":c.color,"strength":c.strength})).collect();
     let dir = std::path::Path::new("explore/out").join(&id);
     std::fs::create_dir_all(&dir)?;
+    use explore::raster::{render,View};
+    std::fs::write(dir.join("metrics.json"),serde_json::to_vec(&json!({
+        "mast":render(&a,s.blade.length,36.,0.12,View::Mast,128)?,
+        "drone":render(&a,s.blade.length,36.,0.12,View::Drone,128)?}))?)?;
     std::fs::write(
         dir.join("mesh.json"),
         serde_json::to_vec(&json!({"format":"bladegen-explore/1","idea":id,

@@ -7,6 +7,7 @@ use crate::{
     params::Sword,
 };
 use serde::{Deserialize, Serialize};
+pub mod raster;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

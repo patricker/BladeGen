@@ -228,3 +228,13 @@ Tests: all region solids closed/outward/finite/repeatable, four identical shared
 between neighboring layers. Verdict **drop current recipe**: color bands flatten the mass and
 change little in silhouette. Keep the partitioning API for actual bevel-revealed strata later.
 Suggested weight 0; a future version could favor heavy/cold worlds.
+
+## 13 — Planetary encroachment
+
+Built five massive angular basalt crusts rooted through the declared burial plane, with seed-indexed
+heights. Parameters: height 0.04–0.2 L (0.1), sink 0–0.4 (0.12), projection 0.1–0.35 W (0.18).
+No biological inference. World ground is explicit: consumers must use the same sink in placement.
+[GLB](out/13-basalt/sword.glb), [mast](out/13-basalt/mast.png), [drone](out/13-basalt/drone.png).
+Tests: closed/outward/finite/repeatable crusts, each crosses ground, stays near burial and physically
+intersects the blade thickness. Verdict **promising** as environment integration, not a family.
+Feature frequency 0.3 on barren/volcanic worlds; keep a bright-clear band in a later material pass.

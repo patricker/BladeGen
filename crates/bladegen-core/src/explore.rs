@@ -62,6 +62,8 @@ pub struct Features {
     pub sutures: Option<Sutures>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub strata: Option<Strata>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encroachment: Option<Encroachment>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

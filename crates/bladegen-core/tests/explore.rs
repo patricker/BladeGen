@@ -316,6 +316,16 @@ fn strata_are_capped_material_regions_with_matching_shared_boundaries() {
     }
 }
 
+#[test]
+fn basalt_is_closed_ground_anchored_and_stays_near_burial_zone() {
+    let f=Features {encroachment:Some(Encroachment::default()),..Features::default()};
+    let a=build(&reference(),42,&f).unwrap();assert_eq!(a,build(&reference(),42,&f).unwrap());
+    for c in a.components.iter().filter(|c|c.id.starts_with("basalt/")) {
+        closed_outward(&c.mesh);let (lo,hi)=geom::world_bbox(&c.mesh,&c.matrix);
+        assert!(lo[1]<5.28 && hi[1]>5.28);assert!(lo[1]>4.6);assert!(hi[2]>0.08 && lo[2]< -0.08);
+    }
+}
+
 fn weld(m:&mut Mesh) {
     let mut ids=BTreeMap::new();let mut remap=vec![];let mut pos=vec![];
     for p in m.pos.chunks_exact(3) {

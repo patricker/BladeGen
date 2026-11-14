@@ -31,11 +31,28 @@ impl Default for Sutures {fn default()->Self {Self {stand_off:0.1,section:0.1}}}
 pub struct Strata {pub layers:u32,pub diagonal:f64}
 impl Default for Strata {fn default()->Self {Self {layers:4,diagonal:0.28}}}
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Encroachment {pub height:f64,pub sink:f64,pub projection:f64}
+impl Default for Encroachment {fn default()->Self {Self {height:0.1,sink:0.12,projection:0.18}}}
+
 fn block(id:&str,center:[f64;3],size:[f64;3])->Component {
     let mut c=component(id,geom::box_geometry(size[0],size[1],size[2]));c.matrix=geom::compose(center,[0.;3],[1.;3]);c
 }
 
 pub(super) fn apply(a:&mut Assembly,s:&Sword,seed:u32,f:&Features)->anyhow::Result<()> {
+    if let Some(e)=&f.encroachment {
+        valid(e.height,0.04,0.2,"encroachment height")?;valid(e.sink,0.,0.4,"encroachment sink")?;valid(e.projection,0.1,0.35,"encroachment projection")?;
+        let w=s.blade.base_width;let ground=s.blade.length*(1.-e.sink);
+        for i in 0..5 {
+            let hash=hash_seed(&format!("{seed}|basalt/{i}"));let x=(-0.42+i as f64*0.21)*w;
+            let height=e.height*s.blade.length*(0.6+0.1*(hash%5) as f64);
+            let poly=[[x-0.14*w,ground+0.03*s.blade.length],[x-0.12*w,ground-height*0.6],
+                [x+0.03*w,ground-height],[x+0.15*w,ground-height*0.3],[x+0.17*w,ground+0.03*s.blade.length]];
+            let mut c=component(&format!("basalt/{i}"),extrude(&poly,s.blade.thickness.unwrap_or(0.16)+e.projection*w)?);
+            c.color=[0.045,0.035,0.03];a.components.push(c);
+        }
+    }
     if let Some(st)=&f.strata {
         anyhow::ensure!((2..=6).contains(&st.layers),"strata layers must be 2..=6");valid(st.diagonal,0.,0.5,"strata diagonal")?;
         anyhow::ensure!(f.scars.is_none() && f.cleft.is_none() && f.fracture.is_none() && f.aperture.is_none() && f.resonance.is_none() && f.emission.is_none(),"strata is a dedicated topology");

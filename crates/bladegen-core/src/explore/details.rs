@@ -26,11 +26,31 @@ impl Default for Chains {fn default()->Self {Self {links:6,slack:0.2}}}
 pub struct Sutures {pub stand_off:f64,pub section:f64}
 impl Default for Sutures {fn default()->Self {Self {stand_off:0.1,section:0.1}}}
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Strata {pub layers:u32,pub diagonal:f64}
+impl Default for Strata {fn default()->Self {Self {layers:4,diagonal:0.28}}}
+
 fn block(id:&str,center:[f64;3],size:[f64;3])->Component {
     let mut c=component(id,geom::box_geometry(size[0],size[1],size[2]));c.matrix=geom::compose(center,[0.;3],[1.;3]);c
 }
 
 pub(super) fn apply(a:&mut Assembly,s:&Sword,seed:u32,f:&Features)->anyhow::Result<()> {
+    if let Some(st)=&f.strata {
+        anyhow::ensure!((2..=6).contains(&st.layers),"strata layers must be 2..=6");valid(st.diagonal,0.,0.5,"strata diagonal")?;
+        anyhow::ensure!(f.scars.is_none() && f.cleft.is_none() && f.fracture.is_none() && f.aperture.is_none() && f.resonance.is_none() && f.emission.is_none(),"strata is a dedicated topology");
+        let w=s.blade.base_width;let l=s.blade.length;
+        a.components.retain(|c|!c.id.starts_with("blade#") && !c.id.starts_with("glow#"));
+        for i in 0..st.layers {
+            let bottom=0.8*l*i as f64/st.layers as f64;let top=0.8*l*(i+1) as f64/st.layers as f64;
+            let b=if i==0 {0.} else {st.diagonal*w};let t=if i+1==st.layers {0.} else {st.diagonal*w};
+            let mut poly=vec![[-w*0.5,bottom-b],[w*0.5,bottom+b],[w*0.5,top+t]];
+            if i+1==st.layers {poly.extend([[w*0.01,l],[-w*0.01,l]]);}
+            poly.push([-w*0.5,top-t]);
+            let mut c=component(&format!("strata/{i}"),extrude(&poly,s.blade.thickness.unwrap_or(0.16))?);
+            c.color=if i%2==0 {[0.10,0.12,0.15]} else {[0.38,0.30,0.18]};a.components.push(c);
+        }
+    }
     if let Some(st)=&f.sutures {
         let sc=f.scars.as_ref().ok_or_else(||anyhow::anyhow!("sutures require explicit scar records"))?;
         valid(st.stand_off,0.04,0.2,"suture stand-off")?;valid(st.section,0.07,0.16,"suture section")?;

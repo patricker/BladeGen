@@ -60,6 +60,8 @@ pub struct Features {
     pub chains: Option<Chains>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sutures: Option<Sutures>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub strata: Option<Strata>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

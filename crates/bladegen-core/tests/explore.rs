@@ -303,6 +303,19 @@ fn sutures_bridge_actual_scar_records_and_attach_outside_notches() {
     }
 }
 
+#[test]
+fn strata_are_capped_material_regions_with_matching_shared_boundaries() {
+    for layers in [2,4,6] {
+        let f=Features {strata:Some(Strata {layers,..Strata::default()}),..Features::default()};
+        let a=build(&reference(),42,&f).unwrap();assert_eq!(a,build(&reference(),42,&f).unwrap());
+        let parts:Vec<_>=a.components.iter().filter(|c|c.id.starts_with("strata/")).collect();assert_eq!(parts.len(),layers as usize);
+        for c in &parts {closed_outward(&c.mesh);}
+        for pair in parts.windows(2) {
+            let shared=pair[0].mesh.pos.chunks_exact(3).filter(|p|pair[1].mesh.pos.chunks_exact(3).any(|q|p==&q)).count();assert_eq!(shared,4);
+        }
+    }
+}
+
 fn weld(m:&mut Mesh) {
     let mut ids=BTreeMap::new();let mut remap=vec![];let mut pos=vec![];
     for p in m.pos.chunks_exact(3) {

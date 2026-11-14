@@ -216,3 +216,15 @@ independent placement drift. Closed bridge and foot solids overlap intentionally
 Tests weld primitive seam copies, verify closure/winding, deterministic assemblies, and all six
 anchors hit intact scar-blade surfaces. Verdict **promising**, stronger drone story than mast
 silhouette. Feature frequency 0.25 on scarred swords, heavy ×1.5, barren ×2.
+
+## 11 — Exposed strata
+
+Built 2–6 (default 4) capped transverse material regions with shared diagonal boundaries
+(0–0.5 W bias, default 0.28). This is exported geometry/material partitioning, not a shader.
+Dark metal alternates with dull bronze; no added bloom. Deliberately limited this slice to
+transverse laminations rather than inventing a general material Boolean system.
+[GLB](out/11-strata/sword.glb), [mast](out/11-strata/mast.png), [drone](out/11-strata/drone.png).
+Tests: all region solids closed/outward/finite/repeatable, four identical shared-boundary vertices
+between neighboring layers. Verdict **drop current recipe**: color bands flatten the mass and
+change little in silhouette. Keep the partitioning API for actual bevel-revealed strata later.
+Suggested weight 0; a future version could favor heavy/cold worlds.

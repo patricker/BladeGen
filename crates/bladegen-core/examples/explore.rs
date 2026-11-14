@@ -25,6 +25,7 @@ fn main() -> anyhow::Result<()> {
         "08-kernel" => Features {kernel:Some(Kernel::default()),read:Some(Read::default()),..Features::default()},
         "09-chains" => Features {chains:Some(Chains::default()),..Features::default()},
         "10-sutures" => Features {scars:Some(Scars::default()),sutures:Some(Sutures::default()),..Features::default()},
+        "11-strata" => Features {strata:Some(Strata::default()),..Features::default()},
         _ => anyhow::bail!("unknown experiment {id}"),
     };
     let s = explore::reference();

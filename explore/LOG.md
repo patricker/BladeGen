@@ -16,6 +16,10 @@ Toolchain: Windows stable 1.88 failed to launch rustc through Cargo; installed 1
 RUSTC and Cargo point directly to that toolchain. Neither has wasm32 installed. No network used.
 Initial `npm test` failed before tests with esbuild `spawn EPERM`; investigation continues.
 
+Resolved test execution offline: `node node_modules/vitest/vitest.mjs run --config
+explore/vitest.config.mjs --configLoader native` uses the installed TypeScript compiler in-process
+and worker threads. The repository's normal npm configuration is unchanged.
+
 This session permits only reads under `.git`: the first `git add` was rejected creating index.lock.
 `explore/commit.ps1` therefore maintains the requested branch in **separate writable metadata** at
 `explore/out/git-history`, based on f09919c, with Peter's identity and Codex trailers. The real branch
@@ -57,8 +61,8 @@ linear-RGB temperature table at 2500/5500/10000/30000 K; strength defaults edge 
 node 7. Ribbons sample actual blade triangles. Tests: closed/outward/finite/deterministic,
 surface clearance, exact palette knots and interpolation bounds.
 [GLB](out/15-emission/sword.glb), [mast](out/15-emission/mast.png), [drone](out/15-emission/drone.png).
-Verdict **keep** as a shared look. Restrict current mirrored back ribbons to symmetric untwisted
-blades until a back-surface sampler is added; no claim of general asymmetric back attachment.
+Verdict **keep** as a shared look. Final integration adds a real back-face sampler and tests
+twisted asymmetric surfaces; front/back ribbons now both follow their actual triangles.
 Suggested feature frequency 0.7, blueStar ×1.5; currently opt-in only, no catalogue edits.
 
 ## 12 — Planetary scars
@@ -318,3 +322,97 @@ pretend a version number guarantees compatibility; use the recorded commit to re
 [manifest](out/25-contract/recipe.json). Tests: serde roundtrip and exact replay, version/digest/
 catalogue/source rejection, and placement-sink consistency. Verdict **keep** as experimental
 reproduction infrastructure. FNV is a deterministic identity check, not a security signature.
+
+## Final integration and validation
+
+All 25 ideas were visited in the requested order. Every numbered study has a real GLB and mast/drone
+PNGs; four read studies have 0/1800/4000/6500 ms subexports. Six trait-sweep cells and three LODs
+bring the total to **50 GLBs and 200 PNGs** (color + binary silhouette in each view).
+Open [the review gallery](out/index.html): view selector, binary-mask toggle, read-time slider,
+feature parameters, metre-scale GLBs and trait-sweep contact sheet. PNGs are CPU diagnostics with
+flat material colors, no bloom/lighting; they are not a promise of final show rendering quality.
+
+Final adapter: `src/headless/explore.ts` consumes Rust mesh buffers as a Three group, preserving
+IDs, matrices, emissive colors/strengths and semantic targets. Re-exported from the existing headless
+entry point. **No live editor or wasm ABI wiring**: neither Windows toolchain has wasm32 installed,
+and no network/WSL modification was attempted. The committed wasm stays byte-identical.
+The separate experimental recipe schema does not alter the editor's canonical schema or defaults.
+
+Final hardening: both blade faces are sampled for emission, including twisted/asymmetric tests;
+scar replacement precedes surface-attached details; hemisphere shaping runs after all attachments;
+read phase normalizes by blade length; motif budgets include all structural families. GLB normals
+use inverse-transpose transforms and unit normalization. Unsupported topological combinations
+report errors rather than leaving floating nodes or channels across holes.
+
+Validation results:
+
+- Rust: **28 new tests pass**, plus 4 existing core tests, 3 stroke tests and the golden test.
+  **243 legacy cases / 1283 meshes remain byte-identical**. The eight external-corpus test
+  functions returned early because those corpora are absent; they were not conformance-tested here.
+- TypeScript: **52 files, 375 passed, 1 skipped**, including existing wasm goldens, the buffer
+  adapter and validation of a real Rust manifest against the new schema. This uses the documented
+  no-subprocess fallback; unmodified `npm test` still hits the environment's esbuild `spawn EPERM`.
+- Targeted ESLint passes for the new TypeScript files. Repository-wide `tsc --noEmit` fails on
+  existing missing Three declarations and unrelated existing errors; new files only report that
+  same missing `three` declaration. No dependencies were fetched to mask those baseline failures.
+- `node explore/verify.mjs`: all **25 real manifests validate**, and all **50 GLBs** have valid
+  lengths, in-range indices, finite positions and finite unit normals. Native fixture replay passes.
+- Window-family LOD example: 6500 → 3684 → 1828 triangles, 3441 → 1977 → 1017 vertices;
+  critical window hardware is byte-identical and mast IoU remains ≥0.98.
+- No changes to catalogue JSON, original params/defaults, legacy builders, golden data or wasm.
+  Runtime weight for every experiment remains effectively zero because the shipped selection path
+  cannot choose them. Suggested weights below are future art-direction proposals only.
+
+Rebuild everything with `./explore/run.ps1 -Idea '--all'`, then `python explore/gallery.py`.
+Run Rust with `./explore/run.ps1 -Tests`; verify exported assets with `node explore/verify.mjs`.
+`explore/fixtures/recipe.json` is a small real replay fixture; outputs are ignored and reproducible.
+
+## Summary and catalogue recommendations
+
+| Idea | Built study | Verdict | Suggested future weight / affinity |
+|---:|---|---|---|
+| 18 | Surface-anchored resonance diamonds + semantic targets | Keep, shared | frequency 0.6; magnetic ×2 |
+| 16 | Event-relative staged read + return and translation tracks | Keep, shared | available to all selected designs |
+| 15 | Stellar edges, mineral channel, white nodes | Keep, shared | frequency 0.7; blueStar ×1.5 |
+| 12 | Seeded closed impact-notch blade | Promising | frequency 0.35; volcanic ×2.5, barren ×1.6 |
+| 7 | Open bowed staves, annular collars, luminous shaft | Keep, grip | 0.65; magnetic ×3, light ×1.4 |
+| 20 | Motif and clearance preflight with explicit incompatibilities | Keep, tool | no family weight |
+| 21 | Rust two-view fixed-point silhouette diagnostics | Keep, tool | no family weight |
+| 6 | Stepped shear jaws, hub, throat, analytical slides | Keep, guard | 0.8; heavy ×2, barren ×1.8 |
+| 3 | Capped floating fragments with fixed root and planted keel | Keep, blade | 0.45; volcanic ×2.5, eccentric ×2 |
+| 1 | Single manifold window blade + glowing inner lips | Keep, blade | 0.6; magnetic ×3, light ×2 |
+| 2 | Two-root cleft blade with common planted keel | Promising | 0.3; moons ×1.8 |
+| 4 | Paired faceted containment ribs | Promising, 2–3 pairs | 0.35; heavy ×2, magnetic ×2.5 |
+| 5 | Seed-indexed faceted mineral intrusions | Promising, 2–4 growths | 0.4; cold ×2, volcanic ×1.4 |
+| 8 | Split cage with analytically lifting captive kernel | Keep, pommel | 0.6; magnetic ×2.5, blueStar ×1.5 |
+| 9 | Static alternating links + declared anchors | Drop current recipe | 0; finish fittings/interlock first |
+| 10 | Raised staples bridging actual scar records | Promising | frequency 0.25 on scars; barren ×2 |
+| 11 | Capped diagonal material partitions | Drop current recipe | 0; needs bevel-revealed layers |
+| 13 | Seeded hostile basalt at declared burial plane | Promising, placement | frequency 0.3; barren/volcanic |
+| 14 | Coordinated symbolic hemisphere mass warp | Promising, modifier | frequency 0.5 when locked |
+| 17 | Connected raised furnace conduits + closed rims | Keep, shared | frequency 0.5; volcanic ×2 |
+| 19 | Rear/lateral electrodes and exact circle sockets | Promising, placement | frequency 0.35; magnetic |
+| 22 | Two-view perceptual nearest-neighbor audit | Keep, tool | no family weight |
+| 23 | Trait sweep with complete resolved feature locks | Keep, tool | no family weight |
+| 24 | Three LODs preserving critical topology and IDs | Keep, tool | no family weight |
+| 25 | Fingerprinted recipe envelope and verified replay | Keep, tool | no family weight |
+
+Promote **window-keel first**, then **faultbound** and **shear-gate**, each initially in a manually
+reviewed corpus. Open staves and captive kernel are the strongest complementary hilt additions.
+Use resonance, read envelopes and restrained stellar/furnace emission across those families.
+Before enabling weights: rebuild the wasm in the owner's working toolchain, add explicit assembly
+dispatch to the kit/editor, and review real show exposure/bloom at mast/drone distance. Current
+proof covers portable geometry and diagnostics, not the engine's final lighting or probe gameplay.
+
+Per-idea history is in [ideas.bundle](out/ideas.bundle), using Peter Wicks / patricker@gmail.com
+and the requested Codex trailer. The session's read-only `.git` prevented advancing the actual
+branch; no push was attempted. A Git-capable main session can import the exact series with:
+
+```powershell
+git fetch ./explore/out/ideas.bundle explore/codex-sword-ideas
+git merge --ff-only FETCH_HEAD
+```
+
+The implementation files are already present in this working tree, so save them or use a clean
+checkout before that fast-forward; do not discard uncommitted files blindly. The bundle's only
+prerequisite is f09919c. All generated review assets remain local to this clone.

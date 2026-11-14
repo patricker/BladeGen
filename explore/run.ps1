@@ -11,6 +11,6 @@ if ($Tests) {
 } else {
   & $cargoExe run --offline --locked -p bladegen-core --example explore -- $Idea
   if ($LASTEXITCODE -ne 0) { throw 'Rust generation failed' }
-  python explore/render.py $Idea
+  python -u explore/render.py $Idea
   if ($LASTEXITCODE -ne 0) { throw 'Preview export failed' }
 }

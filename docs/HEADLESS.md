@@ -38,6 +38,26 @@ outputs are byte-identical (BG1: SW1's 20 fixtures with their GLBs, SW10's corpu
 
 ## CLI
 
+### Opt-in CX2 experiments
+
+The Rust `bladegen_core::explore` module is a separate review API, with 25 explicit presets,
+closed structural meshes, semantic read targets, analytical read samples, silhouette diagnostics,
+trait sweeps, LODs and replay-checked manifests. It is never called by the shipped recipes or
+catalogue. See [the experiment log](../explore/LOG.md) for individual verdicts and previews.
+
+Offline reproduction: `cargo run --offline -p bladegen-core --example explore -- --all`, then
+`python explore/render.py --all` and `python explore/gallery.py`. On this Windows clone,
+`./explore/run.ps1 -Idea '--all'` chooses the installed working Rust toolchain. Open
+`explore/out/index.html` for mast/drone views, binary silhouettes and fixed-time read samples.
+
+`src/headless/explore.ts` (`buildExplorationGroup`, re-exported from the headless entry point)
+adapts Rust `mesh.json` buffers into a Three group at metre scale. It preserves component IDs,
+matrices, emissive roles and semantic metadata and can be passed to `exportGLB`. It contains no
+sword geometry. The experimental `recipe.json` envelope has its own
+`schema/explore.recipe.schema.json`; it is not a site document accepted by the regular import UI.
+Replay it natively with `cargo run --offline -p bladegen-core --example explore -- --verify <recipe.json>`.
+The committed wasm has no experimental operations; adding live editor controls requires a wasm rebuild.
+
 ```sh
 npm run bladegen -- presets                       # list presets (site + giant)
 npm run bladegen -- gen --seed 42 --monument --out sword.glb --params-out sword.json

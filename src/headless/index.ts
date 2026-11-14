@@ -22,6 +22,7 @@ import { BLADE_GRID_COLS, bladeGridSegments } from '../three/sword/glow';
 import { listMeshes } from './parts';
 
 export { listMeshes, type MeshEntry } from './parts';
+export { buildExplorationGroup, type ExplorationBuffers } from './explore';
 
 export type MaterialMap = Partial<
   Record<'blade' | 'guard' | 'handle' | 'pommel' | 'scabbard' | 'tassel', Record<string, any>>

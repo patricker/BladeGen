@@ -1,0 +1,535 @@
+{
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "bladegen-explore-recipe/1"
+    },
+    "recipeVersion": {
+      "const": 1
+    },
+    "coreVersion": {
+      "type": "string"
+    },
+    "mathProfile": {
+      "const": "libm-f64-f32-v1"
+    },
+    "catalogueFnv1a64": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "implementationFnv1a64": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "base": {
+      "type": "object",
+      "required": ["blade", "guard", "handle", "pommel"],
+      "description": "Validated Rust core Sword subset; not the editor document envelope."
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "resonance": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 3,
+              "maximum": 9
+            },
+            "radius": {
+              "type": "number",
+              "minimum": 0.03,
+              "maximum": 0.08
+            }
+          },
+          "additionalProperties": false,
+          "required": ["count", "radius"]
+        },
+        "read": {
+          "type": "object",
+          "properties": {
+            "durationMs": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 15000
+            },
+            "emissionGain": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 4
+            }
+          },
+          "additionalProperties": false,
+          "required": ["durationMs", "emissionGain"]
+        },
+        "emission": {
+          "type": "object",
+          "properties": {
+            "starK": {
+              "type": "number",
+              "minimum": 2500,
+              "maximum": 30000
+            },
+            "edgeStrength": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 12
+            },
+            "channelStrength": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 12
+            }
+          },
+          "additionalProperties": false,
+          "required": ["starK", "edgeStrength", "channelStrength"]
+        },
+        "scars": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6
+            },
+            "depth": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 0.3
+            },
+            "length": {
+              "type": "number",
+              "minimum": 0.02,
+              "maximum": 0.09
+            }
+          },
+          "additionalProperties": false,
+          "required": ["count", "depth", "length"]
+        },
+        "staves": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 3,
+              "maximum": 6
+            },
+            "radius": {
+              "type": "number",
+              "minimum": 0.2,
+              "maximum": 0.45
+            },
+            "section": {
+              "type": "number",
+              "minimum": 0.07,
+              "maximum": 0.15
+            },
+            "bow": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.2
+            }
+          },
+          "additionalProperties": false,
+          "required": ["count", "radius", "section", "bow"]
+        },
+        "grammar": {
+          "type": "object",
+          "properties": {
+            "majorMotifBudget": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "minShaftGap": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 0.3
+            }
+          },
+          "additionalProperties": false,
+          "required": ["majorMotifBudget", "minShaftGap"]
+        },
+        "gate": {
+          "type": "object",
+          "properties": {
+            "jawHeight": {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 1.5
+            },
+            "stagger": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.5
+            },
+            "readTravel": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 0.7
+            }
+          },
+          "additionalProperties": false,
+          "required": ["jawHeight", "stagger", "readTravel"]
+        },
+        "fracture": {
+          "type": "object",
+          "properties": {
+            "segments": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 7
+            },
+            "gap": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 0.3
+            },
+            "offset": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.35
+            },
+            "readClosure": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.9
+            }
+          },
+          "additionalProperties": false,
+          "required": ["segments", "gap", "offset", "readClosure"]
+        },
+        "aperture": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "number",
+              "minimum": 0.08,
+              "maximum": 0.35
+            },
+            "end": {
+              "type": "number",
+              "minimum": 0.45,
+              "maximum": 0.78
+            },
+            "width": {
+              "type": "number",
+              "minimum": 0.2,
+              "maximum": 0.6
+            }
+          },
+          "additionalProperties": false,
+          "required": ["start", "end", "width"]
+        },
+        "cleft": {
+          "type": "object",
+          "properties": {
+            "separation": {
+              "type": "number",
+              "minimum": 0.3,
+              "maximum": 0.9
+            },
+            "mergeAt": {
+              "type": "number",
+              "minimum": 0.6,
+              "maximum": 0.8
+            },
+            "bias": {
+              "type": "number",
+              "minimum": -0.1,
+              "maximum": 0.1
+            }
+          },
+          "additionalProperties": false,
+          "required": ["separation", "mergeAt", "bias"]
+        },
+        "ribs": {
+          "type": "object",
+          "properties": {
+            "pairs": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 4
+            },
+            "reach": {
+              "type": "number",
+              "minimum": 0.4,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false,
+          "required": ["pairs", "reach"]
+        },
+        "crystals": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6
+            },
+            "length": {
+              "type": "number",
+              "minimum": 0.4,
+              "maximum": 1.5
+            },
+            "width": {
+              "type": "number",
+              "minimum": 0.15,
+              "maximum": 0.35
+            }
+          },
+          "additionalProperties": false,
+          "required": ["count", "length", "width"]
+        },
+        "kernel": {
+          "type": "object",
+          "properties": {
+            "coreRadius": {
+              "type": "number",
+              "minimum": 0.12,
+              "maximum": 0.2
+            },
+            "readLift": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.1
+            }
+          },
+          "additionalProperties": false,
+          "required": ["coreRadius", "readLift"]
+        },
+        "chains": {
+          "type": "object",
+          "properties": {
+            "links": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 10
+            },
+            "slack": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.3
+            }
+          },
+          "additionalProperties": false,
+          "required": ["links", "slack"]
+        },
+        "sutures": {
+          "type": "object",
+          "properties": {
+            "standOff": {
+              "type": "number",
+              "minimum": 0.04,
+              "maximum": 0.2
+            },
+            "section": {
+              "type": "number",
+              "minimum": 0.07,
+              "maximum": 0.16
+            }
+          },
+          "additionalProperties": false,
+          "required": ["standOff", "section"]
+        },
+        "strata": {
+          "type": "object",
+          "properties": {
+            "layers": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 6
+            },
+            "diagonal": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.5
+            }
+          },
+          "additionalProperties": false,
+          "required": ["layers", "diagonal"]
+        },
+        "encroachment": {
+          "type": "object",
+          "properties": {
+            "height": {
+              "type": "number",
+              "minimum": 0.04,
+              "maximum": 0.2
+            },
+            "sink": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.4
+            },
+            "projection": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 0.35
+            }
+          },
+          "additionalProperties": false,
+          "required": ["height", "sink", "projection"]
+        },
+        "terminator": {
+          "type": "object",
+          "properties": {
+            "bias": {
+              "type": "number",
+              "minimum": -0.7,
+              "maximum": 0.7
+            }
+          },
+          "additionalProperties": false,
+          "required": ["bias"]
+        },
+        "circuit": {
+          "type": "object",
+          "properties": {
+            "branches": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            "width": {
+              "type": "number",
+              "minimum": 0.03,
+              "maximum": 0.09
+            }
+          },
+          "additionalProperties": false,
+          "required": ["branches", "width"]
+        },
+        "electrodes": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 6
+            },
+            "reach": {
+              "type": "number",
+              "minimum": 0.8,
+              "maximum": 1.8
+            },
+            "sink": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.4
+            }
+          },
+          "additionalProperties": false,
+          "required": ["count", "reach", "sink"]
+        }
+      },
+      "additionalProperties": false,
+      "required": []
+    },
+    "heightM": {
+      "type": "number",
+      "minimum": 30,
+      "maximum": 42
+    },
+    "sink": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 0.4
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$"
+          },
+          "travel": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": ["id", "role", "digest", "travel"]
+      }
+    },
+    "anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "parent": {
+            "type": "string"
+          },
+          "position": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number"
+            }
+          },
+          "normal": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number"
+            }
+          },
+          "role": {
+            "type": "string"
+          },
+          "vocabulary": {
+            "type": "integer",
+            "const": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": ["id", "parent", "position", "normal", "role", "vocabulary"]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "recipeVersion",
+    "coreVersion",
+    "mathProfile",
+    "catalogueFnv1a64",
+    "implementationFnv1a64",
+    "seed",
+    "base",
+    "features",
+    "heightM",
+    "sink",
+    "components",
+    "anchors"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bladegen.local/schema/explore.recipe.schema.json",
+  "title": "Opt-in Rust exploration recipe",
+  "description": "Shape validation only. Rust contract replay also checks compatibility, placement and digests."
+}

@@ -19,6 +19,15 @@ def point(m, p):
     return [sum(m[k * 4 + j] * p[k] for k in range(3)) + m[12 + j] for j in range(3)]
 
 
+def normal(m, n):
+    a,b,c,d,e,f,g,h,i = m[0],m[4],m[8],m[1],m[5],m[9],m[2],m[6],m[10]
+    cof = [[e*i-f*h,f*g-d*i,d*h-e*g],[c*h-b*i,a*i-c*g,b*g-a*h],[b*f-c*e,c*d-a*f,a*e-b*d]]
+    det = a*cof[0][0]+b*cof[0][1]+c*cof[0][2]
+    v = [sum(cof[j][k]*n[k] for k in range(3))/det for j in range(3)]
+    length = math.sqrt(sum(x*x for x in v)) or 1
+    return [-v[0]/length,-v[1]/length,v[2]/length]
+
+
 def world(doc):
     scale = doc['heightM'] / doc['bladeLength']
     ground = doc['heightM'] * (1 - doc['sink'])
@@ -57,9 +66,7 @@ def glb(doc, path):
         ns = c['normal']
         normals = []
         for i in range(0, len(ns), 3):
-            m = c['matrix']
-            n = [sum(m[k*4+j]*ns[i+k] for k in range(3)) for j in range(3)]
-            normals.extend([-n[0], -n[1], n[2]])
+            normals.extend(normal(c['matrix'],ns[i:i+3]))
         n = accessor(normals, 'VEC3', 5126, 3)
         idx = accessor(c['index'], 'SCALAR', 5125, 1)
         mat = dict(name=c['role'], pbrMetallicRoughness=dict(baseColorFactor=c['color']+[1],
@@ -106,9 +113,9 @@ def raster(doc, eye, path, size=512):
         for v in vs:
             p = sub(v,eye)
             z = dot(p,forward)
-            screen.append((round((size/2+focal*dot(p,right)/z)*256),
-                           round((size/2-focal*dot(p,up)/z)*256),z))
-        col = [max(0,min(255,round(x*255))) for x in c['color']] if c['strength'] else [22,26,34]
+            screen.append((math.floor((size/2+focal*dot(p,right)/z)*256+0.5),
+                           math.floor((size/2-focal*dot(p,up)/z)*256+0.5),z))
+        col = [max(0,min(255,round(x*255))) for x in c['color']]
         for i in range(0,len(c['index']),3):
             a,b,d = [screen[j] for j in c['index'][i:i+3]]
             if min(a[2],b[2],d[2]) <= 0: continue
@@ -139,13 +146,16 @@ def raster(doc, eye, path, size=512):
 
 
 def main():
-    for name in sys.argv[1:]:
+    names = sys.argv[1:]
+    if names == ['--all']:
+        names = [str(p.parent.relative_to(ROOT/'out')) for p in sorted((ROOT/'out').rglob('mesh.json'))]
+    for name in names:
         folder = ROOT/'out'/name
         doc = json.loads((folder/'mesh.json').read_text())
         glb(doc,folder/'sword.glb')
         stats = {name:raster(doc,eye,folder/(name+'.png')) for name,eye in [('mast',[0,22,75]),('drone',[35,48,65])]}
         (folder/'views.json').write_text(json.dumps(stats,indent=2)+'\n')
-        print(folder,stats)
+        print(folder.relative_to(ROOT), 'GLB + mast/drone PNG')
 
 
 if __name__ == '__main__':

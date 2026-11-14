@@ -1,0 +1,249 @@
+{
+  "format": "bladegen-explore-recipe/1",
+  "recipeVersion": 1,
+  "coreVersion": "0.1.0",
+  "mathProfile": "libm-f64-f32-v1",
+  "catalogueFnv1a64": "48f8900b5bdbd8a3",
+  "implementationFnv1a64": "276d6c9ad01872b9",
+  "seed": 42,
+  "base": {
+    "blade": {
+      "family": null,
+      "length": 6.0,
+      "baseWidth": 1.0,
+      "tipWidth": 0.02,
+      "thickness": 0.16,
+      "thicknessLeft": null,
+      "thicknessRight": null,
+      "curvature": null,
+      "baseAngle": null,
+      "soriProfile": null,
+      "soriBias": null,
+      "curveProfile": null,
+      "widthProfile": null,
+      "thicknessProfile": null,
+      "tipShape": null,
+      "tipBulge": null,
+      "tipRampStart": 0.8,
+      "kissakiLength": null,
+      "kissakiRoundness": null,
+      "waviness": null,
+      "twistAngle": null,
+      "crossSection": "diamond",
+      "bevel": null,
+      "edgeType": null,
+      "hollowGrind": null,
+      "serrationAmplitude": null,
+      "serrationAmplitudeLeft": null,
+      "serrationAmplitudeRight": null,
+      "serrationFrequency": null,
+      "serrationPattern": null,
+      "serrationSeed": null,
+      "serrationSharpness": null,
+      "serrationLeanLeft": null,
+      "serrationLeanRight": null,
+      "chaos": null,
+      "asymmetry": null,
+      "ricassoLength": null,
+      "falseEdgeLength": null,
+      "falseEdgeDepth": null,
+      "fullerEnabled": null,
+      "fullers": null,
+      "sweepSegments": null,
+      "glow": null
+    },
+    "guard": {
+      "style": "forged",
+      "width": 3.2,
+      "thickness": 0.3,
+      "heightOffset": null,
+      "tilt": null,
+      "quillonCount": null,
+      "quillonLength": null,
+      "ornamentation": null,
+      "tipSharpness": null,
+      "forged": {
+        "height": 0.42,
+        "depth": 2.4,
+        "block": 0.6,
+        "swell": 1.25,
+        "taper": 0.5,
+        "curl": 0.5,
+        "finial": 0.6,
+        "section": 0.5,
+        "segments": 24.0,
+        "radial": 16.0
+      }
+    },
+    "handle": {
+      "length": 1.4,
+      "radiusTop": 0.18,
+      "radiusBottom": 0.18,
+      "segmentation": null,
+      "segmentationCount": null,
+      "flare": null,
+      "phiSegments": null,
+      "curvature": null,
+      "ovalRatio": null,
+      "wrapEnabled": null,
+      "wrapDepth": null,
+      "wrapTurns": null,
+      "wrapStyle": null
+    },
+    "pommel": {
+      "style": "gem",
+      "size": 0.42,
+      "elongation": 1.0,
+      "shapeMorph": 0.0,
+      "offsetX": null,
+      "offsetY": null,
+      "facetCount": null,
+      "spikeLength": null,
+      "balance": null,
+      "ringInnerRadius": null,
+      "crownSpikes": null,
+      "crownSharpness": null,
+      "peenVisible": null
+    },
+    "hiltEnabled": null,
+    "guardEnabled": null
+  },
+  "features": {
+    "staves": {
+      "count": 4,
+      "radius": 0.34,
+      "section": 0.11,
+      "bow": 0.08
+    },
+    "aperture": {
+      "start": 0.18,
+      "end": 0.68,
+      "width": 0.48
+    }
+  },
+  "heightM": 36.0,
+  "sink": 0.12,
+  "components": [
+    {
+      "id": "guard#0",
+      "role": "metal",
+      "digest": "816201bfe792e6dc",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "pommel#0",
+      "role": "metal",
+      "digest": "67a54b40ee8409c0",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "stave/0",
+      "role": "metal",
+      "digest": "902a2003817ea1d8",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "stave/1",
+      "role": "metal",
+      "digest": "5d5de76f21434545",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "stave/2",
+      "role": "metal",
+      "digest": "2444083aebeee489",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "stave/3",
+      "role": "metal",
+      "digest": "c3f3d35c1cafc87a",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "stave/collar/0",
+      "role": "metal",
+      "digest": "2459c5f2f9a806e1",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "stave/collar/1",
+      "role": "metal",
+      "digest": "2b97a0f83e1ac5f5",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "stave/core",
+      "role": "channel",
+      "digest": "a30e6a4bc89e235e",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "window/keel",
+      "role": "metal",
+      "digest": "22b0332cb8cc8c71",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "window/lip/1",
+      "role": "channel",
+      "digest": "6087d5f33d3f831f",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "window/lip/-1",
+      "role": "channel",
+      "digest": "78b2f51111025f9f",
+      "travel": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "anchors": []
+}

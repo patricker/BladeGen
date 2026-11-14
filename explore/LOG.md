@@ -238,3 +238,14 @@ No biological inference. World ground is explicit: consumers must use the same s
 Tests: closed/outward/finite/repeatable crusts, each crosses ground, stays near burial and physically
 intersects the blade thickness. Verdict **promising** as environment integration, not a family.
 Feature frequency 0.3 on barren/volcanic worlds; keep a bright-clear band in a later material pass.
+
+## 14 — Terminator anatomy
+
+Built a coordinated static hemisphere warp across blade, guard, grip and pommel: one side widens
+and thickens, the other contracts. Bias ±0.7 (0.5). Positive width factors and a continuous rational
+thickness transition preserve triangle indexing and fixed Y attachment planes. Existing matrices
+are baked once, then normals recomputed. Symbolic left/right only: no world star direction is inferred.
+[GLB](out/14-terminator/sword.glb), [mast](out/14-terminator/mast.png), [drone](out/14-terminator/drone.png).
+Tests: both bias extremes, exact repeatability, unchanged indices/Y bounds and finite buffers for
+every part. Moving support recipes explicitly rejected. Verdict **promising**, but asymmetric mass
+alone is subtler than the proposed heat vents; use as a locked-world modifier, frequency 0.5 when locked.

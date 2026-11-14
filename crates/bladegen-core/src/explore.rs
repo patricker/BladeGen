@@ -64,6 +64,8 @@ pub struct Features {
     pub strata: Option<Strata>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub encroachment: Option<Encroachment>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub terminator: Option<Terminator>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -515,6 +517,7 @@ pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
     if let Some(ap)=&f.aperture { add_aperture(&mut a,s,ap)?; }
     if let Some(c)=&f.cleft { add_cleft(&mut a,s,c)?; }
     details::apply(&mut a,s,seed,f)?;
+    if let Some(t)=&f.terminator { details::terminator(&mut a,s,t,f)?; }
     if let Some(sc)=&f.scars {
         // Replace only the experimental blade; legacy builder never calls this path.
         a.components[0].mesh=scar_blade(s,seed,sc)?;

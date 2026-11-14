@@ -36,6 +36,30 @@ impl Default for Strata {fn default()->Self {Self {layers:4,diagonal:0.28}}}
 pub struct Encroachment {pub height:f64,pub sink:f64,pub projection:f64}
 impl Default for Encroachment {fn default()->Self {Self {height:0.1,sink:0.12,projection:0.18}}}
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct Terminator {pub bias:f64}
+impl Default for Terminator {fn default()->Self {Self {bias:0.5}}}
+
+pub(super) fn terminator(a:&mut Assembly,s:&Sword,t:&Terminator,f:&Features)->anyhow::Result<()> {
+    valid(t.bias,-0.7,0.7,"terminator bias")?;
+    anyhow::ensure!(f.gate.is_none() && f.fracture.is_none() && f.kernel.is_none(),"terminator requires static support tracks");
+    let warp=|p:[f64;3]| {
+        let side=p[0]/(p[0].abs()+0.15*s.blade.base_width);
+        [p[0]*(1.+if p[0]>=0. {t.bias} else {-t.bias*0.5}),p[1],p[2]*(1.+t.bias*0.5*side)]
+    };
+    for c in &mut a.components {
+        for p in c.mesh.pos.chunks_exact_mut(3) {
+            let q=warp(geom::apply_point(&c.matrix,[p[0] as f64,p[1] as f64,p[2] as f64]));for k in 0..3 {p[k]=q[k] as f32;}
+        } c.matrix=geom::IDENTITY;c.mesh.compute_vertex_normals();
+    }
+    for n in &mut a.anchors {n.position=warp(n.position);
+        if let Some(parent)=a.components.iter().find(|c|c.id==n.parent) {
+            if let Some((p,normal))=surface(&parent.mesh,n.position[0],n.position[1]) {n.position=p;n.normal=normal;}
+        }
+    } Ok(())
+}
+
 fn block(id:&str,center:[f64;3],size:[f64;3])->Component {
     let mut c=component(id,geom::box_geometry(size[0],size[1],size[2]));c.matrix=geom::compose(center,[0.;3],[1.;3]);c
 }

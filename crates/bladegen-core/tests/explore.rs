@@ -326,6 +326,21 @@ fn basalt_is_closed_ground_anchored_and_stays_near_burial_zone() {
     }
 }
 
+#[test]
+fn terminator_bias_coordinates_all_parts_without_changing_indices_or_y() {
+    let s=reference();let rest=build(&s,42,&Features::default()).unwrap();
+    for bias in [-0.7,0.5,0.7] {
+        let f=Features {terminator:Some(Terminator {bias}),..Features::default()};
+        let a=build(&s,42,&f).unwrap();assert_eq!(a,build(&s,42,&f).unwrap());
+        for (c,b) in a.components.iter().zip(&rest.components) {
+            assert_eq!(c.mesh.idx,b.mesh.idx);assert!(c.mesh.pos.iter().chain(&c.mesh.nrm).all(|v|v.is_finite()));
+            let bb=geom::world_bbox(&b.mesh,&b.matrix);let cb=geom::world_bbox(&c.mesh,&c.matrix);
+            assert!((bb.0[1]-cb.0[1]).abs()<1e-6 && (bb.1[1]-cb.1[1]).abs()<1e-6);
+            assert!(cb.1[0]>0. && cb.0[0]<0.);
+        }
+    }
+}
+
 fn weld(m:&mut Mesh) {
     let mut ids=BTreeMap::new();let mut remap=vec![];let mut pos=vec![];
     for p in m.pos.chunks_exact(3) {

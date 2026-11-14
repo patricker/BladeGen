@@ -1,3 +1,6 @@
 # Shell scripts run in bash (also WSL from a Windows checkout); the wasm module is a build artifact.
 *.sh text eol=lf
 *.wasm binary
+# The planet-sword tuning table is compiled into bladegen-core (include_str!): LF everywhere, so the wasm module and
+# the kit build the same bytes from any checkout.
+src/three/sword/monument/catalogue.json text eol=lf

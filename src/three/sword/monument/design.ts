@@ -166,5 +166,8 @@ export function designMonument(
     strengths: Record<string, number>;
     patch: Array<[string[], unknown?]>;
   }>('design_monument', { base, traits, seed, force: force ?? null, ...catArg(cat) }).value;
-  return { seed: r.seed, picks: r.picks, params: applyPatch(base, r.patch), strengths: r.strengths };
+  const params = applyPatch(base, r.patch);
+  // `straighten` (every blade family but `classic`) also drops `krisWaveCount`, a field the core does not model
+  if (r.picks.blade !== 'classic' && params.blade) delete (params.blade as any).krisWaveCount;
+  return { seed: r.seed, picks: r.picks, params, strengths: r.strengths };
 }

@@ -281,3 +281,15 @@ The five-design audit intentionally includes identical blanks to prove duplicate
 [audit](out/22-dedup/audit.json). Tests: identical score=1000, window distinct, repeatability and
 input-order-independent tie resolution. Verdict **keep** as authoring diagnostics; no catalogue weight.
 Current nearest pass is quadratic; use small review corpora before indexing 16k designs.
+
+## 23 — Trait-conditioned explorer
+
+Built a Rust offline candidate grid using the unchanged catalogue recipes for the base, then
+explicit experimental proposals with reasons: magnetic→window, volcanic→faultbound, neutral→ribs.
+Count 1–24, wrapping u32 seed start, optional complete resolved feature lock. Exports full traits,
+base params, seed and feature parameters per cell; no runtime catalogue weights are changed.
+[GLB](out/23-explorer/sword.glb), [mast](out/23-explorer/mast.png), [drone](out/23-explorer/drone.png),
+[six candidates](out/23-explorer/candidates.json). Cell meshes/GLBs/PNGs are under `cells/`.
+Tests: exact repeated candidate records, trait-conditioned selection, resolved lock surviving trait
+changes, finite generated geometry. Verdict **keep** as offline authoring tool. Static gallery rather
+than a live editor; owner can compare real metre-scale exports without six simultaneous WebGL scenes.

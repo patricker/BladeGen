@@ -9,6 +9,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 pub mod raster;
 pub mod audit;
+pub mod authoring;
 mod details;
 pub use details::*;
 

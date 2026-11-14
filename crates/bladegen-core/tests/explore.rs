@@ -378,6 +378,20 @@ fn dedup_detects_identical_silhouettes_and_breaks_ties_by_id() {
     let mut reversed=scenes.clone();reversed.reverse();assert_eq!(n,nearest(&reversed,6.).unwrap());
 }
 
+#[test]
+fn explorer_traits_change_features_and_locks_preserve_resolved_choices() {
+    use bladegen_core::{families::PlanetTraits,explore::authoring::candidates};
+    let magnetic=PlanetTraits::from_json(&serde_json::json!({"hasDynamo":true,"dipoleIndex":0.9}));
+    let volcanic=PlanetTraits::from_json(&serde_json::json!({"volcanismIndex":0.9}));
+    let a=candidates(&reference(),&magnetic,42,3,None).unwrap();
+    assert_eq!(a,candidates(&reference(),&magnetic,42,3,None).unwrap());
+    assert!(a.iter().all(|c|c.features.aperture.is_some()));
+    let b=candidates(&reference(),&volcanic,42,3,None).unwrap();assert!(b.iter().all(|c|c.features.fracture.is_some()));
+    let locked=candidates(&reference(),&volcanic,42,3,Some(&a[0].features)).unwrap();
+    assert!(locked.iter().all(|c|c.features==a[0].features));
+    for c in a.iter().chain(&b).chain(&locked) {let scene=build(&c.base,c.seed,&c.features).unwrap();assert!(scene.components.iter().all(|c|c.mesh.pos.iter().all(|v|v.is_finite())));}
+}
+
 fn weld(m:&mut Mesh) {
     let mut ids=BTreeMap::new();let mut remap=vec![];let mut pos=vec![];
     for p in m.pos.chunks_exact(3) {

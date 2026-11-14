@@ -48,6 +48,7 @@ fn resonance_nodes_are_closed_attached_finite_and_repeatable() {
                     count,
                     ..Resonance::default()
                 }),
+                ..Features::default()
             };
             let a = build(&reference(), seed, &f).unwrap();
             assert_eq!(a, build(&reference(), seed, &f).unwrap());
@@ -73,8 +74,27 @@ fn resonance_nodes_are_closed_attached_finite_and_repeatable() {
             resonance: Some(Resonance {
                 count: 100,
                 radius: 0.05
-            })
+            }),
+            ..Features::default()
         }
     )
     .is_err());
+}
+
+#[test]
+fn read_is_event_relative_ordered_and_returns_to_rest() {
+    let f=Features {resonance:Some(Resonance::default()),..Features::default()};
+    let a=build(&reference(),42,&f).unwrap(); let r=Read::default();
+    for t in [0,6500,u32::MAX] { assert_eq!(sample_read(&a,&r,t).unwrap(),a); }
+    let frame=sample_read(&a,&r,4000).unwrap();
+    for t in [1,2000,4000,6000,6500] {
+        let b=sample_read(&a,&r,t).unwrap();
+        assert_eq!(b,sample_read(&a,&r,t).unwrap());
+        assert_eq!(b.components[0],a.components[0]);
+        for (x,y) in b.components.iter().zip(&a.components) {
+            assert!(x.strength>=y.strength && x.strength<=y.strength*r.emission_gain);
+        }
+    }
+    assert_eq!(frame,sample_read(&a,&r,4000).unwrap());
+    assert!(read_envelope(2200,6500,0.1)>read_envelope(2200,6500,0.5));
 }

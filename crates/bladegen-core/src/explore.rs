@@ -29,6 +29,37 @@ impl Default for Resonance {
 pub struct Features {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resonance: Option<Resonance>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub read: Option<Read>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Read { pub duration_ms: u32, pub emission_gain: f64 }
+impl Default for Read {
+    fn default() -> Self { Self { duration_ms:6500, emission_gain:2.5 } }
+}
+
+/// Event-relative polynomial envelope, always returns to rest; no accumulated frame deltas.
+pub fn read_envelope(time_ms:u32, duration_ms:u32, phase:f64) -> f64 {
+    let t = time_ms as f64 / duration_ms.max(1) as f64;
+    let smooth = |v:f64| { let v=v.clamp(0.,1.); v*v*(3.-2.*v) };
+    smooth((t-phase)/0.12) * (1.-smooth((t-0.78)/0.22))
+}
+
+/// Sample a rest assembly. Future mechanical components use these same local translation tracks.
+pub fn sample_read(rest:&Assembly, read:&Read, time_ms:u32) -> anyhow::Result<Assembly> {
+    anyhow::ensure!((2000..=15000).contains(&read.duration_ms),"read duration must be 2000..=15000 ms");
+    valid(read.emission_gain,1.,4.,"read emission gain")?;
+    let mut a=rest.clone();
+    for c in &mut a.components {
+        let y = geom::world_bbox(&c.mesh,&c.matrix).0[1];
+        let phase=(0.50 - y*0.075).clamp(0.,0.65);
+        let e=read_envelope(time_ms,read.duration_ms,phase);
+        c.strength *= 1. + (read.emission_gain-1.)*e;
+        for k in 0..3 { c.matrix[12+k] += c.travel[k]*e; }
+    }
+    Ok(a)
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -50,6 +81,7 @@ pub struct Component {
     pub role: String,
     pub color: [f64; 3],
     pub strength: f64,
+    pub travel: [f64;3],
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -140,6 +172,7 @@ pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
                 role: "metal".into(),
                 color: [0.14, 0.17, 0.21],
                 strength: 0.,
+                travel: [0.;3],
             }
         })
         .collect();
@@ -176,6 +209,7 @@ pub fn build(s: &Sword, seed: u32, f: &Features) -> anyhow::Result<Assembly> {
                 role: "node".into(),
                 color: [0.8, 0.95, 1.],
                 strength: 7.,
+                travel: [0.;3],
             });
         }
     }

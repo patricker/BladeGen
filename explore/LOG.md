@@ -36,3 +36,15 @@ Validation: both new Rust tests pass; legacy golden test passes. Mast preview sh
 of tiny bright diamonds: useful targets, not a new family silhouette. Verdict **keep** as shared
 read hardware; enlarge toward radius 0.08 for bright show shots. Suggested future feature frequency
 0.6; magnetic ×2. Currently opt-in only. GLB retains the buried tip; PNGs mask geometry below ground.
+
+## 16 — Read choreography
+
+Built an event-relative smoothstep ascent and return, with independent emissive envelopes and local
+translation tracks for later moving assemblies. `durationMs` 2000–15000 (6500 default),
+`emissionGain` 1–4 (2.5 default). The blade stays fixed. Node activation advances from buried end
+toward guard and pommel; no simulation or frame history. Preview uses 4000 ms.
+[GLB](out/16-read/sword.glb), [mast](out/16-read/mast.png), [drone](out/16-read/drone.png).
+Tests cover rest at both endpoints and after duration, stage ordering, deterministic out-of-order
+samples, fixed blade and bounded gain. Verdict **keep** as shared show infrastructure. No family
+weight; all selected experimental families can carry this descriptor. Static PNG cannot show gain
+because it intentionally has no exposure/bloom; the GLB carries real emissive strength.

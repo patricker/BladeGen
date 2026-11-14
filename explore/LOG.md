@@ -182,3 +182,14 @@ come from three deterministic libm angles per side; every crystal extends beyond
 Tests across counts/seeds: closed/outward facets, finite bounds, repeatability, embedded roots and
 large projection. Verdict **promising** at 2–4 growths; six approaches a rock cluster. Weight 0.4,
 cold ×2, volcanic ×1.4. Root color/strength is preview material, not a new shipped look.
+
+## 8 — Captive kernel
+
+Built two massive open-seam pommel cage lobes, a real grip socket and an independent gold luminous
+octahedral core. Radius 0.12–0.2 W (0.18), analytical readLift 0–0.1 W (0.1), fixed cage.
+Rotation dropped: a slow vertical lift exposes the seam clearly and admits conservative clearance
+bounds. Topology is capped polygonal hardware with intentionally floating core.
+[GLB](out/08-kernel/sword.glb), [mast](out/08-kernel/mast.png), [drone](out/08-kernel/drone.png).
+Tests: closed/outward components, repeatability, true centre seam and core's free-corridor bounds
+over 66 read samples. Verdict **keep** with open staves; strong beacon, useful drone reveal.
+Proposed pommel weight 0.6, magnetic ×2.5, blueStar ×1.5.

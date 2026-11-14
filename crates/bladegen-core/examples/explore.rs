@@ -22,6 +22,7 @@ fn main() -> anyhow::Result<()> {
         "02-cleft" => Features {cleft:Some(Cleft::default()),..Features::default()},
         "04-ribs" => Features {ribs:Some(Ribs::default()),..Features::default()},
         "05-crystals" => Features {crystals:Some(Crystals::default()),..Features::default()},
+        "08-kernel" => Features {kernel:Some(Kernel::default()),read:Some(Read::default()),..Features::default()},
         _ => anyhow::bail!("unknown experiment {id}"),
     };
     let s = explore::reference();

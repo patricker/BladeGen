@@ -266,3 +266,17 @@ fn crystals_are_closed_facets_with_embedded_roots_and_large_projection() {
         }
     }}
 }
+
+#[test]
+fn captive_kernel_has_real_open_seam_and_bounded_core_lift() {
+    let f=Features {kernel:Some(Kernel::default()),..Features::default()};let a=build(&reference(),42,&f).unwrap();
+    assert_eq!(a,build(&reference(),42,&f).unwrap());
+    for c in a.components.iter().filter(|c|c.id.starts_with("kernel/")) {closed_outward(&c.mesh);}
+    let core=a.components.iter().find(|c|c.id=="kernel/core").unwrap();
+    for t in (0..=6500).step_by(100) {
+        let b=sample_read(&a,&Read::default(),t).unwrap();let c=b.components.iter().find(|c|c.id==core.id).unwrap();
+        let (lo,hi)=geom::world_bbox(&c.mesh,&c.matrix);assert!(lo[0]>-0.21 && hi[0]<0.21);
+        assert!(lo[1]> -2.3 && hi[1]< -1.7); // stays inside declared central free corridor
+    }
+    let cage=a.components.iter().find(|c|c.id=="kernel/cage/1").unwrap();assert!(surface(&cage.mesh,0.,-1.95).is_none());
+}
